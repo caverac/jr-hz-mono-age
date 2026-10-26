@@ -1,0 +1,6 @@
+# NOTE: target is Python 3.15; pinned to 3.14 until 3.15 ships stable wheels for
+# numpy/scipy/matplotlib (only 3.15.0b2 exists as of 2026-06). Bump to "3.15" then.
+[tools]
+node = "25"
+python = "3.14"
+uv = "latest"

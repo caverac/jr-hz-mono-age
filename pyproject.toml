@@ -1,0 +1,112 @@
+[project]
+name = "jr-hz-mono-age-workspace"
+version = "0.0.0"
+description = "uv workspace root -- not a real package"
+requires-python = ">=3.14"
+
+[tool.uv]
+package = false
+# AGAMA's setup.py asks before downloading and compiling GSL and Eigen; --yes answers.
+config-settings-package = { agama = { "--build-option" = "--yes" } }
+extra-build-dependencies = { agama = [{ requirement = "numpy", match-runtime = true }] }
+
+# AGAMA's metadata is dynamic, and match-runtime needs it static.
+[[tool.uv.dependency-metadata]]
+name = "agama"
+version = "1.0"
+requires-dist = ["numpy"]
+
+[tool.uv.workspace]
+members = ["packages/experiments"]
+
+[tool.uv.sources]
+experiments = { workspace = true }
+# The PyPI sdist (agama 1.0) segfaults on import under Python 3.14, whereas this commit
+# builds and imports under it.
+agama = { git = "https://github.com/GalacticDynamics-Oxford/Agama", rev = "f302756b8af2b763db58e278e30478517dc8eea3" }
+
+[dependency-groups]
+dev = [
+    "experiments",
+    "pytest>=8.0",
+    "pytest-cov>=7.0.0",
+    "mypy>=1.15",
+    "black>=24.0.0",
+    "flake8>=7.0.0",
+    "flake8-docstrings>=1.7.0",
+    "pylint>=3.0.0",
+    "pydocstyle>=6.3.0",
+    "isort>=5.13.0",
+    "pre-commit>=4.0.0",
+    "build>=1.4.0",
+    "responses>=0.25",
+]
+# AGAMA (potential fits and Staeckel actions for the Auriga snapshots). Not a default
+# group, because it compiles GSL from source (~18 min): `uv sync --group auriga`.
+auriga = ["agama"]
+
+# =============================================================================
+# Tool configuration
+# No lint rule is ignored project-wide. Where obeying a rule would make the design
+# worse (e.g. a click command whose options are its arguments), an inline pylint
+# disable sits on the offending line. Where a rule is configured below (e.g. pylint
+# good-names) that tunes the rule to the project's notation; it does not disable
+# it. The mypy ignore_missing_imports entries cover third-
+# party libraries that ship no type stubs -- they do not disable a check.
+# =============================================================================
+
+[tool.black]
+line-length = 120
+target-version = ["py314"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["experiments"]
+
+[tool.pylint.format]
+max-line-length = 120
+
+# Galactic-dynamics notation: whitelist the canonical symbols of the analysis --
+# single letters (height z, radius R, window L, window factor k, gravitational
+# constant G, slope a, sample sizes n) and the standard subscripted symbols
+# (dispersions sigma_R and sigma_z, AVR exponents beta_R and beta_z, the scale
+# height h_Z). This configures the naming rule; it does not disable it.
+[tool.pylint.basic]
+good-names = ["z", "R", "L", "k", "G", "a", "n", "sigma_R", "sigma_z", "beta_R", "beta_z", "h_Z"]
+
+[tool.pydocstyle]
+convention = "numpy"
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+explicit_package_bases = true
+mypy_path = ["packages/experiments/src", "packages/experiments/tests"]
+
+[[tool.mypy.overrides]]
+module = "scipy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "matplotlib.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "h5py.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "agama"
+ignore_missing_imports = true
+
+# Pylance/Pyright (editor only; not part of the gate): the IDE analogue of the mypy
+# ignore_missing_imports above.
+[tool.pyright]
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks slow tests (deselect with '-m \"not slow\"')",
+]

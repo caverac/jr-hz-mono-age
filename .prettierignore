@@ -1,0 +1,12 @@
+packages/pre-print/
+notebooks/
+staging/
+**/.docusaurus/
+**/build/
+
+# Generated experiment data (written by the engine via json.dump, not Prettier).
+assets/data/
+
+# Authored docs prose/MDX -- formatted by hand; correctness is checked by the
+# docs build job, not by Prettier.
+packages/docs/docs/

@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '25'
+  PYTHON_VERSION: '3.14'
+
+permissions:
+  contents: read
+
+jobs:
+  # ===========================================================================
+  # Python (engine) -- quality checks (run in parallel)
+  # ===========================================================================
+
+  lint-python:
+    name: Lint (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check formatting (black)
+        run: uv run black --check packages/experiments/src packages/experiments/tests
+
+      - name: Check import order (isort)
+        run: uv run isort --check-only packages/experiments/src packages/experiments/tests
+
+      - name: Lint (flake8)
+        run: uv run flake8 packages/experiments/src packages/experiments/tests
+
+      - name: Lint (pylint)
+        run: uv run pylint packages/experiments/src
+
+      - name: Docstrings (pydocstyle)
+        run: uv run pydocstyle packages/experiments/src
+
+  typecheck-python:
+    name: Typecheck (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run mypy (strict)
+        run: uv run mypy packages/experiments/src packages/experiments/tests
+
+  test-python:
+    name: Test (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests + coverage gate
+        working-directory: packages/experiments
+        run: uv run pytest
+
+  # ===========================================================================
+  # Docs (JS/TS) -- quality checks (run in parallel)
+  # ===========================================================================
+
+  lint-js:
+    name: Lint (JS/TS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: ESLint
+        run: yarn lint
+
+      - name: Prettier
+        run: yarn format
+
+  typecheck-js:
+    name: Typecheck (JS/TS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: TypeScript
+        run: yarn typecheck
+
+  build-docs:
+    name: Build Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build docs site
+        run: yarn workspace @jr-hz-mono-age/docs build

@@ -1,0 +1,71 @@
+:root {
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Version tag shown in the navbar (fed from the project version in the config). */
+.version-badge {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  background: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary-darkest);
+}
+
+[data-theme='dark'] .version-badge {
+  background: var(--ifm-color-primary-darkest);
+  color: var(--ifm-color-primary-lightest);
+}
+
+/* Scientific figures: centered and deliberately smaller than the text column so
+   single-panel plots are not oversized. */
+figure.scientific {
+  margin: 1.5rem auto;
+  text-align: center;
+}
+
+figure.scientific img {
+  max-width: 62%;
+  height: auto;
+}
+
+/* Two-panel (wide) figures keep the full column width. */
+figure.scientific.wide img {
+  max-width: 100%;
+}
+
+/* On narrow screens, let every figure use the full width. */
+@media (max-width: 768px) {
+  figure.scientific img {
+    max-width: 100%;
+  }
+}
+
+/* Dark mode: the matplotlib figures are rendered on a white canvas, which is
+   jarring on a dark page. Invert them (and rotate the hue back) so they read as
+   light-on-dark with the original colors roughly preserved. */
+[data-theme='dark'] figure.scientific img {
+  filter: invert(1) hue-rotate(180deg);
+}

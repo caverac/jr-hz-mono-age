@@ -1,0 +1,82 @@
+# === Node / Yarn ===
+node_modules/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+# Nested per-package Yarn / build caches (e.g. packages/docs/.yarn/.cache from a
+# workspace install or docusaurus build); the anchored .yarn/* above misses these.
+**/.yarn/.cache/
+**/.yarn/cache/
+**/.yarn/unplugged/
+**/.yarn/install-state.gz
+.pnp.*
+coverage/
+
+# === Build outputs ===
+dist/
+build/
+.docusaurus/
+*.tsbuildinfo
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.cover
+
+# === Local working notes (never committed) ===
+notebooks/
+
+# === Staging area for the Auriga snapshots (several GB per halo, local-only) ===
+# Snapshots and intermediate products go here; only small result tables under
+# assets/data/ and the figures under assets/figures/ are committed.
+staging/
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Environment ===
+.env
+.env.*
+!.env.example
+.envrc
+
+# === LaTeX build artifacts ===
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.toc
+*.out
+
+# Reviews
+packages/reviews/*

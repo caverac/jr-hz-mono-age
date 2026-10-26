@@ -1,0 +1,17 @@
+# Globus Connect Personal for the Auriga download; see the header of Dockerfile.
+name: jr-hz-mono-age
+
+services:
+  # Writes to staging/auriga/ only, which it sees as /data/auriga. Its registration
+  # lives in the gcp-config volume, so -setup is needed once.
+  globus:
+    build: .
+    image: jr-hz-mono-age-globus:1
+    volumes:
+      - ../staging/auriga:/data/auriga
+      - gcp-config:/home/researcher/.globusonline
+    command: ['globusconnectpersonal', '-start', '-restrict-paths', 'rw/data/auriga']
+    restart: unless-stopped
+
+volumes:
+  gcp-config:
