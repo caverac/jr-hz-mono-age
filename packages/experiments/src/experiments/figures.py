@@ -95,7 +95,7 @@ def _points(  # pylint: disable=too-many-arguments,too-many-positional-arguments
 def _slope_panel(axes: Axes, bins: list[AgeBin]) -> None:
     """Draw the measured a against the tracer and the sheet."""
     age = _column(bins, lambda b: b.age_median)
-    sheet, tracer = _column(bins, lambda b: b.slopes.sheet), _column(bins, lambda b: b.slopes.tracer)
+    sheet, tracer = _column(bins, lambda b: b.slopes.sheet.value), _column(bins, lambda b: b.slopes.tracer.value)
     measured = _column(bins, lambda b: b.slopes.measured.value)
     _line(axes, age, sheet, ":", "sheet")
     _line(axes, age, tracer, "-.", "tracer")

@@ -10,6 +10,7 @@ results of the data commands to ``assets/data/`` and the figures of the plot com
     experiments auriga download 2 3 16 19 23 24 27
     experiments auriga analyze 2 3 16 19 23 24 27
     experiments figures
+    experiments window-injection
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from experiments import __version__
 from experiments._paths import AURIGA_DATA_DIR, AURIGA_ROOT, DATA_DIR, FIGURES_DIR, MOCK_ROOT, REPO_ROOT
 from experiments.commands.all_figures import figures
 from experiments.commands.auriga import auriga
+from experiments.commands.window_injection import window_injection
 
 __all__ = ["AURIGA_DATA_DIR", "AURIGA_ROOT", "DATA_DIR", "FIGURES_DIR", "MOCK_ROOT", "REPO_ROOT", "main"]
 
@@ -45,3 +47,4 @@ def paths() -> None:
 
 main.add_command(auriga)
 main.add_command(figures)
+main.add_command(window_injection)

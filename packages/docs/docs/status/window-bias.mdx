@@ -1,0 +1,122 @@
+---
+title: Fixed-window bias
+---
+
+import Metric from '@site/src/components/status/Metric'
+import { WindowTable } from '@site/src/components/status/tables'
+import WindowBiasChart from '@site/src/components/status/WindowBiasChart'
+
+# Fixed-window bias
+
+Palicio et al. (2025, Sect. 3.4) fit $h_Z$ of each galaxy inside fixed windows,
+$|Z| < Z_\mathrm{lim}$ and $|Z| < Z_\mathrm{lim}/2$, with $Z_\mathrm{lim}$ from
+<Metric name="zLimRange" /> kpc in the seven halos (their Table 1), whereas this analysis
+fits each population in a window that scales with its own thickness. This page tests, with
+vertical profiles of known shape, when a fixed window biases $h_Z$, and places the Auriga
+populations on the same diagram. The bias bears on open issue 3 of the
+[overview](./overview), because the relation of Palicio et al. rests on fixed-window
+heights.
+
+## Why the shape matters
+
+Within a window $[0, L]$, the estimator of [Tracer or sheet](./tracer-vs-sheet#measurement)
+returns the scale of the exponential truncated at $L$ whose mean height matches that of
+the stars. For an exponential profile this is the maximum-likelihood estimate of its
+scale (Deemer & Votaw 1955), which is consistent whatever the window, although its
+scatter grows as the window shrinks relative to the scale. For any other profile the
+result depends on the window, so there is no single true scale height to recover. We
+therefore define the reference $h_\mathrm{ref}$ of a profile as its self-consistent
+$h_Z$, the quantity that both the measurements and the predictions of this analysis use,
+and call bias the departure of the fixed-window estimate from it.
+
+A $\mathrm{sech}^2(z/z_0)$ layer, the profile of a self-gravitating isothermal population,
+is flat for $|z| \ll z_0$ and falls as $\exp(-2|z|/z_0)$ for $|z| \gg z_0$. A window much
+wider than $z_0$ holds the whole profile, whose mean height is
+$z_0 \ln 2 \approx 0.69\,z_0$, so the fit returns a scale close to that. A window narrower
+than $z_0$ holds an almost flat profile, which the fit reads as a very large scale, or as
+no scale at all when the mean height inside the window approaches $L/2$. The
+self-consistent window lies between these limits, which is why the fixed window can err in
+either direction.
+
+## The injection test
+
+The command draws <Metric name="injectionDraws" /> samples of
+<Metric name="injectionStars" /> heights from each of three families of profiles. The
+families are an exponential, a $\mathrm{sech}^2$ layer, and a mixture in which 70 percent
+of the stars follow an exponential of scale $h$ and 30 percent one of scale $3h$, which is
+cusped at the plane. Each sample is fitted in a fixed window with $Z_\mathrm{lim} = 1$ kpc
+and in the self-consistent window with $k = 2$. The reference of each profile is computed
+on a fine grid of heights without noise. Because the profiles and the estimators scale
+with length, the ratios depend only on $h_\mathrm{ref}/Z_\mathrm{lim}$.
+
+```bash
+uv run experiments window-injection
+```
+
+<WindowBiasChart />
+
+_Figure 4. Top: the fixed-window $h_Z$ over the self-consistent one, against
+$h_Z/Z_\mathrm{lim}$. For the injected profiles, $h_Z$ stands for $h_\mathrm{ref}$. Lines
+with open squares are the medians over the draws, with gray bands spanning their 16th to
+84th percentiles. Filled circles are the Auriga populations, each with the
+$Z_\mathrm{lim}$ of its halo. Bottom: the self-consistent $h_Z$ of the injected draws over
+$h_\mathrm{ref}$._
+
+For exponentials, the median of the fixed window stays within
+<Metric name="exponentialFixedBias" /> of $h_\mathrm{ref}$ up to
+$h_\mathrm{ref} = 3\,Z_\mathrm{lim}$, as the consistency of the maximum-likelihood estimate
+requires, although its scatter grows: at the thickest exponential the 16th to 84th
+percentiles span <Metric name="exponentialSpreadWide" />. The $\mathrm{sech}^2$ layers are
+underestimated when thin and overestimated when thick, with ratios of
+<Metric name="sech2Thin" /> at $h_\mathrm{ref} \approx 0.2\,Z_\mathrm{lim}$ and
+<Metric name="sech2Window" /> at $h_\mathrm{ref} \approx Z_\mathrm{lim}$. The mixture errs
+the other way when thin, with a ratio of <Metric name="mixtureThin" /> for the thinnest
+mixture, because the window then holds its thick component in full.
+
+The fixed fit has no solution in up to <Metric name="fixedFailedMax" /> of the draws of the
+thickest profiles, so the medians of those profiles describe only the draws that have one,
+presumably those whose noise makes the profile fall inside the window. This is the likely reason why the $\mathrm{sech}^2$ curve turns down at the
+largest scales. The self-consistent window recovers every profile within
+<Metric name="selfConsistentBias" />. This agreement holds by construction for the exact
+profiles, because the reference uses the same estimator, so the bottom panel measures only
+the effect of drawing <Metric name="injectionStars" /> stars.
+
+## The Auriga populations
+
+<WindowTable />
+
+Each Auriga population enters the diagram with its self-consistent $h_Z$ in place of
+$h_\mathrm{ref}$ and the $Z_\mathrm{lim}$ of its halo. The table compares, in ranges of
+$h_Z/Z_\mathrm{lim}$, the median ratio of the populations with the median of each injected
+curve evaluated at the same populations, interpolated in $\log$-$\log$. A population beyond
+the range of a curve is left out of the median of that curve. Below
+$h_Z = 0.5\,Z_\mathrm{lim}$, the populations give <Metric name="windowLowHalos" />, against
+<Metric name="windowLowSech2" /> for $\mathrm{sech}^2$ and
+<Metric name="windowLowExponential" /> for the exponential. Between 0.5 and 1 they give
+<Metric name="windowMidHalos" />, against <Metric name="windowMidSech2" /> and
+<Metric name="windowMidExponential" />.
+
+Below $h_Z = Z_\mathrm{lim}$ the populations thus behave like $\mathrm{sech}^2$ layers, as
+expected of profiles that are flat near the plane, which an isothermal tracer is wherever
+$\Delta\Phi$ is harmonic. Between 1 and 2 they give <Metric name="windowHighHalos" />,
+between the <Metric name="windowHighExponential" /> of the exponential and the
+<Metric name="windowHighSech2" /> of $\mathrm{sech}^2$. This suggests that the thicker
+populations are less flat at the plane than a $\mathrm{sech}^2$ layer relative to the
+window, which we have not tested with the profiles of the populations themselves.
+
+The bias does not enter the comparison of [Tracer or sheet](./tracer-vs-sheet), because
+the measured and the predicted $h_Z$ are both fitted in the self-consistent window. It
+does enter any comparison with the heights of Palicio et al. (2025): a population with
+$h_Z$ between 0.5 and 2 $Z_\mathrm{lim}$ is overestimated in a fixed window by a median
+factor of <Metric name="windowMidHalos" /> to <Metric name="windowHighHalos" />.
+
+## Limitations
+
+None of the three families is fitted to the populations, so the agreement with the
+$\mathrm{sech}^2$ curve is a statement about medians in coarse ranges of
+$h_Z/Z_\mathrm{lim}$, not about individual profiles. The ratios of the populations divide
+by their self-consistent $h_Z$, which carries the finite-sample error that the bottom
+panel shows for the injected profiles. Finally, the whole-disk heights of Palicio et al.
+mix populations of all ages. For them the overview gives the ratio of the fixed-window to
+the self-consistent $h_Z$, <Metric name="wholePalicio" />, but no injection test of mixed
+populations has been run.

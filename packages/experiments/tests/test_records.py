@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import pytest
 from conftest import MockRun
 
-from experiments.commands._report import write_json
+from experiments.commands._report import finite_or_null, write_json
 from experiments.mock import check_mock
 from experiments.records import from_dict, load_analysis, load_mock_check
 
@@ -34,6 +35,14 @@ def test_mock_check_round_trip(mock_run: MockRun, tmp_path: Path) -> None:
     """The record of ``mock-check`` reads back into an equal check."""
     check = check_mock(mock_run.truth, mock_run.prepared, mock_run.analysis)
     assert load_mock_check(write_json(check, tmp_path / "mock-check.json")) == check
+
+
+def test_null_floats_are_nan_and_are_written_back_as_null(tmp_path: Path) -> None:
+    """A float that could not be measured is NaN in Python and null in the JSON, which stays standard."""
+    assert math.isnan(from_dict(Pair, {"values": [None, 2], "count": 3, "name": "a"}).values[0])
+    path = write_json(Pair((float("nan"), 2), 3, "a"), tmp_path / "pair.json")
+    assert json.loads(path.read_text())["values"] == [None, 2]
+    assert finite_or_null({"a": [float("inf"), 1.0], "b": "x"}) == {"a": [None, 1.0], "b": "x"}
 
 
 def test_from_dict_reads_tuples_ints_and_strings() -> None:

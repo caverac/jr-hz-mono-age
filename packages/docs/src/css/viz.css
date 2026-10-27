@@ -5,6 +5,7 @@
   --viz-muted: #7a7f87;
   --viz-grid: rgba(0, 0, 0, 0.1);
   --viz-background: #ffffff;
+  --viz-band: rgba(0, 0, 0, 0.08);
   /* One font and size for tick labels, axis titles and in-plot text: the KaTeX
      text face, so that a number on an axis matches the math of its title. */
   --viz-font-family: KaTeX_Main, 'Times New Roman', serif;
@@ -22,6 +23,303 @@
   --viz-muted: #9aa0a6;
   --viz-grid: rgba(255, 255, 255, 0.12);
   --viz-background: #1b1b1d;
+  --viz-band: rgba(255, 255, 255, 0.1);
+}
+
+/* The box of an interactive chart. Charts tell series apart by line style, marker
+   shape and fill, in the foreground color, not by hue. */
+.viz {
+  contain: inline-size;
+  margin: 1.5rem 0;
+  padding: 0.75rem 0.75rem 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-background-surface-color);
+}
+
+/* The chart grid: rotated y label, SVG, x label. */
+.viz-chart {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'ylabel svg'
+    '. xlabel';
+  width: 100%;
+}
+
+.viz-chart__ylabel {
+  grid-area: ylabel;
+  position: relative;
+  width: 26px;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-fg);
+}
+
+.viz-chart__ylabel-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  white-space: nowrap;
+}
+
+.viz-chart__svg {
+  grid-area: svg;
+  display: block;
+  overflow: visible;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-fg);
+}
+
+.viz-chart__xlabel {
+  grid-area: xlabel;
+  text-align: center;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-fg);
+}
+
+/* KaTeX scales its output by 1.21; labels, legends and tables take the tick size instead. */
+.viz-chart .katex,
+.viz-legend .katex,
+.viz-chips .katex,
+.viz-note .katex,
+.status-table .katex {
+  font-size: var(--viz-font-size);
+}
+
+/* D3 sets a 10 px sans-serif font on every axis group; the chart font wins. */
+.viz-axis {
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+}
+
+.viz-axis path,
+.viz-axis line {
+  stroke: var(--viz-fg);
+}
+
+.viz-axis text {
+  fill: var(--viz-fg);
+}
+
+.viz-axis line.viz-grid {
+  stroke: var(--viz-grid);
+}
+
+.viz-line {
+  fill: none;
+  stroke: var(--viz-fg);
+  stroke-width: 1.5;
+}
+
+.viz-line--thin {
+  stroke-width: 1;
+}
+
+.viz-line--dashed {
+  stroke-dasharray: 6 4;
+}
+
+.viz-line--dotted {
+  stroke-dasharray: 1.5 3;
+}
+
+.viz-band {
+  fill: var(--viz-band);
+  stroke: none;
+}
+
+.viz-marker {
+  fill: var(--viz-fg);
+  stroke: var(--viz-fg);
+  stroke-width: 1;
+}
+
+.viz-marker--open {
+  fill: var(--viz-background);
+  stroke: var(--viz-fg);
+  stroke-width: 1.25;
+}
+
+.viz-marker--stroke {
+  fill: none;
+  stroke: var(--viz-fg);
+  stroke-width: 1.5;
+}
+
+.viz-text {
+  fill: var(--viz-fg);
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+}
+
+/* Every halo but the highlighted one. */
+.viz-faded {
+  opacity: 0.12;
+}
+
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+}
+
+.viz-legend__item {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.viz-legend__sample {
+  overflow: visible;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.viz-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.viz-chip {
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-fg);
+  background: none;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  padding: 0.1rem 0.65rem;
+  cursor: pointer;
+}
+
+.viz-chip[aria-pressed='true'] {
+  color: var(--viz-background);
+  background: var(--viz-fg);
+  border-color: var(--viz-fg);
+}
+
+.viz-note {
+  margin: 0.5rem 0 0;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-muted);
+}
+
+.viz-note--error {
+  color: var(--ifm-color-danger);
+}
+
+/* A number of the prose, computed from the records. */
+.metric {
+  font-variant-numeric: tabular-nums;
+}
+
+.metric--error {
+  color: var(--ifm-color-danger);
+}
+
+/* Tables of numbers computed from the records. */
+.status-table {
+  overflow-x: auto;
+  margin: 1rem 0 1.5rem;
+}
+
+.status-table table {
+  display: table;
+  width: 100%;
+  margin: 0;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.status-table th,
+.status-table td {
+  padding: 0.3rem 0.6rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.status-table th:first-child,
+.status-table td:first-child {
+  text-align: left;
+}
+
+.status-table__groups th,
+.status-table__groups th:first-child {
+  text-align: center;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+/* The status board: one card per statement, labeled by how far it has been checked. */
+.claim {
+  --claim-color: var(--ifm-color-emphasis-600);
+  margin: 1rem 0;
+  padding: 0.75rem 1rem 0.25rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-left: 4px solid var(--claim-color);
+  border-radius: 6px;
+}
+
+.claim--reproduced {
+  --claim-color: var(--ifm-color-success);
+}
+
+.claim--preliminary {
+  --claim-color: var(--ifm-color-warning);
+}
+
+.claim--open {
+  --claim-color: var(--ifm-color-danger);
+}
+
+.claim__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.75rem;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+}
+
+.claim__label {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--claim-color);
+  border-radius: 999px;
+  color: var(--claim-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.claim__title {
+  font-weight: 600;
+}
+
+.claim__body > p {
+  margin-bottom: 0.6rem;
+}
+
+.claim__command {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
 }
 
 /* A static figure drawn by the Python package. */

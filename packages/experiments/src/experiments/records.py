@@ -2,7 +2,8 @@
 
 The data commands write a dataclass with :func:`dataclasses.asdict`. :func:`from_dict`
 inverts that from the type hints of the dataclass: nested dataclasses, lists, tuples and
-dicts of them, and floats, ints and strings. A value of the wrong JSON type is an error,
+dicts of them, and floats, ints and strings. A float written as ``null``, a quantity that
+could not be measured, reads back as NaN. A value of the wrong JSON type is an error,
 so a record written by another version of the code fails loudly instead of plotting
 something else.
 """
@@ -36,7 +37,9 @@ def _sequence(value: object) -> Sequence[object]:
 
 
 def _scalar(hint: object, value: object) -> object:
-    """Return the float, int or string *value* as the scalar type *hint*."""
+    """Return the float, int or string *value* as the scalar type *hint*; a null float is NaN."""
+    if hint is float and value is None:
+        return float("nan")
     if hint is float and isinstance(value, (int, float)) and not isinstance(value, bool):
         return float(value)
     if hint is int and isinstance(value, int) and not isinstance(value, bool):
