@@ -1,0 +1,364 @@
+/* Interactive figures: colors as custom properties so that SVG drawings follow
+   the color mode, and a canvas can read the same values. */
+:root {
+  --viz-fg: #1c1e21;
+  --viz-muted: #7a7f87;
+  --viz-grid: rgba(0, 0, 0, 0.1);
+  --viz-background: #ffffff;
+  /* One font and size for tick labels, axis titles and in-plot text: the KaTeX
+     text face, so that a number on an axis matches the math of its title. */
+  --viz-font-family: KaTeX_Main, 'Times New Roman', serif;
+  --viz-font-size: 0.85rem;
+  /* The rendered disks sit on black in both color modes, like the images. */
+  --render-background: #000000;
+  --render-panel: rgba(12, 14, 20, 0.92);
+  --render-fg: #e7e9ee;
+  --render-muted: #8a909c;
+  --render-accent: #5ef2e8;
+}
+
+[data-theme='dark'] {
+  --viz-fg: #e3e3e3;
+  --viz-muted: #9aa0a6;
+  --viz-grid: rgba(255, 255, 255, 0.12);
+  --viz-background: #1b1b1d;
+}
+
+/* A static figure drawn by the Python package. */
+figure.scientific {
+  margin: 1.5rem auto;
+  max-width: 560px;
+  text-align: center;
+}
+
+figure.scientific.wide {
+  max-width: 100%;
+}
+
+figure.scientific img {
+  width: 100%;
+  height: auto;
+}
+
+/* The black stage shared by the gallery and the 3D view. */
+.render {
+  /* The width of a view follows the column, never its contents, which are drawn at
+     that width: without this, a wide drawing would widen the column on a phone. */
+  contain: inline-size;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--render-background);
+  color: var(--render-fg);
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.render__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  background: var(--render-panel);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* A labeled control: the label text, then its select or slider. */
+.render__field {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  color: var(--render-muted);
+}
+
+.render input[type='range'] {
+  width: 110px;
+  accent-color: var(--render-accent);
+}
+
+.render select,
+.render__button,
+.render__chip {
+  font: inherit;
+  color: var(--render-fg);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.render__button:hover,
+.render__button[aria-pressed='true'],
+.render__chip:hover,
+.render__chip[aria-pressed='true'] {
+  background: rgba(94, 242, 232, 0.12);
+  border-color: rgba(94, 242, 232, 0.6);
+  box-shadow: 0 0 14px rgba(94, 242, 232, 0.25);
+}
+
+/* Buttons that choose one of several, joined into one control. */
+.render__segmented {
+  display: inline-flex;
+}
+
+.render__segmented .render__button {
+  border-radius: 0;
+}
+
+.render__segmented .render__button + .render__button {
+  border-left-width: 0;
+}
+
+.render__segmented .render__button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.render__segmented .render__button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.render__value {
+  color: var(--render-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The panel under a view: the age key and the age buttons. */
+.render__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.9rem 0.75rem;
+  background: var(--render-panel);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.render__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  padding-left: 12px;
+}
+
+.render__dot {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  margin-right: 0.4em;
+  border-radius: 50%;
+}
+
+.render__chips .render__value {
+  margin-left: auto;
+  color: var(--render-muted);
+}
+
+/* The 3D view. */
+.starfield {
+  position: relative;
+}
+
+.starfield canvas {
+  display: block;
+  width: 100%;
+  cursor: grab;
+}
+
+.starfield canvas:active {
+  cursor: grabbing;
+}
+
+.starfield__status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--render-muted);
+  pointer-events: none;
+}
+
+/* Controls laid over the top and the bottom of the view. Each bar spreads its groups to
+   the two corners and wraps them on a narrow view; the gap between them lets a drag
+   through to the disk. */
+.starfield__bar {
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.starfield__bar--top {
+  top: 0.7rem;
+  align-items: flex-start;
+}
+
+.starfield__bar--bottom {
+  bottom: 0.7rem;
+  align-items: flex-end;
+}
+
+.starfield__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  background: rgba(6, 8, 14, 0.55);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.starfield__group--plain {
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.starfield__hint {
+  color: var(--render-muted);
+}
+
+/* The length scale of the 3D view. */
+.scale-bar path {
+  fill: none;
+  stroke: var(--render-fg);
+  stroke-width: 1.5;
+}
+
+.scale-bar text {
+  fill: var(--render-fg);
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+}
+
+/* The gallery: one large portrait and the others as thumbnails. */
+.gallery {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+@media (max-width: 700px) {
+  .gallery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gallery__stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  aspect-ratio: 1 / 1.3;
+}
+
+.gallery__stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+  animation: gallery-drift 24s ease-in-out infinite alternate;
+}
+
+.gallery__stage img[data-shown='true'] {
+  opacity: 1;
+}
+
+@keyframes gallery-drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.gallery__thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.gallery__thumb {
+  position: relative;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    opacity 0.3s,
+    box-shadow 0.3s,
+    transform 0.3s;
+}
+
+.gallery__thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  object-position: top;
+}
+
+.gallery__thumb span {
+  position: absolute;
+  left: 0.35rem;
+  bottom: 0.2rem;
+  color: var(--render-fg);
+}
+
+.gallery__thumb:hover,
+.gallery__thumb[aria-pressed='true'] {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(94, 242, 232, 0.35);
+}
+
+/* The age key drawn with d3 under both views. */
+.age-key text {
+  fill: var(--render-fg);
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+}
+
+.age-key .domain,
+.age-key line {
+  stroke: var(--render-muted);
+}
+
+.age-key__brush .selection {
+  fill: rgba(255, 255, 255, 0.06);
+  stroke: var(--render-fg);
+  stroke-width: 1;
+}
+
+.age-key__brush .handle {
+  fill: var(--render-fg);
+  fill-opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery__stage img {
+    animation: none;
+    transition: none;
+  }
+}

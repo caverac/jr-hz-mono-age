@@ -1,8 +1,17 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs'
 
-// One page for now; add categories as the sections of the manuscript are written.
+// Add categories as the sections of the manuscript are written.
 const sidebars: SidebarsConfig = {
-  docsSidebar: ['intro']
+  docsSidebar: [
+    'intro',
+    {
+      type: 'category',
+      label: 'Explorations',
+      collapsed: false,
+      items: ['explorations/rendered-disks', 'explorations/disk-in-3d']
+    },
+    'acknowledgments'
+  ]
 }
 
 export default sidebars

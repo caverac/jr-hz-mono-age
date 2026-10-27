@@ -1,0 +1,41 @@
+---
+title: A disk in three dimensions
+---
+
+import StarField from '@site/src/components/render/StarField'
+
+# A disk in three dimensions
+
+Each point is one star particle, drawn in the frame of its disk, whose spin axis is
+vertical. The 80,000 particles of each halo are a random sample of those within
+$R < 30$ kpc and $|z| < 10$ kpc. A point has the color of its age on the scale of the
+key, and overlapping points add their light.
+
+<StarField />
+
+The controls on the view move the camera. Drag to turn the disk, or fly to a face-on,
+tilted or edge-on view with the buttons in the upper right corner. The distance slider
+moves the camera along its line of sight. The halo menu loads another of the seven
+disks. The bar in the lower left corner gives the length scale: in a perspective view a
+length on screen depends on its depth, so the bar holds at the depth of the center of
+the disk.
+
+The panel under the view chooses the ages shown. Drag across the age key to keep the
+star particles within a range of ages, or pick one of the five age groups of the
+rendered images, so that one mono-age population can be seen at a time.
+
+## Reproducing the sample
+
+```bash
+uv run experiments auriga render-data 2 3 16 19 23 24 27
+```
+
+The sample of each halo goes to `assets/data/auriga/` as a binary of int16 positions (pc)
+and uint16 ages (Myr). Its JSON description also carries the age palette, so that this
+page and the rendered images share one set of colors.
+
+## Data
+
+The disks come from the Auriga Project public data release (Grand et al. 2024). The
+[acknowledgments](../acknowledgments) give the citations and the acknowledgment that the
+release asks for.

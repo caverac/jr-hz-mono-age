@@ -1,13 +1,15 @@
 """Command line of the analysis engine.
 
 Every number and figure of the paper is derived through this command line. The
-engine reads the Auriga snapshots from ``staging/auriga/`` and writes the results of the
-analysis to ``staging/results/``, both ignored by git until the paper is public. Each
-subcommand lives in its own module under :mod:`experiments.commands`::
+engine reads the Auriga snapshots from ``staging/auriga/`` (ignored by git), writes the
+results of the data commands to ``assets/data/`` and the figures of the plot commands to
+``assets/figures/``. Each subcommand lives in its own module under
+:mod:`experiments.commands`::
 
     experiments paths
     experiments auriga download 2 3 16 19 23 24 27
     experiments auriga analyze 2 3 16 19 23 24 27
+    experiments figures
 """
 
 from __future__ import annotations
@@ -15,10 +17,11 @@ from __future__ import annotations
 import click
 
 from experiments import __version__
-from experiments._paths import AURIGA_ROOT, DATA_DIR, FIGURES_DIR, MOCK_ROOT, REPO_ROOT, RESULTS_DIR
+from experiments._paths import AURIGA_DATA_DIR, AURIGA_ROOT, DATA_DIR, FIGURES_DIR, MOCK_ROOT, REPO_ROOT
+from experiments.commands.all_figures import figures
 from experiments.commands.auriga import auriga
 
-__all__ = ["AURIGA_ROOT", "DATA_DIR", "FIGURES_DIR", "MOCK_ROOT", "REPO_ROOT", "RESULTS_DIR", "main"]
+__all__ = ["AURIGA_DATA_DIR", "AURIGA_ROOT", "DATA_DIR", "FIGURES_DIR", "MOCK_ROOT", "REPO_ROOT", "main"]
 
 
 @click.group()
@@ -33,11 +36,12 @@ def paths() -> None:
     for label, path in (
         ("auriga snapshots", AURIGA_ROOT),
         ("mock snapshot", MOCK_ROOT),
-        ("results", RESULTS_DIR),
         ("result tables", DATA_DIR),
+        ("auriga results", AURIGA_DATA_DIR),
         ("figures", FIGURES_DIR),
     ):
         click.echo(f"{label}: {path}")
 
 
 main.add_command(auriga)
+main.add_command(figures)

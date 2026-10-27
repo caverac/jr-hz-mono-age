@@ -14,6 +14,7 @@ Auriga simulations and Milky Way survey data.
 - [Packages](#packages)
 - [Getting Started](#getting-started)
 - [Command-line interface](#command-line-interface)
+- [Acknowledgments](#acknowledgments)
 - [License](#license)
 
 ## Packages
@@ -35,20 +36,32 @@ uv sync --group auriga     # Python engine, dev tools and AGAMA (pinned commit, 
 yarn install               # JS/TS dependencies (docs site)
 ```
 
-The Auriga snapshots (several GB per halo) are read from `staging/auriga/`, which git
-ignores. They are downloaded through Globus with `uv run experiments auriga download`
-and analyzed with `uv run experiments auriga analyze`, which writes its results to
-`staging/results/`; [`packages/experiments`](packages/experiments/README.md) lists the
+The Auriga snapshots (several GB per halo) can be downloaded through Globus
+with `uv run experiments auriga download`
+and analyzed with `uv run experiments auriga analyze`, Results and all scripts are persisted
+and version controlled so you can reproduce the analysis. [`packages/experiments`](packages/experiments/README.md) lists the
 steps.
 
 ## Command-line interface
 
 ```bash
 uv run experiments --help          # list all commands
+uv run experiments figures         # draw every figure from the cached data
 uv run pytest                      # run the tests + 100% coverage gate
 make -C packages/pre-print         # sync figures and build the pre-print PDF
 yarn workspace @jr-hz-mono-age/docs start
 ```
+
+## Acknowledgments
+
+The simulated disks come from the Auriga Project
+
+> We have used simulations from the Auriga Project public data release (Grand et al. 2024) available at https://wwwmpa.mpa-garching.mpg.de/auriga/data.html
+
+- Grand, R. J. J., G&oacute;mez, F. A., Marinacci, F., et al. 2017, MNRAS, 467, 179,
+  [doi:10.1093/mnras/stx071](https://doi.org/10.1093/mnras/stx071)
+- Grand, R. J. J., Fragkoudi, F., G&oacute;mez, F. A., et al. 2024, MNRAS, 532, 1814,
+  [doi:10.1093/mnras/stae1598](https://doi.org/10.1093/mnras/stae1598)
 
 ## License
 

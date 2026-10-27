@@ -6,14 +6,16 @@ workspace-internal package, not a published PyPI distribution; it exists only to
 derive every number and figure in `packages/pre-print/`.
 
 - `cli.py`: the command line. `paths` prints where the engine reads the Auriga
-  snapshots (`staging/auriga/`) and writes results (`staging/results/`), tables
-  (`assets/data/`) and figures (`assets/figures/`).
+  snapshots (`staging/auriga/`) and writes its data (`assets/data/`) and figures
+  (`assets/figures/`).
 - `auriga.py`, `globus_transfer.py`, `snapshot_check.py`: the layout of the Auriga
   release and the record of a download, the Globus transfers, and the integrity check
   of a local copy, behind the `auriga` commands.
 - `cosmology.py`, `snapshot.py`, `potential.py`, `heights.py`, `populations.py`,
   `whole_disk.py`, `palicio.py`, `analysis.py`, `mock.py`: the analysis of a halo, from
   the snapshot to the mono-age populations, and the mock galaxy that checks it.
+- `records.py`, `_plotting.py`, `figures.py`, `render.py`: reading the cached data back,
+  the figure style, the figures of the analysis, and the rendered images of the disks.
 
 AGAMA, which the analysis and its tests need, comes from the non-default `auriga`
 dependency group, because it compiles GSL from source:
@@ -36,6 +38,10 @@ Docker (`docker/compose.yaml`) and can write to `staging/auriga/` only.
 files of the release before submitting, and writes that listing, with the sizes and the
 task ID, to `staging/auriga/level4/Original/halo_<N>/transfer.json`. `status` adds the
 state of the task to the same file.
+
+The release asks every publication that uses its data to cite Grand et al. (2017) and
+Grand et al. (2024), and to carry its acknowledgment, which the
+[root README](../../README.md#acknowledgments) quotes.
 
 Steps 1 to 3 are done once per machine.
 
@@ -82,7 +88,7 @@ leave out. The z = 0 snapshot and catalog of Au24 at Level 4 take 6.8 GB. The
 `experiments auriga analyze` reads each halo once, fits its potential, and measures its
 mono-age populations and its whole disk. `experiments auriga mock-check` runs the same
 analysis on a mock galaxy whose answer is known. Both print a report and write a JSON
-record to `staging/results/`, which git ignores until the paper is public:
+record to `assets/data/auriga/`:
 
 ```bash
 OMP_NUM_THREADS=4 caffeinate -i uv run experiments auriga mock-check
@@ -115,3 +121,28 @@ The mock (`mock.py`) samples an AGAMA disk and halo and five quasi-isothermal st
 populations, and writes them as Arepo chunks, tilted, moving and wrapped across two faces
 of the periodic box. `mock-check` compares the analysis with the truth: the spin axis,
 the ages, $v_c$ and $\Delta\Phi(z)$ of the fit, and $h_Z$ and $J_{R,\rm med}$ per bin.
+
+## Figures
+
+As in [`jr-hz-relation`](https://github.com/caverac/jr-hz-relation), the expensive
+commands write data to `assets/data/` and the plot commands draw from it, so that a
+figure can be redrawn without the snapshots. A plot goes to `assets/figures/` as a PNG
+for the documentation site and a PDF for the paper. A rendered image of a disk, which
+only the documentation site shows, goes there as a JPEG, several times smaller than a
+PNG for a smooth image. A figure is rewritten only when its pixels change.
+
+```bash
+uv run experiments auriga render-data 2 3 16 19 23 24 27   # maps and star samples, ~10 s per halo
+uv run experiments auriga plot 2 3 16 19 23 24 27          # <stem>-mono-age, from the analyze records
+uv run experiments auriga render 2 3 16 19 23 24 27        # <stem>-portrait.jpg, for the docs only
+uv run experiments figures                                 # all of the above from whatever data is cached
+```
+
+`render-data` bins the star particles of each halo, in its disk frame, into face-on and
+edge-on surface-density maps of five age groups (`<stem>-maps.npz`), and draws 80,000
+star particles at random for the 3D view of the documentation (`<stem>-stars.bin` and
+`<stem>-stars.json`). The maps, about 2.5 MB per halo, are ignored by git: they only feed
+`render`, whose portraits are committed, so restyling the portraits means running
+`render-data` on the snapshots first. In the rendered images a pixel is as bright as its stellar surface
+density, on a logarithmic scale over three decades, and has the color of the mean age of
+its stars. `render.py` describes the smoothing, the glow and the exposure curve.

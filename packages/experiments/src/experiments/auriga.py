@@ -39,6 +39,11 @@ class HaloSnapshot:
         return f"snapdir_{self.snapshot:03d}", f"groups_{self.snapshot:03d}"
 
     @property
+    def stem(self) -> str:
+        """The stem of the names of the data files and figures of the snapshot."""
+        return f"au{self.halo}-level{self.level}-{self.suite}-snap{self.snapshot:03d}"
+
+    @property
     def label(self) -> str:
         """A Globus task label naming the project and the snapshot."""
         return f"jr-hz-mono-age Au{self.halo} level{self.level} {self.suite} snap{self.snapshot:03d}"
