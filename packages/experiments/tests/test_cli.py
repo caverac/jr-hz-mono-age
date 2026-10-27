@@ -3,7 +3,7 @@
 from click.testing import CliRunner, Result
 
 from experiments import __version__
-from experiments.cli import AURIGA_ROOT, DATA_DIR, FIGURES_DIR, REPO_ROOT, main
+from experiments.cli import AURIGA_ROOT, DATA_DIR, FIGURES_DIR, MOCK_ROOT, REPO_ROOT, RESULTS_DIR, main
 
 
 def _run(*args: str) -> Result:
@@ -26,10 +26,10 @@ def test_version_option() -> None:
 
 
 def test_paths_point_into_the_repository() -> None:
-    """``paths`` prints the three locations, all inside the repository root."""
+    """``paths`` prints every location, all inside the repository root."""
     result = _run("paths")
     assert result.exit_code == 0
-    for path in (AURIGA_ROOT, DATA_DIR, FIGURES_DIR):
+    for path in (AURIGA_ROOT, MOCK_ROOT, RESULTS_DIR, DATA_DIR, FIGURES_DIR):
         assert str(path) in result.output
         assert path.is_relative_to(REPO_ROOT)
     assert (REPO_ROOT / "pyproject.toml").is_file()

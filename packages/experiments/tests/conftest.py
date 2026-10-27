@@ -4,7 +4,8 @@ The Auriga fixtures build a small copy of one snapshot in the layout of the rele
 snapshot chunks with gas and stars, one star exactly on the center of the main subhalo,
 and a two-chunk group catalog whose second chunk holds no subhalo. The Globus fixtures
 answer the Transfer API with ``responses``, so the real ``TransferClient`` runs without a
-network or a login.
+network or a login. The mock fixtures build one small mock galaxy per session
+(:mod:`experiments.mock`), prepare it and analyze it, because each step takes seconds.
 """
 
 from __future__ import annotations
@@ -22,8 +23,12 @@ import responses
 from click.testing import CliRunner, Result
 from responses import matchers
 
+from experiments.analysis import HaloAnalysis, PreparedHalo, analyze_halo, prepare_halo
 from experiments.auriga import Endpoint, HaloSnapshot, RemoteFile, Submission, TransferRecord, write_record
 from experiments.cli import main
+from experiments.mock import MockGalaxy, MockSizes, build_mock
+from experiments.palicio import PALICIO_WINDOWS
+from experiments.populations import Method
 
 TRANSFER_API = "https://transfer.api.globus.org/v0.10"
 AURIGA_ID = "02a2dbb8-f64d-4440-bafe-44b60b964501"
@@ -36,6 +41,10 @@ STARS = (4, 2)
 # Groups and subhalos per catalog chunk.
 GROUPS = (3, 1)
 SUBHALOS = (2, 0)
+# A mock small enough to build in seconds, with about 110 stars per 1 Gyr bin of the annulus.
+MOCK_SIZES = MockSizes(n_disk=20_000, n_halo=20_000, n_stars=3_000)
+MOCK_SNAPSHOT = HaloSnapshot(0)
+MOCK_BOOTSTRAP = 4
 
 
 def run(*args: str) -> Result:
@@ -206,3 +215,23 @@ def fixture_transfer_api() -> Iterator[TransferAPI]:
 def fixture_client() -> globus_sdk.TransferClient:
     """Return a Transfer client that sends no token."""
     return globus_sdk.TransferClient(authorizer=globus_sdk.NullAuthorizer())
+
+
+@dataclass(frozen=True)
+class MockRun:
+    """A mock galaxy written under *root*, its truth, the prepared halo and its analysis."""
+
+    root: Path
+    truth: MockGalaxy
+    prepared: PreparedHalo
+    analysis: HaloAnalysis
+
+
+@pytest.fixture(name="mock_run", scope="session")
+def fixture_mock_run(tmp_path_factory: pytest.TempPathFactory) -> MockRun:
+    """Return a small mock galaxy as halo 0, prepared and analyzed with Au24's window."""
+    root = tmp_path_factory.mktemp("mock")
+    truth = build_mock(MOCK_SNAPSHOT, root, MOCK_SIZES)
+    prepared = prepare_halo(MOCK_SNAPSHOT, root)
+    analysis = analyze_halo(prepared, Method(PALICIO_WINDOWS[24], 2.0, MOCK_BOOTSTRAP))
+    return MockRun(root, truth, prepared, analysis)
