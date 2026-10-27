@@ -1,0 +1,208 @@
+"""Tests of the Milky Way test of the tracer, on the synthetic inputs of :mod:`mw_fixtures`."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+import pyvo
+from conftest import invoke, run
+from mw_fixtures import RC_PEAK, scale_height, write_world
+
+from experiments import mw_counts
+from experiments.commands import milky_way
+from experiments.heights import Z_GRID, scaled_profile_hz
+from experiments.mw_analysis import SolarModel, Survey, measure_bin, solar_model
+from experiments.mw_catalogs import (
+    apogee_age_tracers,
+    apogee_kinematics,
+    lamost_age_tracers,
+    lamost_kinematics,
+    read_apogee,
+    read_gaia,
+    read_lamost,
+)
+from experiments.mw_counts import (
+    APOGEE_BOX,
+    MW_FIT_RANGE,
+    CountSample,
+    apogee_count_sample,
+    count_hz,
+    fit_luminosity_function,
+    gaia_cylinder,
+    lamost_count_sample,
+    slice_fraction,
+)
+from experiments.mw_dynamics import R0_KPC, V_SUN_KMS, Phase, Sky, cylindrical_actions, galactocentric, mcmillan17
+from experiments.mw_imig import pooled_hz, read_imig, split_normal
+from experiments.mw_pipeline import MilkyWay, analyze_milky_way, source_path
+from experiments.mw_sources import GAIA_PATH, FileSource
+from experiments.potential import circular_velocity
+
+
+@pytest.fixture(name="world_root", scope="module")
+def fixture_world_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Return a root holding the synthetic inputs."""
+    root = tmp_path_factory.mktemp("milky-way")
+    write_world(root)
+    return root
+
+
+@pytest.fixture(name="result", scope="module")
+def fixture_result(world_root: Path) -> MilkyWay:
+    """Return the Milky Way test of the synthetic inputs, with small bootstraps."""
+    return analyze_milky_way(world_root, n_bootstrap=3, n_draws=3)
+
+
+def test_a_star_at_rest_next_to_the_sun_moves_with_the_sun() -> None:
+    """A star 1 pc from the Sun, at rest with respect to it, sits at R_0 with the Sun's velocity."""
+    one = np.ones(1)
+    phase = galactocentric(Sky(0.0 * one, 90.0 * one, 1e-3 * one, 0.0 * one, 0.0 * one, 0.0 * one))
+    assert phase.r[0] == pytest.approx(R0_KPC, abs=0.01)
+    assert phase.v_t[0] == pytest.approx(V_SUN_KMS[1], abs=0.5)
+    assert phase.v_z[0] == pytest.approx(V_SUN_KMS[2], abs=0.5)
+
+
+def test_mcmillan17_and_its_solar_model() -> None:
+    """The potential of McMillan (2017) has v_c = 233 km/s at 8.21 kpc, a rising Delta Phi, and J_R = 0 on a circle."""
+    pot = mcmillan17()
+    assert circular_velocity(pot, 8.21) == pytest.approx(233.1, abs=0.2)
+    model = solar_model(pot)
+    assert 60.0 < model.sigma_surf < 90.0
+    assert model.phi[0] == 0.0 and np.all(np.diff(model.phi) > 0.0)
+    v_c = circular_velocity(pot, R0_KPC)
+    circular = Phase(np.array([R0_KPC]), np.zeros(1), np.zeros(1), np.array([v_c]), np.zeros(1))
+    assert cylindrical_actions(pot, circular)[0] == pytest.approx(0.0, abs=0.1)
+
+
+def test_catalogs_select_the_disk_of_the_solar_annulus(world_root: Path) -> None:
+    """Both kinematic samples hold disk stars of the annulus; the age tracers carry their identifiers."""
+    apogee = read_apogee(source_path(world_root, "astronn"), source_path(world_root, "allstar"))
+    kin = apogee_kinematics(apogee)
+    assert kin.age.size > 0 and np.all((kin.phase.r > 7.5) & (kin.phase.r < 9.0))
+    tracers = apogee_age_tracers(apogee)
+    assert np.all(tracers.source_id > 0) and tracers.in_disk.all()
+    lamost = read_lamost(source_path(world_root, "lamost"))
+    lamost_kin = lamost_kinematics(lamost, np.random.default_rng(1))
+    assert lamost_kin.age.size > 0 and np.all(np.abs(lamost_kin.phase.z) < 1.5)
+    assert np.all(lamost_kin.v_z_err > 0.0)
+    assert lamost_kin.select(np.arange(3)).age.size == 3
+    assert lamost_age_tracers(lamost).in_disk.all()
+
+
+def test_luminosity_function_finds_the_red_clump(world_root: Path) -> None:
+    """The fit of the cylinder's luminosity function puts the red clump at its true M_W."""
+    cylinder = gaia_cylinder(read_gaia(world_root / GAIA_PATH), MW_FIT_RANGE)
+    fit = fit_luminosity_function(cylinder.m_w)
+    assert fit.mu_rc == pytest.approx(RC_PEAK, abs=0.02)
+    assert np.all(fit.density(np.linspace(*MW_FIT_RANGE, 5)) > 0.0)
+    flat = fit.__class__(**{**fit.__dict__, "gamma": 0.0})
+    assert np.all(np.isfinite(flat.density(np.array([-2.0]))))
+
+
+def test_luminosity_function_fit_reports_a_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A sample without stars, and a fit that does not converge, are errors."""
+    with pytest.raises(RuntimeError, match="no star"):
+        fit_luminosity_function(np.full(3, np.nan))
+
+    class Failed:
+        """The result of a minimization that did not converge."""
+
+        success, message, x = False, "stuck", np.zeros(8)
+
+    monkeypatch.setattr(mw_counts, "minimize", lambda *args, **kwargs: Failed())
+    with pytest.raises(RuntimeError, match="stuck"):
+        fit_luminosity_function(np.array([-1.7, -1.8, -1.75]))
+
+
+def test_count_samples_match_their_surveys(world_root: Path) -> None:
+    """LAMOST matches by position and G inside the red clump; APOGEE by source_id inside the giant box."""
+    gaia = read_gaia(world_root / GAIA_PATH)
+    lamost_counts, clump = lamost_count_sample(gaia, lamost_age_tracers(read_lamost(source_path(world_root, "lamost"))))
+    assert 0 < lamost_counts.tracer_age.size < lamost_counts.gaia_absz.size
+    assert len(clump.fits) == 12
+    apogee = read_apogee(source_path(world_root, "astronn"), source_path(world_root, "allstar"))
+    apogee_counts = apogee_count_sample(gaia, apogee_age_tracers(apogee))
+    assert apogee_counts.gaia_absz.size == gaia_cylinder(gaia, APOGEE_BOX).absz.size
+    assert 0 < apogee_counts.tracer_age.size
+
+
+def test_count_hz_recovers_the_scale_of_a_population() -> None:
+    """Counts of one exponential population give its scale; a population thicker than the counts has none."""
+    rng = np.random.default_rng(4)
+    absz = rng.exponential(0.25, 200_000)
+    absz = absz[absz < 1.2]
+    sample = CountSample(absz, absz[:5000], np.full(5000, 3.0), np.ones(5000, dtype=bool))
+    assert np.all(slice_fraction(sample, 2.0, 4.0)[:8] == 1.0)
+    hz, window = count_hz(sample, 2.0, 4.0, 2.0)
+    assert hz == pytest.approx(0.25, rel=0.05) and window == pytest.approx(2.0 * hz, rel=1e-3)
+    thick = rng.uniform(0.0, 1.2, 50_000)
+    flat = CountSample(thick, thick[:1000], np.full(1000, 3.0), np.ones(1000, dtype=bool))
+    assert np.all(np.isnan(count_hz(flat, 2.0, 4.0, 2.0)))
+
+
+def test_imig_pooling_and_draws(world_root: Path) -> None:
+    """Pooled exponentials of one scale give that scale; split normal draws stay positive; HIGH rows are left out."""
+    populations = read_imig(source_path(world_root, "imig"))
+    assert [p.h.size for p in populations] == [2, 2, 2, 2]
+    assert pooled_hz(np.array([0.3, 0.3]), np.array([1.0, 2.0]), 2.0) == pytest.approx(
+        scaled_profile_hz(np.exp(-Z_GRID / 0.3), 2.0)[0]
+    )
+    draws = split_normal(np.random.default_rng(2), np.full(1000, 1.0), np.tile([0.1, 0.3], (1000, 1)))
+    assert np.all(draws > 0.0) and np.mean(draws > 1.0) == pytest.approx(0.5, abs=0.06)
+
+
+def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
+    """Both surveys measure every age bin and both ranges, and the Imig check measures its four bins."""
+    assert [s.name for s in result.surveys] == ["lamost", "apogee"]
+    for survey in result.surveys:
+        assert len(survey.bins) == 5 and len(survey.ranges) == 2
+        young = survey.bins[0]
+        assert young.heights.measured.value == pytest.approx(scale_height(np.array(1.0))[()], rel=0.3)
+        assert np.isfinite(young.ratios.tracer.value) and young.kinematics.n_kin > 0
+        assert set(survey.ranges[0].trends) == {"sheet", "tracer"}
+    assert len(result.imig.bins) == 4 and np.isfinite(result.imig.trend.value)
+    assert len(result.rc_peak) == 12 and result.r0_kpc == R0_KPC
+
+
+def test_a_bin_without_matches_has_no_median_age(world_root: Path) -> None:
+    """An age range that no matched star falls in has no median age and drops out of the ranges."""
+    gaia = read_gaia(world_root / GAIA_PATH)
+    apogee = read_apogee(source_path(world_root, "astronn"), source_path(world_root, "allstar"))
+    kin = apogee_kinematics(apogee)
+    survey = Survey("apogee", apogee_count_sample(gaia, apogee_age_tracers(apogee)), kin, np.full(kin.age.size, 10.0))
+    model = SolarModel(np.asarray(900.0 * Z_GRID), 50.0)
+    empty = measure_bin(survey, (20.0, 30.0), model, np.random.default_rng(3), 2)
+    assert np.isnan(empty.age_median) and empty.heights.n_matched == 0
+
+
+def test_milky_way_commands(world_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``check`` fails on synthetic files, whose checksums differ; ``analyze`` writes a record; ``fetch`` fetches."""
+    result = run("milky-way", "check", "--root", str(world_root))
+    assert result.exit_code == 1 and "FAILED" in result.output
+    output = invoke("milky-way", "analyze", "--root", str(world_root), "--n-bootstrap", "2", "--out-dir", str(tmp_path))
+    assert output.startswith("Milky Way at R_0")
+    record = json.loads((tmp_path / "milky-way.json").read_text())
+    assert [s["name"] for s in record["surveys"]] == ["lamost", "apogee"]
+    missing = run("milky-way", "analyze", "--root", str(tmp_path / "nothing"))
+    assert missing.exit_code == 1 and "experiments milky-way fetch" in missing.output
+
+    fetched: list[str] = []
+
+    def fake_fetch_file(source: FileSource, root: Path) -> Path:
+        fetched.append(source.name)
+        return root
+
+    def fake_fetch_gaia(root: Path, service: object) -> Path:
+        fetched.append(f"gaia from {service}")
+        return root
+
+    monkeypatch.setattr(milky_way, "fetch_file", fake_fetch_file)
+    monkeypatch.setattr(milky_way, "fetch_gaia", fake_fetch_gaia)
+    monkeypatch.setattr(pyvo.dal, "TAPService", lambda url: "the archive")
+    invoke("milky-way", "fetch", "--root", str(tmp_path), "--only", "lamost", "--only", "gaia")
+    assert fetched == ["lamost", "gaia from the archive"]
+    invoke("milky-way", "fetch", "--root", str(tmp_path))
+    assert fetched[2:] == ["astronn", "allstar", "lamost", "imig", "gaia from the archive"]

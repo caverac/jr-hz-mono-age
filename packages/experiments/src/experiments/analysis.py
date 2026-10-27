@@ -98,7 +98,7 @@ def analyze_halo(prepared: PreparedHalo, method: Method) -> HaloAnalysis:
     r_mid = median_radius(galaxy, annulus)
     sigma_surf = surface_density(galaxy, R_MIN_KPC, R_MAX_KPC)
     phi_snapshot, residual = snapshot_vertical_potential(pot, galaxy.stars, annulus, r_mid)
-    model = VerticalModel(sigma_surf, vertical_potential(pot, r_mid), phi_snapshot)
+    model = VerticalModel(sigma_surf, vertical_potential(pot, r_mid), phi_snapshot, r_mid)
     return HaloAnalysis(
         snapshot=prepared.snapshot,
         annulus=Annulus(R_MIN_KPC, R_MAX_KPC, r_mid, circular_velocity(pot, r_mid), sigma_surf, int(annulus.sum())),

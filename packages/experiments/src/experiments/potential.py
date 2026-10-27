@@ -9,8 +9,9 @@ position of the most bound particle, so particles exactly at the origin are left
 The snapshot also stores the potential each star particle feels, with the softening and
 the non-axisymmetric structure that the fit leaves out. Two comparisons use it: the
 median Delta Phi of the fit and of the snapshot in |z| slices (:func:`potential_check`),
-and the vertical part of their difference at the median radius of an annulus, which
-turns the fitted Delta Phi(z) into the snapshot's (:func:`snapshot_vertical_potential`).
+and the vertical part of their difference at the median radius of an annulus, averaged
+over azimuth, which turns the fitted Delta Phi(z) into the snapshot's
+(:func:`snapshot_vertical_potential`).
 """
 
 from __future__ import annotations
@@ -34,7 +35,8 @@ MULTIPOLE_GRID = {"gridSizeR": 50, "rmin": 0.1, "rmax": 300.0, "lmax": 8}
 CHECK_EDGES_KPC = tuple(0.1 * k for k in range(13))
 CHECK_MIN_PER_SLICE = 30
 RESIDUAL_EDGES_KPC = np.concatenate([np.arange(0.0, 2.0, 0.1), np.arange(2.0, 6.01, 0.5)])
-RESIDUAL_MIN_PER_SLICE = 50
+RESIDUAL_SECTORS = 8  # equal sectors of azimuth, averaged with equal weights
+RESIDUAL_MIN_PER_SECTOR = 20
 
 
 @dataclass(frozen=True)
@@ -124,23 +126,40 @@ def potential_check(pot: agama.Potential, stars: Stars, annulus: BoolArray) -> l
     return [SliceCheck(z, float(s - snap_zero), float(f - fit_zero), int(np.count_nonzero(m))) for z, s, f, m in rows]
 
 
-def vertical_residual(cyl_r: FloatArray, absz: FloatArray, delta: FloatArray, r_mid: float) -> VerticalResidual:
-    """Return the median of *delta* at R = *r_mid* in each |z| slice of ``RESIDUAL_EDGES_KPC``.
+def _sector_average(x: FloatArray, delta: FloatArray, sector: NDArray[np.int64]) -> float:
+    """Return the mean over the sectors of the median of *delta* less its gradient in *x* = R - r_mid.
+
+    The slope of the gradient joins the medians of *delta* in the inner and outer halves of
+    the stars.
+    """
+    inner, outer = x < np.median(x), x >= np.median(x)
+    slope = (np.median(delta[outer]) - np.median(delta[inner])) / (np.median(x[outer]) - np.median(x[inner]))
+    corrected = delta - slope * x
+    return float(np.mean([np.median(corrected[sector == k]) for k in range(RESIDUAL_SECTORS)]))
+
+
+def vertical_residual(
+    cyl_r: FloatArray, azimuth: FloatArray, absz: FloatArray, delta: FloatArray, r_mid: float
+) -> VerticalResidual:
+    """Return the azimuthal average of *delta* at R = *r_mid* in each |z| slice of ``RESIDUAL_EDGES_KPC``.
 
     Within a slice, a straight line in R - r_mid removes the radial gradient across the
-    annulus: its slope joins the medians of delta in the inner and outer halves of the
-    slice. Slices with fewer than ``RESIDUAL_MIN_PER_SLICE`` stars are left out.
+    annulus (:func:`_sector_average`). The corrected delta is reduced to its median in each of ``RESIDUAL_SECTORS``
+    equal sectors of *azimuth* (rad), and the sectors are averaged with equal weights. A
+    median over all the stars of the slice would weight each azimuth by its number of
+    stars, which a bar makes depend on height, and turn the azimuthal structure of the
+    potential into a spurious vertical trend. Slices in which a sector holds fewer than
+    ``RESIDUAL_MIN_PER_SECTOR`` stars are left out.
     """
+    turns = np.mod(azimuth, 2.0 * np.pi) / (2.0 * np.pi)
+    sector = np.minimum((turns * RESIDUAL_SECTORS).astype(np.int64), RESIDUAL_SECTORS - 1)
     z_mid, d_mid = [], []
     for lo, hi in zip(RESIDUAL_EDGES_KPC[:-1], RESIDUAL_EDGES_KPC[1:], strict=True):
         inside = (absz >= lo) & (absz < hi)
-        if np.count_nonzero(inside) < RESIDUAL_MIN_PER_SLICE:
+        if np.bincount(sector[inside], minlength=RESIDUAL_SECTORS).min() < RESIDUAL_MIN_PER_SECTOR:
             continue
-        x, d = cyl_r[inside] - r_mid, delta[inside]
-        inner, outer = x < np.median(x), x >= np.median(x)
-        slope = (np.median(d[outer]) - np.median(d[inner])) / (np.median(x[outer]) - np.median(x[inner]))
         z_mid.append(float(np.median(absz[inside])))
-        d_mid.append(float(np.median(d - slope * x)))
+        d_mid.append(_sector_average(cyl_r[inside] - r_mid, delta[inside], sector[inside]))
     return VerticalResidual(tuple(z_mid), tuple(d_mid))
 
 
@@ -149,14 +168,16 @@ def snapshot_vertical_potential(
 ) -> tuple[FloatArray, VerticalResidual]:
     """Return the snapshot's Delta Phi(R = *r_mid*, z) on ``Z_GRID`` and the residual it adds to the fit.
 
-    The residual delta = Phi_snapshot - Phi_fit of the *annulus* stars, taken at r_mid
-    slice by slice, is interpolated on ``Z_GRID`` (constant beyond the last slice) and
-    added, less its value in the first slice, to the fitted Delta Phi(r_mid, z).
+    The residual delta = Phi_snapshot - Phi_fit of the *annulus* stars, taken at r_mid and
+    averaged over azimuth slice by slice (:func:`vertical_residual`), is interpolated on
+    ``Z_GRID`` (constant beyond the last slice) and added, less its value in the first
+    slice, to the fitted Delta Phi(r_mid, z).
     """
     pos = stars.pos[annulus]
     delta = stars.potential[annulus] - np.asarray(pot.potential(pos), dtype=np.float64)
-    residual = vertical_residual(stars.cylindrical_radius[annulus], np.abs(pos[:, 2]), delta, r_mid)
+    azimuth = np.arctan2(pos[:, 1], pos[:, 0])
+    residual = vertical_residual(stars.cylindrical_radius[annulus], azimuth, np.abs(pos[:, 2]), delta, r_mid)
     if not residual.z:
-        raise ValueError(f"no |z| slice of the annulus holds {RESIDUAL_MIN_PER_SLICE} star particles")
+        raise ValueError(f"no |z| slice holds {RESIDUAL_MIN_PER_SECTOR} star particles in every sector of the annulus")
     correction = np.interp(Z_GRID, residual.z, residual.residual) - residual.residual[0]
     return np.asarray(vertical_potential(pot, r_mid) + correction, dtype=np.float64), residual

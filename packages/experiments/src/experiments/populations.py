@@ -5,14 +5,16 @@ are split into 1 Gyr age bins from 0 to 10 Gyr. For each bin:
 
 - J_R,med and sigma_R come from the stars with |z| < ``Z_JR_MAX_KPC``, and the midplane
   sigma_z from those with |z| < ``Z_MID_MAX_KPC``. Dispersions are clipped at
-  ``VEL_CLIP_SIGMA`` MAD sigmas around the median.
+  ``VEL_CLIP_SIGMA`` MAD sigmas around the median (:mod:`experiments.stats`).
 - h_Z is fitted to the heights weighted by initial mass, the analog of star counts,
   because the number of giants of a given age is proportional to the initial mass of
   the population. It is fitted in the self-consistent window k h_Z and in Palicio's
   fixed window Z_lim (:mod:`experiments.heights`).
 - The sheet and the isothermal tracer predict h_Z from sigma_z. The tracer is put
   through the same self-consistent window twice: in the fitted potential and in the
-  snapshot's.
+  snapshot's. Two diagnostics of the tracer's assumptions go through it too: the vertical
+  Jeans equation in the fitted potential with the measured sigma_z(z), without and with
+  the tilt term (:mod:`experiments.jeans`).
 - a = J_R,med / h_Z, and its predictions with the same J_R,med.
 - The ratio of each predicted h_Z to the measured one, in which J_R,med cancels.
 
@@ -37,6 +39,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from experiments.heights import (
+    Z_GRID,
     particle_hz,
     profile_hz,
     scaled_particle_hz,
@@ -44,9 +47,11 @@ from experiments.heights import (
     sheet_hz,
     tracer_profile,
 )
+from experiments.jeans import JeansProfile, JeansStars, jeans_density, jeans_profile
 from experiments.palicio import PalicioWindow
 from experiments.potential import radial_actions
 from experiments.snapshot import Galaxy, cylindrical_velocities
+from experiments.stats import clipped_dispersion, half_width
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -58,8 +63,6 @@ Z_RMID_MAX_KPC = 2.5  # the stars whose median radius is R_mid
 Z_JR_MAX_KPC = 0.5
 Z_MID_MAX_KPC = 0.3
 Z_SIGMA_KPC = 1.1  # the layer whose mass per area is the Sigma of the sheet
-VEL_CLIP_SIGMA = 4.0
-MAD_TO_SIGMA = 1.4826
 AGE_BINS = tuple((float(t), float(t + 1)) for t in range(10))
 AGE_RANGES = ((0.0, 10.0), (2.0, 10.0), (0.0, 8.0), (2.0, 8.0))
 K_MAIN = 2.0
@@ -88,7 +91,7 @@ class Method:
 
 @dataclass(frozen=True)
 class AnnulusSample:
-    """The star particles of the annulus: age (Gyr), z (kpc), v_R and v_z (km/s), J_R (kpc km/s), initial mass."""
+    """The star particles of the annulus: age (Gyr), z and R (kpc), v_R and v_z (km/s), J_R (kpc km/s), initial mass."""
 
     age: FloatArray
     z: FloatArray
@@ -96,6 +99,7 @@ class AnnulusSample:
     v_z: FloatArray
     jr: FloatArray  # NaN where |z| >= Z_JR_MAX_KPC
     initial_mass: FloatArray
+    r: FloatArray  # kpc, the cylindrical radius
 
     def select(self, keep: BoolArray | IndexArray) -> AnnulusSample:
         """Return the stars where the mask *keep* is true, or at the indices *keep*, which may repeat."""
@@ -104,11 +108,12 @@ class AnnulusSample:
 
 @dataclass(frozen=True)
 class VerticalModel:
-    """What the predictions of h_Z in one annulus need: Sigma and Delta Phi(R_mid, z) on ``Z_GRID``."""
+    """What the predictions of h_Z in one annulus need: Sigma, Delta Phi(R_mid, z) on ``Z_GRID`` and R_mid."""
 
     sigma_surf: float  # Msun/pc^2
     phi_fit: FloatArray  # (km/s)^2, the fitted potential
     phi_snapshot: FloatArray  # (km/s)^2, the snapshot's potential
+    r_mid: float  # kpc
 
 
 @dataclass(frozen=True)
@@ -134,12 +139,18 @@ class Heights:
 
 @dataclass(frozen=True)
 class Predictions:
-    """h_Z of one age bin predicted by the sheet and by the tracer, with the tracer's window."""
+    """h_Z of one age bin predicted by the sheet and by the tracer, with the tracer's window, and the Jeans diagnostics.
+
+    ``jeans_sigma`` integrates the vertical Jeans equation with the measured sigma_z(z) and
+    no tilt term, ``jeans`` with both.
+    """
 
     sheet: float
     tracer: float
     tracer_window: float
     tracer_snapshot: float
+    jeans_sigma: float
+    jeans: float
 
 
 @dataclass(frozen=True)
@@ -159,6 +170,8 @@ class Ratios:
     sheet: Estimate
     tracer: Estimate
     tracer_snapshot: Estimate
+    jeans_sigma: Estimate
+    jeans: Estimate
 
 
 @dataclass(frozen=True)
@@ -173,6 +186,7 @@ class AgeBin:  # pylint: disable=too-many-instance-attributes
     predictions: Predictions
     slopes: Slopes
     ratios: Ratios
+    jeans: JeansProfile
 
 
 @dataclass(frozen=True)
@@ -231,19 +245,6 @@ class MonoAge:
     window_scan: list[ScanRow]
 
 
-def clipped_dispersion(v: FloatArray) -> float:
-    """Return the dispersion of *v* within ``VEL_CLIP_SIGMA`` MAD sigmas of its median."""
-    center = np.median(v)
-    mad = MAD_TO_SIGMA * np.median(np.abs(v - center))
-    return float(np.std(v[np.abs(v - center) < VEL_CLIP_SIGMA * mad]))
-
-
-def half_width(draws: FloatArray) -> float:
-    """Return half the 16th-84th percentile interval of the finite *draws*."""
-    lo, hi = np.percentile(draws[np.isfinite(draws)], [16.0, 84.0])
-    return float(0.5 * (hi - lo))
-
-
 def surface_density(galaxy: Galaxy, r_lo: float, r_hi: float) -> float:
     """Return the mass per area (Msun/pc^2) of every particle with r_lo <= R < r_hi and |z| < ``Z_SIGMA_KPC``."""
     mass = 0.0
@@ -269,7 +270,7 @@ def annulus_sample(galaxy: Galaxy, pot: agama.Potential, r_lo: float, r_hi: floa
     near = np.abs(pos[:, 2]) < Z_JR_MAX_KPC
     jr[near] = radial_actions(pot, pos[near], vel[near])
     age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[annulus], galaxy.header.scale_factor)
-    return AnnulusSample(age, pos[:, 2], v_r, v_z, jr, stars.initial_mass[annulus]), annulus
+    return AnnulusSample(age, pos[:, 2], v_r, v_z, jr, stars.initial_mass[annulus], cyl_r[annulus]), annulus
 
 
 def median_radius(galaxy: Galaxy, annulus: BoolArray) -> float:
@@ -292,6 +293,8 @@ class _BinValues:  # pylint: disable=too-many-instance-attributes
     tracer: float
     tracer_window: float
     tracer_snapshot: float
+    jeans_sigma: float
+    jeans: float
 
 
 def _bin_values(rows: AnnulusSample, model: VerticalModel, k: float) -> _BinValues:
@@ -301,6 +304,7 @@ def _bin_values(rows: AnnulusSample, model: VerticalModel, k: float) -> _BinValu
     sigma_z = clipped_dispersion(rows.v_z[absz < Z_MID_MAX_KPC])
     hz, window = scaled_particle_hz(absz, rows.initial_mass, k)
     tracer, tracer_window = scaled_profile_hz(tracer_profile(model.phi_fit, sigma_z), k)
+    profile = _jeans(rows, model)
     return _BinValues(
         sigma_r=clipped_dispersion(rows.v_r[jr_rows]),
         sigma_z=sigma_z,
@@ -311,7 +315,15 @@ def _bin_values(rows: AnnulusSample, model: VerticalModel, k: float) -> _BinValu
         tracer=tracer,
         tracer_window=tracer_window,
         tracer_snapshot=scaled_profile_hz(tracer_profile(model.phi_snapshot, sigma_z), k)[0],
+        jeans_sigma=scaled_profile_hz(jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=False), k)[0],
+        jeans=scaled_profile_hz(jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=True), k)[0],
     )
+
+
+def _jeans(rows: AnnulusSample, model: VerticalModel) -> JeansProfile:
+    """Return sigma_z^2(z) and the tilt term of the stars *rows* of one bin, in the radial bins of the annulus."""
+    stars = JeansStars(rows.r, rows.z, rows.v_r, rows.v_z, rows.initial_mass)
+    return jeans_profile(stars, R_MIN_KPC, R_MAX_KPC, model.r_mid)
 
 
 def measure_bin(
@@ -353,9 +365,21 @@ def measure_bin(
         sheet=spread(lambda v: v.sheet / v.hz),
         tracer=spread(lambda v: v.tracer / v.hz),
         tracer_snapshot=spread(lambda v: v.tracer_snapshot / v.hz),
+        jeans_sigma=spread(lambda v: v.jeans_sigma / v.hz),
+        jeans=spread(lambda v: v.jeans / v.hz),
     )
-    predictions = Predictions(point.sheet, point.tracer, point.tracer_window, point.tracer_snapshot)
-    return AgeBin(*bounds, float(np.median(rows.age)), kinematics, heights, predictions, slopes, ratios)
+    return AgeBin(
+        *bounds,
+        float(np.median(rows.age)),
+        kinematics,
+        heights,
+        Predictions(
+            point.sheet, point.tracer, point.tracer_window, point.tracer_snapshot, point.jeans_sigma, point.jeans
+        ),
+        slopes,
+        ratios,
+        _jeans(rows, model),
+    )
 
 
 def _log_line(x: FloatArray, y: FloatArray, y_err: FloatArray) -> tuple[FloatArray, FloatArray, float]:
@@ -412,6 +436,8 @@ def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
             "sheet": trend(lambda b: b.ratios.sheet),
             "tracer": trend(lambda b: b.ratios.tracer),
             "tracer_snapshot": trend(lambda b: b.ratios.tracer_snapshot),
+            "jeans_sigma": trend(lambda b: b.ratios.jeans_sigma),
+            "jeans": trend(lambda b: b.ratios.jeans),
         },
         eta=exponents["hz"].value / exponents["sigma_z"].value,
         sheet_exponent=2.0 * (exponents["sigma_r"].value - exponents["sigma_z"].value),

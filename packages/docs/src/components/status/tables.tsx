@@ -17,17 +17,17 @@ import {
 import useStatusData from '@site/src/components/status/useStatusData'
 import React, { type ReactNode } from 'react'
 
-function fixed(value: number, digits = 2): string {
+export function fixed(value: number, digits = 2): string {
   return Number.isFinite(value) ? value.toFixed(digits) : 'none'
 }
 
-function signed(value: number, digits = 2): string {
+export function signed(value: number, digits = 2): string {
   return Number.isFinite(value)
     ? `${value >= 0 ? '+' : '-'}${Math.abs(value).toFixed(digits)}`
     : 'none'
 }
 
-interface TableProps {
+export interface TableProps {
   /** Headers spanning several columns, as (label, span) pairs over every column; '' leaves a span blank. */
   readonly groups?: readonly (readonly [string, number])[]
   /** The column headers, with inline math between dollar signs. */
@@ -36,7 +36,7 @@ interface TableProps {
 }
 
 /** A table of numbers computed from the records. */
-function Table({ groups, head, rows }: TableProps): ReactNode {
+export function Table({ groups, head, rows }: TableProps): ReactNode {
   return (
     <div className="status-table">
       <table>

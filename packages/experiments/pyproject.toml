@@ -17,6 +17,7 @@ dependencies = [
     "h5py>=3.16",
     "astropy>=8.0",
     "globus-sdk>=4.9",
+    "pyvo>=1.6",
 ]
 
 [project.scripts]

@@ -134,7 +134,7 @@ export interface StatusData {
 /** A record that does not have the expected structure. */
 export class RecordError extends Error {}
 
-function field(value: unknown, key: string): unknown {
+export function field(value: unknown, key: string): unknown {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new RecordError(`expected an object holding "${key}"`)
   }
@@ -142,7 +142,7 @@ function field(value: unknown, key: string): unknown {
 }
 
 /** A number, or NaN where the record holds null. */
-function num(value: unknown, key: string): number {
+export function num(value: unknown, key: string): number {
   const item = field(value, key)
   if (item === null) {
     return Number.NaN
@@ -153,7 +153,7 @@ function num(value: unknown, key: string): number {
   return item
 }
 
-function str(value: unknown, key: string): string {
+export function str(value: unknown, key: string): string {
   const item = field(value, key)
   if (typeof item !== 'string') {
     throw new RecordError(`"${key}" is not a string`)
@@ -161,7 +161,7 @@ function str(value: unknown, key: string): string {
   return item
 }
 
-function list(value: unknown, key: string): readonly unknown[] {
+export function list(value: unknown, key: string): readonly unknown[] {
   const item = field(value, key)
   if (!Array.isArray(item)) {
     throw new RecordError(`"${key}" is not a list`)
@@ -182,7 +182,7 @@ function numbers(value: unknown, key: string): readonly number[] {
   })
 }
 
-function estimate(value: unknown, key: string): Estimate {
+export function estimate(value: unknown, key: string): Estimate {
   const item = field(value, key)
   return { value: num(item, 'value'), err: num(item, 'err') }
 }
@@ -199,7 +199,7 @@ function byPredictor<T>(
   }
 }
 
-function trend(value: unknown, key: string): Trend {
+export function trend(value: unknown, key: string): Trend {
   const item = field(value, key)
   return { value: num(item, 'value'), err: num(item, 'err'), chi2Dof: num(item, 'chi2_dof') }
 }
@@ -315,7 +315,7 @@ export function parseInjection(record: unknown): Injection {
   }
 }
 
-async function fetchJson(url: string, signal: AbortSignal): Promise<unknown> {
+export async function fetchJson(url: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(url, { signal })
   if (!response.ok) {
     throw new RecordError(`cannot load ${url}: HTTP ${response.status}`)

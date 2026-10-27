@@ -21,22 +21,24 @@ from experiments.populations import (
     AGE_BINS,
     AGE_RANGES,
     K_SCAN,
+    R_MAX_KPC,
+    R_MIN_KPC,
     Z_LIM_SCAN_KPC,
     AnnulusSample,
     Estimate,
     Method,
     MonoAge,
     VerticalModel,
-    clipped_dispersion,
     fit_power_law,
     fit_trend,
-    half_width,
     measure_mono_age,
     surface_density,
 )
 from experiments.snapshot import Galaxy, Header, Particles, Stars
+from experiments.stats import clipped_dispersion, half_width
 
 G_LINEAR = 900.0  # (km/s)^2 / kpc
+R_MID_KPC = 8.25
 SIGMA_SURF = 50.0
 N_PER_BIN = 4_000
 
@@ -59,7 +61,7 @@ def tracer_height(age: float) -> float:
 def synthetic_sample(height: Callable[[float], float] = scale_height) -> AnnulusSample:
     """Return N_PER_BIN stars per 1 Gyr bin with heights of scale *height*, and the known dispersions and actions."""
     rng = np.random.default_rng(21)
-    parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass")}
+    parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass", "r")}
     for lo, hi in AGE_BINS:
         mid = 0.5 * (lo + hi)
         z = rng.exponential(height(mid), N_PER_BIN) * rng.choice([-1.0, 1.0], N_PER_BIN)
@@ -70,13 +72,14 @@ def synthetic_sample(height: Callable[[float], float] = scale_height) -> Annulus
         parts["v_z"].append(rng.normal(0.0, vertical_dispersion(mid), N_PER_BIN))
         parts["jr"].append(np.where(np.abs(z) < 0.5, jr, np.nan))
         parts["initial_mass"].append(np.ones(N_PER_BIN))
+        parts["r"].append(rng.uniform(R_MIN_KPC, R_MAX_KPC, N_PER_BIN))
     return AnnulusSample(**{key: np.concatenate(value) for key, value in parts.items()})
 
 
 def measure(sample: AnnulusSample) -> MonoAge:
     """Return the mono-age measurement of *sample* in the linear potential, with a snapshot's 5 percent deeper."""
     phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi)
+    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC)
     return measure_mono_age(sample, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
 
 
@@ -135,10 +138,11 @@ def test_clipped_dispersion_ignores_outliers() -> None:
 
 
 def test_half_width() -> None:
-    """Half the 16th-84th percentile interval of a unit Gaussian is about 1; NaN draws are ignored."""
+    """Half the 16th-84th percentile interval of a unit Gaussian is about 1; NaN draws are ignored, all NaN is NaN."""
     draws = np.random.default_rng(7).normal(0.0, 1.0, 100_000)
     assert half_width(draws) == pytest.approx(1.0, rel=0.02)
     assert half_width(np.append(draws, np.nan)) == half_width(draws)
+    assert np.isnan(half_width(np.array([np.nan, np.nan])))
 
 
 def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge) -> None:
@@ -148,7 +152,7 @@ def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge)
     more than 5 errors.
     """
     for r in measured.ranges:
-        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot"}
+        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans"}
         trend = r.trends["tracer"]
         if r.lo == 0.0:
             assert trend.value > 5.0 * trend.err
@@ -161,6 +165,17 @@ def test_trend_vanishes_when_the_tracer_is_right() -> None:
         assert b.ratios.tracer.value == pytest.approx(1.0, abs=4.0 * b.ratios.tracer.err)
     for r in exact.ranges:
         assert abs(r.trends["tracer"].value) < 3.0 * r.trends["tracer"].err
+
+
+def test_jeans_heights_follow_the_tracer_of_an_isothermal_untilted_population() -> None:
+    """With sigma_z constant in z and v_R independent of v_z, both Jeans heights equal the tracer's within errors."""
+    exact = measure(synthetic_sample(tracer_height))
+    for b in exact.bins:
+        tolerance = 4.0 * b.ratios.tracer.err
+        assert b.ratios.jeans_sigma.value == pytest.approx(b.ratios.tracer.value, abs=tolerance)
+        assert b.ratios.jeans.value == pytest.approx(b.ratios.tracer.value, abs=tolerance)
+        assert len(b.jeans.z) == len(b.jeans.sigma2) == len(b.jeans.tilt) > 0
+    assert set(exact.ranges[0].trends) >= {"jeans_sigma", "jeans"}
 
 
 def test_fit_trend_is_the_difference_of_the_exponents_with_one_set_of_weights() -> None:
