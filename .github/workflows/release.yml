@@ -25,14 +25,17 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+          # Since v5 the action caches the package manager on its own, which runs yarn
+          # before Corepack is enabled below; the yarn cache is not used here.
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -63,15 +66,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       # Check out main so the build picks up the release commit (bumped version).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+          # Since v5 the action caches the package manager on its own, which runs yarn
+          # before Corepack is enabled below; the yarn cache is not used here.
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -83,13 +89,13 @@ jobs:
         run: yarn workspace @jr-hz-mono-age/docs build
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: packages/docs/build/
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
