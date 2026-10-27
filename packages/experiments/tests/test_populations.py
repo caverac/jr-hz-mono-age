@@ -3,10 +3,13 @@
 Each 1 Gyr population has exponential heights of scale h(age), Gaussian v_R and v_z of
 dispersions sigma_R(age) and sigma_z(age), and J_R spread around J(age). The vertical
 potential is linear, Delta Phi = g |z|, so the tracer is an exponential of scale
-sigma_z^2 / g.
+sigma_z^2 / g. In the main sample the heights grow more slowly with age than that scale;
+in the exact sample they follow it, so that the tracer is right at every age.
 """
 
 from __future__ import annotations
+
+from collections.abc import Callable
 
 import numpy as np
 import pytest
@@ -24,9 +27,9 @@ from experiments.populations import (
     Method,
     MonoAge,
     VerticalModel,
-    bootstrap,
     clipped_dispersion,
     fit_power_law,
+    fit_trend,
     half_width,
     measure_mono_age,
     surface_density,
@@ -48,13 +51,18 @@ def vertical_dispersion(age: float) -> float:
     return float(12.0 * (0.5 + age) ** 0.4)
 
 
-def synthetic_sample() -> AnnulusSample:
-    """Return N_PER_BIN stars per 1 Gyr bin with the known heights, dispersions and actions."""
+def tracer_height(age: float) -> float:
+    """Return the scale height (kpc) of the isothermal tracer of the population of *age* Gyr."""
+    return vertical_dispersion(age) ** 2 / G_LINEAR
+
+
+def synthetic_sample(height: Callable[[float], float] = scale_height) -> AnnulusSample:
+    """Return N_PER_BIN stars per 1 Gyr bin with heights of scale *height*, and the known dispersions and actions."""
     rng = np.random.default_rng(21)
     parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass")}
     for lo, hi in AGE_BINS:
         mid = 0.5 * (lo + hi)
-        z = rng.exponential(scale_height(mid), N_PER_BIN) * rng.choice([-1.0, 1.0], N_PER_BIN)
+        z = rng.exponential(height(mid), N_PER_BIN) * rng.choice([-1.0, 1.0], N_PER_BIN)
         jr = 10.0 * (0.5 + mid) * rng.lognormal(0.0, 0.3, N_PER_BIN)
         parts["age"].append(rng.uniform(lo, hi, N_PER_BIN))
         parts["z"].append(z)
@@ -65,12 +73,17 @@ def synthetic_sample() -> AnnulusSample:
     return AnnulusSample(**{key: np.concatenate(value) for key, value in parts.items()})
 
 
+def measure(sample: AnnulusSample) -> MonoAge:
+    """Return the mono-age measurement of *sample* in the linear potential, with a snapshot's 5 percent deeper."""
+    phi = G_LINEAR * Z_GRID
+    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi)
+    return measure_mono_age(sample, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
+
+
 @pytest.fixture(name="measured", scope="module")
 def fixture_measured() -> MonoAge:
     """Return the mono-age measurement of the synthetic annulus."""
-    phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi)
-    return measure_mono_age(synthetic_sample(), model, Method(PalicioWindow(20.0, 1.0), 2.0, 10))
+    return measure(synthetic_sample())
 
 
 def test_bins_recover_the_populations(measured: MonoAge) -> None:
@@ -86,8 +99,11 @@ def test_bins_recover_the_populations(measured: MonoAge) -> None:
         assert b.predictions.tracer_snapshot == pytest.approx(b.predictions.tracer / 1.05, rel=0.002)
         assert b.predictions.sheet == pytest.approx(sheet_hz(kin.sigma_z.value, SIGMA_SURF))
         assert b.slopes.measured.value == pytest.approx(kin.jr_median.value / b.heights.measured.value)
-        assert b.slopes.tracer == pytest.approx(kin.jr_median.value / b.predictions.tracer)
+        assert b.slopes.tracer.value == pytest.approx(kin.jr_median.value / b.predictions.tracer)
+        assert b.ratios.tracer.value == pytest.approx(b.predictions.tracer / b.heights.measured.value)
+        assert b.ratios.sheet.value == pytest.approx(b.predictions.sheet / b.heights.measured.value)
         assert 0.0 < b.slopes.measured.err < b.slopes.measured.value
+        assert 0.0 < b.ratios.tracer.err < b.ratios.tracer.value
         assert kin.n_mid < kin.n_jr < N_PER_BIN
 
 
@@ -118,13 +134,56 @@ def test_clipped_dispersion_ignores_outliers() -> None:
     assert clipped_dispersion(np.concatenate([v, np.full(500, 1.0e3)])) == pytest.approx(10.0, rel=0.01)
 
 
-def test_bootstrap_and_half_width() -> None:
-    """Bootstrap medians of a unit Gaussian scatter by about 1.25 / sqrt(n); NaN draws are ignored."""
-    v = np.random.default_rng(6).normal(0.0, 1.0, 400)
-    draws = bootstrap(np.random.default_rng(7), v.size, lambda i: float(np.median(v[i])), 500)
-    assert draws.size == 500
-    assert half_width(draws) == pytest.approx(1.2533 / np.sqrt(400), rel=0.2)
+def test_half_width() -> None:
+    """Half the 16th-84th percentile interval of a unit Gaussian is about 1; NaN draws are ignored."""
+    draws = np.random.default_rng(7).normal(0.0, 1.0, 100_000)
+    assert half_width(draws) == pytest.approx(1.0, rel=0.02)
     assert half_width(np.append(draws, np.nan)) == half_width(draws)
+
+
+def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge) -> None:
+    """The heights grow more slowly with age than the tracer of the linear potential: a trend of 0.19 over 0-10 Gyr.
+
+    The ranges from 0 Gyr, whose youngest bins carry most of the lever arm, detect it at
+    more than 5 errors.
+    """
+    for r in measured.ranges:
+        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot"}
+        trend = r.trends["tracer"]
+        if r.lo == 0.0:
+            assert trend.value > 5.0 * trend.err
+
+
+def test_trend_vanishes_when_the_tracer_is_right() -> None:
+    """Heights that follow the tracer give ratios near 1 and trends within 3 errors of 0."""
+    exact = measure(synthetic_sample(tracer_height))
+    for b in exact.bins:
+        assert b.ratios.tracer.value == pytest.approx(1.0, abs=4.0 * b.ratios.tracer.err)
+    for r in exact.ranges:
+        assert abs(r.trends["tracer"].value) < 3.0 * r.trends["tracer"].err
+
+
+def test_fit_trend_is_the_difference_of_the_exponents_with_one_set_of_weights() -> None:
+    """With the same relative errors, the trend of y / y_pred is the exponent of y minus that of y_pred."""
+    x = np.array([0.5, 1.5, 2.5, 4.0, 8.0])
+    rng = np.random.default_rng(4)
+    y, y_pred = 3.0 * x**0.7 * rng.lognormal(0.0, 0.05, x.size), 2.0 * x**0.4
+    rel = np.array([0.02, 0.03, 0.05, 0.04, 0.08])
+    difference = fit_power_law(x, y, rel * y).value - fit_power_law(x, y_pred, rel * y_pred).value
+    assert fit_trend(x, y / y_pred, rel * y / y_pred).value == pytest.approx(difference)
+
+
+def test_fit_trend_widens_its_error_by_the_scatter() -> None:
+    """The error is the formal one while chi^2 per degree of freedom is below 1, and scales as its root above."""
+    x = np.array([0.5, 1.5, 2.5, 4.0, 8.0])
+    exact = fit_trend(x, 2.0 * x**0.3, 0.05 * 2.0 * x**0.3)
+    assert exact.value == pytest.approx(0.3)
+    assert exact.chi2_dof == pytest.approx(0.0, abs=1e-12)
+    assert exact.err == pytest.approx(fit_power_law(x, 2.0 * x**0.3, 0.05 * 2.0 * x**0.3).err)
+    y = 2.0 * x**0.3 * np.array([1.2, 0.8, 1.2, 0.8, 1.2])
+    scattered = fit_trend(x, y, 0.05 * y)
+    assert scattered.chi2_dof > 1.0
+    assert scattered.err == pytest.approx(fit_power_law(x, y, 0.05 * y).err * np.sqrt(scattered.chi2_dof))
 
 
 def test_fit_power_law_recovers_an_exponent() -> None:

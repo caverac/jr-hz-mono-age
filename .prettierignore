@@ -3,6 +3,8 @@ notebooks/
 staging/
 **/.docusaurus/
 **/build/
+**/.docusaurus-check/
+**/build-check/
 
 # Generated experiment data (written by the engine via json.dump, not Prettier).
 assets/data/

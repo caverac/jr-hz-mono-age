@@ -1,8 +1,14 @@
-"""The printed report and the JSON record of an analysis."""
+"""The printed report and the JSON record of an analysis.
+
+A record is standard JSON (RFC 8259), which has no NaN: a quantity that could not be
+measured, such as a windowed fit without a solution, is written as ``null``, and
+:mod:`experiments.records` reads it back as NaN. Browsers read the records directly.
+"""
 
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -34,9 +40,15 @@ def _bin_line(b: AgeBin) -> str:
 
 
 def _range_line(r: AgeRange) -> str:
-    """Return the exponents over one age range."""
+    """Return the exponents and the trends of h_pred / h_Z over one age range."""
     fits = ", ".join(f"{name} {e.value:+.3f}+/-{e.err:.3f}" for name, e in r.exponents.items())
-    return f"  {r.lo:g}-{r.hi:g} Gyr: {fits}; eta {r.eta:.2f}, 2(beta_R - beta_z) {r.sheet_exponent:+.3f}"
+    trends = ", ".join(
+        f"{name} {t.value:+.3f}+/-{t.err:.3f} (chi2/dof {t.chi2_dof:.1f})" for name, t in r.trends.items()
+    )
+    return (
+        f"  {r.lo:g}-{r.hi:g} Gyr: {fits}; eta {r.eta:.2f}, 2(beta_R - beta_z) {r.sheet_exponent:+.3f}\n"
+        f"    trends of h_pred / h_Z: {trends}"
+    )
 
 
 def _scan_line(label: str, rows: list[ScanRow]) -> str:
@@ -78,8 +90,19 @@ def report_lines(analysis: HaloAnalysis) -> list[str]:
     ]
 
 
+def finite_or_null(value: object) -> object:
+    """Return *value* with every NaN or infinite float, at any depth, replaced by None."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: finite_or_null(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [finite_or_null(item) for item in value]
+    return value
+
+
 def write_json(record: DataclassInstance, path: Path) -> Path:
-    """Write the dataclass *record* as JSON to *path*, creating its directory, and return *path*."""
+    """Write the dataclass *record* as standard JSON to *path*, creating its directory, and return *path*."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(asdict(record), indent=2) + "\n")
+    path.write_text(json.dumps(finite_or_null(asdict(record)), indent=2, allow_nan=False) + "\n")
     return path

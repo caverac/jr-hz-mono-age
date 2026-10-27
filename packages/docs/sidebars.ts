@@ -6,6 +6,12 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
+      label: 'Status',
+      collapsed: false,
+      items: ['status/overview', 'status/tracer-vs-sheet', 'status/window-bias']
+    },
+    {
+      type: 'category',
       label: 'Explorations',
       collapsed: false,
       items: ['explorations/rendered-disks', 'explorations/disk-in-3d']

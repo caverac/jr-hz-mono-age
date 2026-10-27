@@ -14,11 +14,17 @@ are split into 1 Gyr age bins from 0 to 10 Gyr. For each bin:
   through the same self-consistent window twice: in the fitted potential and in the
   snapshot's.
 - a = J_R,med / h_Z, and its predictions with the same J_R,med.
+- The ratio of each predicted h_Z to the measured one, in which J_R,med cancels.
 
-Errors are half the 16th-84th percentile interval of ``N_BOOTSTRAP`` resamplings. The
-age exponent of each quantity is a weighted least-squares fit of ln y against ln age;
-the predictions of a carry the relative error of J_R,med combined with that of sigma_z
-times 2 (sheet) or 1 (tracer).
+Errors are half the 16th-84th percentile interval of ``N_BOOTSTRAP`` resamplings of the
+stars of a bin. Each resampling gives every quantity at once, so that ratios of
+quantities measured on the same stars, such as a and h_pred / h_Z, carry their
+correlations. The age exponent of each quantity is a weighted least-squares fit of ln y
+against ln age. The trend of a ratio h_pred / h_Z is the same fit, with its error scaled
+by the square root of the chi^2 per degree of freedom when that exceeds 1. A prediction
+that reproduces how h_Z, and hence a, changes with age has a trend of 0: the trend is
+the measured minus the predicted exponent of a, both fitted with one set of weights and
+without the error of J_R,med.
 """
 
 from __future__ import annotations
@@ -91,8 +97,8 @@ class AnnulusSample:
     jr: FloatArray  # NaN where |z| >= Z_JR_MAX_KPC
     initial_mass: FloatArray
 
-    def select(self, keep: BoolArray) -> AnnulusSample:
-        """Return the stars where *keep* is true."""
+    def select(self, keep: BoolArray | IndexArray) -> AnnulusSample:
+        """Return the stars where the mask *keep* is true, or at the indices *keep*, which may repeat."""
         return AnnulusSample(**{f.name: getattr(self, f.name)[keep] for f in fields(self)})
 
 
@@ -138,16 +144,25 @@ class Predictions:
 
 @dataclass(frozen=True)
 class Slopes:
-    """a = J_R,med / h_Z of one age bin, measured and predicted (km/s)."""
+    """a = J_R,med / h_Z of one age bin (km/s), measured and with each predicted h_Z in place of the measured one."""
 
     measured: Estimate
-    sheet: float
-    tracer: float
-    tracer_snapshot: float
+    sheet: Estimate
+    tracer: Estimate
+    tracer_snapshot: Estimate
 
 
 @dataclass(frozen=True)
-class AgeBin:
+class Ratios:
+    """Each predicted h_Z of one age bin over the measured h_Z."""
+
+    sheet: Estimate
+    tracer: Estimate
+    tracer_snapshot: Estimate
+
+
+@dataclass(frozen=True)
+class AgeBin:  # pylint: disable=too-many-instance-attributes
     """Everything measured and predicted for one mono-age population."""
 
     age_lo: float
@@ -157,12 +172,28 @@ class AgeBin:
     heights: Heights
     predictions: Predictions
     slopes: Slopes
+    ratios: Ratios
+
+
+@dataclass(frozen=True)
+class Trend:
+    """The age exponent of a ratio h_pred / h_Z, d ln(h_pred / h_Z) / d ln age, and its chi^2 per degree of freedom.
+
+    ``err`` is the 1-sigma error of the weighted fit times sqrt(max(1, ``chi2_dof``)), so
+    that a scatter of the ratios about a power law beyond their errors widens it.
+    """
+
+    value: float
+    err: float
+    chi2_dof: float
 
 
 @dataclass(frozen=True)
 class AgeRange:
     """Age exponents over the bins inside [lo, hi] Gyr.
 
+    ``trends`` holds the trend of h_pred / h_Z of each prediction, which is 0 for a
+    prediction that reproduces the age dependence of h_Z.
     ``eta`` is d ln h_Z / d ln sigma_z, the ratio of the exponents of h_Z and sigma_z.
     ``sheet_exponent`` is 2 (beta_R - beta_z), the exponent of a that the sheet predicts
     from the exponents beta_R and beta_z of the two dispersions alone.
@@ -171,6 +202,7 @@ class AgeRange:
     lo: float
     hi: float
     exponents: dict[str, Estimate]
+    trends: dict[str, Trend]
     eta: float
     sheet_exponent: float
 
@@ -204,11 +236,6 @@ def clipped_dispersion(v: FloatArray) -> float:
     center = np.median(v)
     mad = MAD_TO_SIGMA * np.median(np.abs(v - center))
     return float(np.std(v[np.abs(v - center) < VEL_CLIP_SIGMA * mad]))
-
-
-def bootstrap(rng: np.random.Generator, n: int, stat: Callable[[IndexArray], float], n_draws: int) -> FloatArray:
-    """Return *n_draws* values of *stat* on indices resampled from range(*n*)."""
-    return np.array([stat(rng.integers(0, n, n)) for _ in range(n_draws)], dtype=np.float64)
 
 
 def half_width(draws: FloatArray) -> float:
@@ -252,70 +279,105 @@ def median_radius(galaxy: Galaxy, annulus: BoolArray) -> float:
     return float(np.median(stars.cylindrical_radius[annulus][near]))
 
 
-def _kinematics(rows: AnnulusSample, rng: np.random.Generator, n_draws: int) -> tuple[Kinematics, FloatArray]:
-    """Return the kinematics of one bin, and the bootstrap draws of J_R,med that the error of a needs."""
+@dataclass(frozen=True)
+class _BinValues:  # pylint: disable=too-many-instance-attributes
+    """What one sample of the stars of a bin gives: kinematics, h_Z, its predictions and their windows."""
+
+    sigma_r: float
+    sigma_z: float
+    jr_median: float
+    hz: float
+    window: float
+    sheet: float
+    tracer: float
+    tracer_window: float
+    tracer_snapshot: float
+
+
+def _bin_values(rows: AnnulusSample, model: VerticalModel, k: float) -> _BinValues:
+    """Return the kinematics, h_Z and the predicted h_Z of the stars *rows* of one bin."""
     absz = np.abs(rows.z)
     jr_rows = (absz < Z_JR_MAX_KPC) & np.isfinite(rows.jr)
-    jr, v_r = rows.jr[jr_rows], rows.v_r[jr_rows]
-    v_z = rows.v_z[absz < Z_MID_MAX_KPC]
-    jr_draws = bootstrap(rng, jr.size, lambda i: float(np.median(jr[i])), n_draws)
-    sigma_r = Estimate(
-        clipped_dispersion(v_r), half_width(bootstrap(rng, v_r.size, lambda i: clipped_dispersion(v_r[i]), n_draws))
-    )
-    sigma_z = Estimate(
-        clipped_dispersion(v_z), half_width(bootstrap(rng, v_z.size, lambda i: clipped_dispersion(v_z[i]), n_draws))
-    )
-    jr_median = Estimate(float(np.median(jr)), half_width(jr_draws))
-    return Kinematics(int(jr.size), int(v_z.size), sigma_r, sigma_z, jr_median), jr_draws
-
-
-def _heights(rows: AnnulusSample, method: Method, rng: np.random.Generator) -> tuple[Heights, FloatArray]:
-    """Return the heights of one bin, and the bootstrap draws of h_Z that the error of a needs."""
-    absz, weight = np.abs(rows.z), rows.initial_mass
-    hz, window = scaled_particle_hz(absz, weight, method.k)
-    hz_draws = bootstrap(
-        rng, absz.size, lambda i: scaled_particle_hz(absz[i], weight[i], method.k)[0], method.n_bootstrap
-    )
-    heights = Heights(
-        measured=Estimate(hz, half_width(hz_draws)),
+    sigma_z = clipped_dispersion(rows.v_z[absz < Z_MID_MAX_KPC])
+    hz, window = scaled_particle_hz(absz, rows.initial_mass, k)
+    tracer, tracer_window = scaled_profile_hz(tracer_profile(model.phi_fit, sigma_z), k)
+    return _BinValues(
+        sigma_r=clipped_dispersion(rows.v_r[jr_rows]),
+        sigma_z=sigma_z,
+        jr_median=float(np.median(rows.jr[jr_rows])),
+        hz=hz,
         window=window,
-        n_window=int(np.count_nonzero(absz <= window)),
-        fixed=particle_hz(absz, weight, method.window.z_lim),
+        sheet=sheet_hz(sigma_z, model.sigma_surf),
+        tracer=tracer,
+        tracer_window=tracer_window,
+        tracer_snapshot=scaled_profile_hz(tracer_profile(model.phi_snapshot, sigma_z), k)[0],
     )
-    return heights, hz_draws
 
 
 def measure_bin(
     rows: AnnulusSample, bounds: tuple[float, float], model: VerticalModel, method: Method, rng: np.random.Generator
 ) -> AgeBin:
-    """Return the measurement and the predictions of the age bin *rows*, whose ages lie within *bounds* (Gyr)."""
-    kinematics, jr_draws = _kinematics(rows, rng, method.n_bootstrap)
-    heights, hz_draws = _heights(rows, method, rng)
-    sigma_z = kinematics.sigma_z.value
-    tracer, tracer_window = scaled_profile_hz(tracer_profile(model.phi_fit, sigma_z), method.k)
-    predictions = Predictions(
-        sheet=sheet_hz(sigma_z, model.sigma_surf),
-        tracer=tracer,
-        tracer_window=tracer_window,
-        tracer_snapshot=scaled_profile_hz(tracer_profile(model.phi_snapshot, sigma_z), method.k)[0],
+    """Return the measurement and the predictions of the age bin *rows*, whose ages lie within *bounds* (Gyr).
+
+    Every error comes from one bootstrap: each draw resamples the stars of the bin with
+    replacement and recomputes every quantity from them.
+    """
+    point = _bin_values(rows, model, method.k)
+    n = rows.z.size
+    draws = [_bin_values(rows.select(rng.integers(0, n, n)), model, method.k) for _ in range(method.n_bootstrap)]
+
+    def spread(get: Callable[[_BinValues], float]) -> Estimate:
+        return Estimate(get(point), half_width(np.array([get(draw) for draw in draws], dtype=np.float64)))
+
+    absz = np.abs(rows.z)
+    kinematics = Kinematics(
+        n_jr=int(np.count_nonzero((absz < Z_JR_MAX_KPC) & np.isfinite(rows.jr))),
+        n_mid=int(np.count_nonzero(absz < Z_MID_MAX_KPC)),
+        sigma_r=spread(lambda v: v.sigma_r),
+        sigma_z=spread(lambda v: v.sigma_z),
+        jr_median=spread(lambda v: v.jr_median),
     )
-    jr_median = kinematics.jr_median.value
+    heights = Heights(
+        measured=spread(lambda v: v.hz),
+        window=point.window,
+        n_window=int(np.count_nonzero(absz <= point.window)),
+        fixed=particle_hz(absz, rows.initial_mass, method.window.z_lim),
+    )
     slopes = Slopes(
-        measured=Estimate(jr_median / heights.measured.value, half_width(jr_draws / hz_draws)),
-        sheet=jr_median / predictions.sheet,
-        tracer=jr_median / predictions.tracer,
-        tracer_snapshot=jr_median / predictions.tracer_snapshot,
+        measured=spread(lambda v: v.jr_median / v.hz),
+        sheet=spread(lambda v: v.jr_median / v.sheet),
+        tracer=spread(lambda v: v.jr_median / v.tracer),
+        tracer_snapshot=spread(lambda v: v.jr_median / v.tracer_snapshot),
     )
-    return AgeBin(*bounds, float(np.median(rows.age)), kinematics, heights, predictions, slopes)
+    ratios = Ratios(
+        sheet=spread(lambda v: v.sheet / v.hz),
+        tracer=spread(lambda v: v.tracer / v.hz),
+        tracer_snapshot=spread(lambda v: v.tracer_snapshot / v.hz),
+    )
+    predictions = Predictions(point.sheet, point.tracer, point.tracer_window, point.tracer_snapshot)
+    return AgeBin(*bounds, float(np.median(rows.age)), kinematics, heights, predictions, slopes, ratios)
 
 
-def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
-    """Return the exponent p of y = A x^p and its 1-sigma error, by weighted least squares of ln y on ln x."""
+def _log_line(x: FloatArray, y: FloatArray, y_err: FloatArray) -> tuple[FloatArray, FloatArray, float]:
+    """Return the coefficients, their covariance and the chi^2 of the weighted least-squares line of ln y on ln x."""
     lx, ly, w = np.log(x), np.log(y), (y / y_err) ** 2
     design = np.vstack([np.ones_like(lx), lx]).T
     cov = np.linalg.inv(design.T @ (design * w[:, None]))
     coef = cov @ (design.T @ (w * ly))
+    return coef, cov, float(np.sum(w * (ly - design @ coef) ** 2))
+
+
+def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
+    """Return the exponent p of y = A x^p and its 1-sigma error, by weighted least squares of ln y on ln x."""
+    coef, cov, _ = _log_line(x, y, y_err)
     return Estimate(float(coef[1]), float(np.sqrt(cov[1, 1])))
+
+
+def fit_trend(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
+    """Return the exponent of y = A x^p, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
+    coef, cov, chi2 = _log_line(x, y, y_err)
+    chi2_dof = chi2 / (x.size - 2)
+    return Trend(float(coef[1]), float(np.sqrt(cov[1, 1] * max(1.0, chi2_dof))), chi2_dof)
 
 
 def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
@@ -329,24 +391,28 @@ def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
     def fit(get: Callable[[AgeBin], Estimate]) -> Estimate:
         return fit_power_law(age, column(lambda b: get(b).value), column(lambda b: get(b).err))
 
-    rel_jr = column(lambda b: b.kinematics.jr_median.err / b.kinematics.jr_median.value)
-    rel_sz = column(lambda b: b.kinematics.sigma_z.err / b.kinematics.sigma_z.value)
-    sheet, tracer = column(lambda b: b.slopes.sheet), column(lambda b: b.slopes.tracer)
-    snapshot = column(lambda b: b.slopes.tracer_snapshot)
+    def trend(get: Callable[[AgeBin], Estimate]) -> Trend:
+        return fit_trend(age, column(lambda b: get(b).value), column(lambda b: get(b).err))
+
     exponents = {
         "sigma_r": fit(lambda b: b.kinematics.sigma_r),
         "sigma_z": fit(lambda b: b.kinematics.sigma_z),
         "jr_median": fit(lambda b: b.kinematics.jr_median),
         "hz": fit(lambda b: b.heights.measured),
         "a": fit(lambda b: b.slopes.measured),
-        "a_sheet": fit_power_law(age, sheet, np.hypot(rel_jr, 2.0 * rel_sz) * sheet),
-        "a_tracer": fit_power_law(age, tracer, np.hypot(rel_jr, rel_sz) * tracer),
-        "a_tracer_snapshot": fit_power_law(age, snapshot, np.hypot(rel_jr, rel_sz) * snapshot),
+        "a_sheet": fit(lambda b: b.slopes.sheet),
+        "a_tracer": fit(lambda b: b.slopes.tracer),
+        "a_tracer_snapshot": fit(lambda b: b.slopes.tracer_snapshot),
     }
     return AgeRange(
         lo=lo,
         hi=hi,
         exponents=exponents,
+        trends={
+            "sheet": trend(lambda b: b.ratios.sheet),
+            "tracer": trend(lambda b: b.ratios.tracer),
+            "tracer_snapshot": trend(lambda b: b.ratios.tracer_snapshot),
+        },
         eta=exponents["hz"].value / exponents["sigma_z"].value,
         sheet_exponent=2.0 * (exponents["sigma_r"].value - exponents["sigma_z"].value),
     )

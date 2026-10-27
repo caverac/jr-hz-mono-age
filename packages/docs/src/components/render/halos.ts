@@ -10,6 +10,14 @@ export const HALOS: readonly Halo[] = [2, 3, 16, 19, 23, 24, 27].map((halo) => (
   stem: `au${halo}-level4-Original-snap127`
 }))
 
+/**
+ * The color of the halo `label` in the charts of the docs, as the CSS custom property that
+ * holds its light and dark steps (`src/css/viz.css`).
+ */
+export function haloColor(label: string): string {
+  return `var(--viz-halo-${label.toLowerCase()})`
+}
+
 /** The halo shown first. */
 export const DEFAULT_HALO = 'Au24'
 

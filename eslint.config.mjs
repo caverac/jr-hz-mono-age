@@ -13,6 +13,8 @@ export default [
       '**/dist/**',
       '**/build/**',
       '**/.docusaurus/**',
+      '**/build-check/**',
+      '**/.docusaurus-check/**',
       '**/coverage/**',
       '**/.venv/**',
       '.yarn/**',

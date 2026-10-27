@@ -9,6 +9,8 @@ its slope for a whole disk from the self-gravitating isothermal sheet. This proj
 how the slope $a = J_{R,\rm med}/h_Z$ of populations of a single age behaves, using the
 Auriga simulations and Milky Way survey data.
 
+Documentation: <https://caverac.github.io/jr-hz-mono-age/>
+
 ## Table of Contents
 
 - [Packages](#packages)
@@ -19,11 +21,11 @@ Auriga simulations and Milky Way survey data.
 
 ## Packages
 
-| Package                               | Description                                         |
-| ------------------------------------- | --------------------------------------------------- |
-| [`experiments`](packages/experiments) | Core Python engine and CLI                          |
-| [`docs`](packages/docs)               | Project documentation (Docusaurus)                  |
-| [`pre-print`](packages/pre-print)     | LaTeX source (AASTeX v7) for the accompanying paper |
+| Package                               | Description                                                                                                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| [`experiments`](packages/experiments) | Core Python engine and CLI                                                                                                    |
+| [`docs`](packages/docs)               | Project documentation (Docusaurus), deployed at [caverac.github.io/jr-hz-mono-age](https://caverac.github.io/jr-hz-mono-age/) |
+| [`pre-print`](packages/pre-print)     | LaTeX source (AASTeX v7) for the accompanying paper                                                                           |
 
 ## Getting Started
 

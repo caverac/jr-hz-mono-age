@@ -1,0 +1,229 @@
+---
+title: Overview
+---
+
+import Claim from '@site/src/components/status/Claim'
+import Metric from '@site/src/components/status/Metric'
+
+# Overview
+
+This section records how far the analysis in this repository supports the central claim
+of the paper, and which parts of the claim remain untested. Every result quoted on these
+pages is computed in the browser from the records that the Python package writes under
+`assets/data/`. A result that the package has not produced is therefore not quoted,
+whatever other evidence for it may exist.
+
+## The claim
+
+The paper argues that a mono-age population of a disk behaves as an isothermal tracer of
+the total gravitational potential, with the vertical density
+
+$$
+\rho(z) \propto \exp\left[-\frac{\Delta\Phi(R, z)}{\sigma_z^2}\right], \qquad
+\Delta\Phi(R, z) = \Phi(R, z) - \Phi(R, 0),
+$$
+
+rather than as a self-gravitating isothermal sheet of surface density $\Sigma$, whose scale
+height is $h_Z = \sigma_z^2/(\pi G \Sigma)$. At fixed $\Sigma$, the sheet makes every
+population follow $h_Z \propto \sigma_z^2$. A tracer follows $h_Z \propto \sigma_z^\eta$
+instead, where $\eta$ depends on the shape of $\Delta\Phi$ over the heights that the
+population reaches: $\eta = 1$ where $\Delta\Phi \propto z^2$, as near the midplane of any
+smooth mass distribution, and $\eta = 2$ where $\Delta\Phi \propto |z|$, as above a thin
+one. Because the slope $a = J_{R,\mathrm{med}}/h_Z$ of the $J_R$-$h_Z$ relation (Palicio
+et al. 2025) divides by $h_Z$, the two pictures also predict different age dependences of
+$a$.
+
+We test the claim on the seven Auriga halos of Table 1 of Palicio et al. (2025) at
+$z = 0$, with the star particles of the annulus $7.5 < R < 9$ kpc split into ten bins of
+1 Gyr in age, from 0 to 10 Gyr. [Tracer or sheet](./tracer-vs-sheet) describes the
+measurement and the two predictions, whereas [Fixed-window bias](./window-bias) tests the
+estimator of $h_Z$ on profiles of known shape.
+
+## Is the claim supported?
+
+For the Auriga populations over 0-10 Gyr, the answer is yes. The tracer predicts $h_Z$
+within 10 percent in <Metric name="tracerWithin10" /> of the <Metric name="populations" />
+populations, whereas the sheet does so in <Metric name="sheetWithin10" />. The tracer also
+reproduces how $h_Z$, and hence $a$, changes with age: the trend of $h_\mathrm{tracer}/h_Z$
+with age lies within <Metric name="trendMax0" /> standard errors of 0 in every halo,
+whereas that of the sheet lies at least <Metric name="sheetTrendMin" /> standard errors
+from 0 in every halo and range of ages.
+
+Two parts of the claim are not yet established. Over 2-10 Gyr, the trend of the tracer is
+negative in <Metric name="trendNegative2" /> halos, and more than 2 standard errors from 0
+in <Metric name="trendOutside2" />, which open issue 1 below records. The Milky Way, the
+second test of the paper, has not been ported to this package, so these pages say nothing
+about it.
+
+## Status board
+
+Each statement below carries one of three labels:
+
+- reproduced by this package: a command of the Python package writes the record that the
+  statement is computed from, and that record is in the repository;
+- preliminary: the statement was checked only with code that is not part of the package,
+  so no number from that check appears here;
+- open: the statement has not been tested.
+
+### Supported
+
+<Claim
+  status="reproduced"
+  title="The tracer predicts the scale height of each population"
+  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
+>
+
+The tracer in the fitted potential predicts $h_Z$ within 5 percent in
+<Metric name="tracerWithin5" />, within 10 percent in <Metric name="tracerWithin10" /> and
+within 15 percent in <Metric name="tracerWithin15" /> of the <Metric name="populations" />
+populations, with ratios to the measured $h_Z$ from <Metric name="tracerRange" /> and a
+median of <Metric name="tracerMedian" />. The sheet reaches 10 percent in
+<Metric name="sheetWithin10" /> populations, with ratios from <Metric name="sheetRange" />.
+See [Tracer or sheet](./tracer-vs-sheet#scale-heights).
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="Over 0-10 Gyr, the tracer reproduces the age dependence of $h_Z$"
+  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
+>
+
+The trend of $h_\mathrm{tracer}/h_Z$ with age, which equals the measured minus the
+predicted age exponent of $a$ when both are fitted with the same weights, lies within
+<Metric name="trendMax0" /> standard errors of 0 in every halo over 0-10 Gyr, with values
+from <Metric name="trendRange0" />. Its errors come from one bootstrap of the stars of each
+bin for both heights, in which $J_{R,\mathrm{med}}$ cancels, and are multiplied by
+$\sqrt{\chi^2_\nu}$ where the ratios scatter about a power law by more than their errors.
+See [Tracer or sheet](./tracer-vs-sheet#age-dependence).
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="The sheet cannot describe the age dependence of $a$"
+  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
+>
+
+Over 0-10 Gyr, the trend of $h_\mathrm{sheet}/h_Z$ with age is
+<Metric name="sheetTrendRange" /> in the seven halos, at least
+<Metric name="sheetTrendMin" /> standard errors from 0 in every halo and in both ranges of
+age. Population by population, the sheet is too thin for the youngest population of every
+halo, with ratios of <Metric name="sheetYoung" />, and too thick for the oldest, with
+ratios of <Metric name="sheetOld" />. See
+[Tracer or sheet](./tracer-vs-sheet#age-dependence).
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="The analysis recovers a galaxy of known potential"
+  command="uv run experiments auriga mock-check"
+>
+
+On a mock snapshot of a known axisymmetric galaxy, written in the units and the file
+layout of Auriga, tilted, moving, and close to two faces of the periodic box, the analysis
+recovers the spin axis within <Metric name="mockSpin" /> degrees and the circular velocity
+at the annulus within <Metric name="mockVc" />. It recovers $\Delta\Phi$ at the median
+radius within <Metric name="mockPhi" /> over $0.05 < z \le 1.5$ kpc, and $h_Z$ and
+$J_{R,\mathrm{med}}$ of every age bin within <Metric name="mockHz" /> and
+<Metric name="mockJr" /> of the truth.
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="The sheet overpredicts the thickness of the whole disk"
+  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
+>
+
+For all the stars over the radial range of Palicio et al. (2025, Sect. 3.4), the sheet
+predicts <Metric name="wholeSheet" /> times the $h_Z$ fitted in the self-consistent
+window. The tracer predicts <Metric name="wholeTracer" /> times that $h_Z$, a larger
+error than for single populations, presumably because a whole disk mixes populations of
+different $\sigma_z$, which no single isothermal tracer describes. The fixed windows of
+Palicio et al. give <Metric name="wholePalicio" /> times the self-consistent $h_Z$.
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="A fixed window biases $h_Z$ of profiles that are not exponential"
+  command="uv run experiments window-injection"
+>
+
+In <Metric name="injectionDraws" /> draws of <Metric name="injectionStars" /> heights per
+profile, the fixed window recovers exponentials within
+<Metric name="exponentialFixedBias" /> of their scale up to $h_Z = 3\,Z_\mathrm{lim}$. It
+returns <Metric name="sech2Thin" /> times the self-consistent $h_Z$ of a $\mathrm{sech}^2$
+layer with $h_Z \approx 0.2\,Z_\mathrm{lim}$, and <Metric name="sech2Window" /> times that
+of a layer with $h_Z \approx Z_\mathrm{lim}$. The self-consistent window recovers every
+injected profile within <Metric name="selfConsistentBias" />. See
+[Fixed-window bias](./window-bias#the-injection-test).
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="Below $h_Z = Z_\mathrm{lim}$, the Auriga populations follow the $\mathrm{sech}^2$ curve"
+>
+
+This comparison is computed on the page from the records of the two commands above. For
+populations with $h_Z < 0.5\,Z_\mathrm{lim}$, the median ratio of the fixed-window to the
+self-consistent $h_Z$ is <Metric name="windowLowHalos" />, against
+<Metric name="windowLowSech2" /> on the $\mathrm{sech}^2$ curve and
+<Metric name="windowLowExponential" /> on the exponential one. For
+$0.5 \le h_Z/Z_\mathrm{lim} < 1$, the three medians are <Metric name="windowMidHalos" />,
+<Metric name="windowMidSech2" /> and <Metric name="windowMidExponential" />. See
+[Fixed-window bias](./window-bias#the-auriga-populations).
+
+</Claim>
+
+### Open and preliminary
+
+<Claim status="open" title="1. The oldest populations">
+
+Over 2-10 Gyr, the trend of the tracer lies more than 2 standard errors from 0 in
+<Metric name="trendOutside2" />. Over that range, <Metric name="trendNegative2" /> trends
+are negative, with a median of <Metric name="trendMedian2" />. If the trends of the seven
+halos scattered symmetrically about 0, a split of signs this unequal would occur with a
+probability of <Metric name="trendSignTest2" />, so the tracer may fall slightly short of
+the thickness of the oldest populations in every halo. In Au19, whose shortfall is the
+largest, the populations older than 5 Gyr have tracer ratios of
+<Metric name="au19Old" />. One hypothesis is that the radial terms of the vertical Jeans
+equation, which the tracer neglects by taking $\Delta\Phi$ at a single radius, matter for
+the thick old populations. It has not been tested.
+
+</Claim>
+
+<Claim status="preliminary" title="2. Au23: the fitted and the snapshot potentials disagree">
+
+At the median radius of the annulus of Au23, $\Delta\Phi$ of the snapshot rises above that
+of the axisymmetric fit by <Metric name="au23Residual" /> $(\mathrm{km\,s^{-1}})^2$ at
+$z = 1$ kpc, whereas in the other six halos the difference stays within
+<Metric name="otherResidual" /> $(\mathrm{km\,s^{-1}})^2$ at that height. The tracer in the
+snapshot's potential is therefore <Metric name="au23Snapshot" /> times the tracer in the
+fit. A check outside this package indicates that the snapshot's median over a slice of
+height is dominated by the stars crowded along the bar of Au23, in which case the fit is
+the right potential to use. Until that check is a command of the package, the tracer of
+Au23 rests on the fitted potential without an independent test.
+
+</Claim>
+
+<Claim status="open" title="3. The link to the relation of Palicio et al. across galaxies">
+
+Palicio et al. (2025) relate $J_R$ to $h_Z$ across galaxies, with one $h_Z$ per galaxy
+fitted in its fixed windows (Sect. 3.4), whereas this analysis relates
+$J_{R,\mathrm{med}}$ to $h_Z$ population by population, within one annulus of each galaxy.
+Whether the relation within a galaxy, together with the bias of the fixed windows, explains
+the relation across galaxies has not been tested.
+
+</Claim>
+
+<Claim status="open" title="4. The Milky Way">
+
+The paper also applies the tracer to mono-age populations of the Milky Way. None of that
+analysis is part of this package yet, so these pages make no statement about the Milky
+Way.
+
+</Claim>
