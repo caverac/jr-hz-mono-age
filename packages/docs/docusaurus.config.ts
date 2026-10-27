@@ -57,9 +57,10 @@ const config: Config = {
   onBrokenLinks: 'warn',
 
   // Serve the local `static/` (site chrome: logo, favicon) plus the
-  // repository-level `assets/` directory (generated figures). Files in
+  // repository-level `assets/` directory (generated figures and data). Files in
   // `assets/figures/*.png` are then available at `/figures/*.png`, so the docs
-  // and the paper share one figure source.
+  // and the paper share one figure source, and the star samples of
+  // `assets/data/auriga/` at `/data/auriga/`.
   staticDirectories: ['static', '../../assets'],
 
   favicon: 'img/logo.svg',
@@ -111,7 +112,7 @@ const config: Config = {
         },
         blog: false,
         theme: {
-          customCss: ['./src/css/custom.css']
+          customCss: ['./src/css/custom.css', './src/css/viz.css']
         }
       } satisfies Preset.Options
     ]
@@ -150,7 +151,10 @@ const config: Config = {
       links: [
         {
           title: 'Docs',
-          items: [{ label: 'Introduction', to: '/' }]
+          items: [
+            { label: 'Introduction', to: '/' },
+            { label: 'Acknowledgments', to: '/acknowledgments' }
+          ]
         }
       ],
       copyright: `Copyright © ${new Date().getFullYear()} Carlos Vera-Ciro. Built with Docusaurus.`

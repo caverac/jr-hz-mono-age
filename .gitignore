@@ -45,6 +45,11 @@ notebooks/
 # assets/data/ and the figures under assets/figures/ are committed.
 staging/
 
+# === Maps of the stellar disks (~2.5 MB per halo, local-only) ===
+# `experiments auriga render-data` writes them from the snapshots in about 10 s per
+# halo, and `experiments auriga render` draws the committed portraits from them.
+assets/data/auriga/*-maps.npz
+
 # === IDE ===
 .idea/
 .vscode/

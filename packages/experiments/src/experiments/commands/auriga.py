@@ -3,13 +3,17 @@
 The release is served only through Globus. ``download`` submits one Globus transfer per
 halo into the local root, ``status`` follows the tasks and ``check`` reads the copies.
 ``mock-check`` runs the analysis on a mock whose answer is known, and ``analyze``
-measures the halos::
+measures the halos. ``render-data`` bins their star particles for the images, and
+``plot`` and ``render`` draw the figures from the cached data::
 
     experiments auriga download 2 3 16 19 23 24 27
     caffeinate -i experiments auriga status 2 3 16 19 23 24 27 --wait
     experiments auriga check 2 3 16 19 23 24 27
     experiments auriga mock-check
     caffeinate -i experiments auriga analyze 2 3 16 19 23 24 27
+    experiments auriga render-data 2 3 16 19 23 24 27
+    experiments auriga plot 2 3 16 19 23 24 27
+    experiments auriga render 2 3 16 19 23 24 27
 """
 
 from __future__ import annotations
@@ -20,12 +24,15 @@ from experiments.commands.auriga_analyze import auriga_analyze
 from experiments.commands.auriga_check import auriga_check
 from experiments.commands.auriga_download import auriga_download
 from experiments.commands.auriga_mock_check import auriga_mock_check
+from experiments.commands.auriga_plot import auriga_plot
+from experiments.commands.auriga_render import auriga_render
+from experiments.commands.auriga_render_data import auriga_render_data
 from experiments.commands.auriga_status import auriga_status
 
 
 @click.group("auriga")
 def auriga() -> None:
-    """Download Auriga snapshots through Globus, check the local copies and analyze them."""
+    """Download Auriga snapshots through Globus, check the local copies, analyze them and draw them."""
 
 
 auriga.add_command(auriga_download)
@@ -33,3 +40,6 @@ auriga.add_command(auriga_status)
 auriga.add_command(auriga_check)
 auriga.add_command(auriga_mock_check)
 auriga.add_command(auriga_analyze)
+auriga.add_command(auriga_render_data)
+auriga.add_command(auriga_plot)
+auriga.add_command(auriga_render)

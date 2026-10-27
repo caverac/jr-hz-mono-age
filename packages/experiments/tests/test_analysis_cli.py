@@ -30,7 +30,7 @@ def test_palicio_window_comes_from_their_table_unless_given() -> None:
 
 def test_result_name() -> None:
     """The record of a snapshot is named after the halo, the level, the suite and the snapshot."""
-    assert result_name(HaloSnapshot(24)) == "auriga-au24-level4-Original-snap127.json"
+    assert result_name(HaloSnapshot(24)) == "au24-level4-Original-snap127.json"
 
 
 def test_analyze_writes_one_record_per_halo(mock_run: MockRun, tmp_path: Path) -> None:
@@ -90,5 +90,5 @@ def test_mock_check_builds_analyzes_and_compares(
     assert built == [MockSizes(11, 12, 13)]
     assert "mock check" in output
     assert "spin axis error" in output
-    record = json.loads((tmp_path / "results" / "auriga-mock-check.json").read_text())
+    record = json.loads((tmp_path / "results" / "mock-check.json").read_text())
     assert len(record["bins"]) == 10

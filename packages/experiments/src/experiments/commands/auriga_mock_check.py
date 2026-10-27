@@ -2,7 +2,7 @@
 
 The mock (:mod:`experiments.mock`) is written under ``--root`` as halo 0, analyzed exactly
 as an Auriga halo with Au24's window from Palicio et al. (2025, Table 1), and compared
-with its truth. The comparison is printed and written to ``<out-dir>/auriga-mock-check.json``::
+with its truth. The comparison is printed and written to ``<out-dir>/mock-check.json``::
 
     OMP_NUM_THREADS=4 experiments auriga mock-check
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import click
 
-from experiments._paths import MOCK_ROOT, RESULTS_DIR
+from experiments._paths import AURIGA_DATA_DIR, MOCK_ROOT
 from experiments.analysis import analyze_halo, prepare_halo
 from experiments.auriga import HaloSnapshot
 from experiments.commands._report import report_lines, write_json
@@ -51,7 +51,7 @@ def check_lines(check: MockCheck) -> list[str]:
 )
 @click.option(
     "--out-dir",
-    default=RESULTS_DIR,
+    default=AURIGA_DATA_DIR,
     show_default=True,
     type=click.Path(file_okay=False, path_type=Path),
     help="Directory of the JSON record.",
@@ -72,4 +72,4 @@ def auriga_mock_check(  # pylint: disable=too-many-arguments,too-many-positional
     check = check_mock(mock, prepared, analysis)
     for line in (*report_lines(analysis), *check_lines(check)):
         click.echo(line)
-    click.echo(f"  wrote {write_json(check, out_dir / 'auriga-mock-check.json')}")
+    click.echo(f"  wrote {write_json(check, out_dir / 'mock-check.json')}")

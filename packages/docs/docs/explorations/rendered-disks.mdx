@@ -1,0 +1,38 @@
+---
+title: Rendered disks
+---
+
+import GalaxyGallery from '@site/src/components/render/GalaxyGallery'
+
+# Rendered disks
+
+These images show the stars of the seven Auriga disks of Palicio et al. (2025) at
+$z = 0$, face-on and edge-on, in the frame of each disk and within 25 kpc of its center.
+The Python package draws them from the star particles of the snapshots.
+
+<GalaxyGallery />
+
+The brightness of a pixel follows its stellar surface density, on a logarithmic scale
+that spans three decades below the densest pixels. Its color is the mass-weighted mean
+age of its stars, on the scale of the key, where each of the five age groups counts at a
+representative age of 1, 3, 5, 7 and 11 Gyr. Faint pixels are smoothed more than bright
+ones, which removes the particle noise of the outskirts without blurring the center. The
+edge-on view covers $|z| < 7.5$ kpc.
+
+## Reproducing the images
+
+```bash
+uv run experiments auriga render-data 2 3 16 19 23 24 27
+uv run experiments auriga render 2 3 16 19 23 24 27
+```
+
+`render-data` reads each snapshot, rotates it into the frame of its disk and writes the
+maps of the five age groups to `assets/data/auriga/`. `render` draws the portraits from
+those maps into `assets/figures/` as JPEG, which is several times smaller than PNG for
+these smooth images. The portraits are drawn for this site only.
+
+## Data
+
+The disks come from the Auriga Project public data release (Grand et al. 2024). The
+[acknowledgments](../acknowledgments) give the citations and the acknowledgment that the
+release asks for.
