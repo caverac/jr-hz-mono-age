@@ -16,7 +16,7 @@ export interface Estimate {
 }
 
 /** The predictions of h_Z that a population carries. */
-export type Predictor = 'tracer' | 'tracerSnapshot' | 'sheet'
+export type Predictor = 'tracer' | 'tracerSnapshot' | 'jeansSigma' | 'jeans' | 'sheet'
 
 /**
  * The age exponent of a ratio h_pred / h_Z, d ln(h_pred / h_Z) / d ln age, which is 0 for a
@@ -195,6 +195,8 @@ function byPredictor<T>(
   return {
     tracer: read(value, 'tracer'),
     tracerSnapshot: read(value, 'tracer_snapshot'),
+    jeansSigma: read(value, 'jeans_sigma'),
+    jeans: read(value, 'jeans'),
     sheet: read(value, 'sheet')
   }
 }

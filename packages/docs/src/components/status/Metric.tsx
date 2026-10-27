@@ -1,5 +1,15 @@
-import type { StatusData } from '@site/src/components/status/data'
+import MathLabel from '@site/src/components/MathLabel'
+import type { Predictor, StatusData, Trend } from '@site/src/components/status/data'
 import {
+  between,
+  count,
+  fixed,
+  percent,
+  plusMinus,
+  signed
+} from '@site/src/components/status/format'
+import {
+  ageRange,
   etas,
   exponentComparisons,
   exponentialFixedBias,
@@ -26,25 +36,17 @@ import {
 import useStatusData from '@site/src/components/status/useStatusData'
 import React, { type ReactNode } from 'react'
 
-function fixed(value: number, digits = 2): string {
-  return value.toFixed(digits)
-}
-
-function between([lo, hi]: readonly [number, number], digits = 2): string {
-  return `${fixed(lo, digits)} to ${fixed(hi, digits)}`
-}
-
-function signed(value: number, digits = 2): string {
-  return `${value >= 0 ? '+' : '-'}${Math.abs(value).toFixed(digits)}`
-}
-
-function percent(value: number, digits = 1): string {
-  return `${(100 * value).toFixed(digits)} percent`
-}
-
 /** The comparisons of the exponents over the range of ages that starts at `lo` Gyr. */
 function trendsFrom(d: StatusData, lo: number) {
   return exponentComparisons(d).filter((c) => c.lo === lo)
+}
+
+/** The trend of the prediction `predictor` of every halo over the range of ages from `lo` to 10 Gyr. */
+function trendsOf(d: StatusData, predictor: Predictor, lo: number): readonly Trend[] {
+  return d.halos.flatMap((h) => {
+    const range = ageRange(h, lo, 10)
+    return range === undefined ? [] : [range.trends[predictor]]
+  })
 }
 
 /** The comparison of the halos with the injected curves over the range of h_Z / Z_lim that starts at `lo`. */
@@ -75,7 +77,7 @@ const METRICS = {
       .filter((c) => Math.abs(significance(c.tracerTrend)) > 2)
       .map(
         (c) =>
-          `${c.halo} over ${c.lo}-${c.hi} Gyr (${signed(c.tracerTrend.value, 3)} +/- ${fixed(c.tracerTrend.err, 3)}, ${signed(significance(c.tracerTrend), 1)} standard errors)`
+          `${c.halo} over ${c.lo}-${c.hi} Gyr (${plusMinus(c.tracerTrend.value, c.tracerTrend.err)}, ${signed(significance(c.tracerTrend), 1)} standard errors)`
       )
     return outside.length === 0
       ? 'no case'
@@ -89,6 +91,31 @@ const METRICS = {
     signed(median(trendsFrom(d, 2).map((c) => c.tracerTrend.value)), 3),
   trendSignTest2: (d: StatusData) =>
     fixed(signTest(trendsFrom(d, 2).map((c) => c.tracerTrend.value)), 3),
+  jeansSigmaWithin10: (d: StatusData) => String(within(d, 'jeansSigma', 0.1)),
+  jeansWithin10: (d: StatusData) => String(within(d, 'jeans', 0.1)),
+  jeansSigmaMedian: (d: StatusData) => fixed(median(ratios(d, 'jeansSigma'))),
+  jeansMedian: (d: StatusData) => fixed(median(ratios(d, 'jeans'))),
+  jeansSigmaRange: (d: StatusData) => between(extent(ratios(d, 'jeansSigma'))),
+  jeansSigmaNegative2: (d: StatusData) => {
+    const values = trendsOf(d, 'jeansSigma', 2).map((t) => t.value)
+    return `${values.filter((v) => v < 0).length} of the ${values.length}`
+  },
+  jeansSigmaWithin2: (d: StatusData) =>
+    String(
+      [...trendsOf(d, 'jeansSigma', 0), ...trendsOf(d, 'jeansSigma', 2)].filter(
+        (t) => Math.abs(significance(t)) <= 2
+      ).length
+    ),
+  jeansWithin2: (d: StatusData) =>
+    String(
+      [...trendsOf(d, 'jeans', 0), ...trendsOf(d, 'jeans', 2)].filter(
+        (t) => Math.abs(significance(t)) <= 2
+      ).length
+    ),
+  jeansSigmaSignTest2: (d: StatusData) =>
+    fixed(signTest(trendsOf(d, 'jeansSigma', 2).map((t) => t.value)), 2),
+  residualRange: (d: StatusData) => between(extent(d.halos.map((h) => residualAt(h, 1))), 0),
+  snapshotRange: (d: StatusData) => between(extent(d.halos.flatMap((h) => snapshotRatios(h)))),
   tracerChi2Range: (d: StatusData) =>
     between(extent(exponentComparisons(d).map((c) => c.tracerTrend.chi2Dof)), 1),
   sheetTrendRange: (d: StatusData) =>
@@ -119,7 +146,7 @@ const METRICS = {
   mockHz: (d: StatusData) => percent(mockErrors(d.mock).hz),
   mockJr: (d: StatusData) => percent(mockErrors(d.mock).jr),
   injectionDraws: (d: StatusData) => String(d.injection.draws),
-  injectionStars: (d: StatusData) => d.injection.nStars.toLocaleString('en-US'),
+  injectionStars: (d: StatusData) => count(d.injection.nStars),
   selfConsistentBias: (d: StatusData) => percent(selfConsistentBias(d.injection)),
   exponentialFixedBias: (d: StatusData) => percent(exponentialFixedBias(d.injection, 3)),
   exponentialSpreadWide: (d: StatusData) => {
@@ -139,6 +166,14 @@ const METRICS = {
   windowHighSech2: (d: StatusData) => fixed(windowRow(d, 1).curves.sech2),
   windowHighExponential: (d: StatusData) => fixed(windowRow(d, 1).curves.exponential),
   zLimRange: (d: StatusData) => between(extent(d.halos.map((h) => h.zLim)), 1),
+  au19JeansOld: (d: StatusData) =>
+    between(
+      extent(
+        haloRecord(d, 'Au19')
+          .bins.filter((bin) => bin.ageLo >= 5)
+          .map((bin) => ratio(bin, 'jeansSigma'))
+      )
+    ),
   au19Old: (d: StatusData) =>
     between(
       extent(
@@ -167,5 +202,9 @@ export default function Metric({ name }: { readonly name: MetricName }): ReactNo
   if (error !== null) {
     return <span className="metric metric--error">(no data: {error})</span>
   }
-  return <span className="metric">{value === null ? '(loading)' : METRICS[name](value)}</span>
+  return (
+    <span className="metric">
+      {value === null ? '(loading)' : <MathLabel label={METRICS[name](value)} />}
+    </span>
+  )
 }

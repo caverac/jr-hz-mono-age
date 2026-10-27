@@ -8,6 +8,7 @@ import Metric from '@site/src/components/status/Metric'
 import {
   ExponentTable,
   HaloTable,
+  JeansTrendTable,
   ToleranceTable,
   TrendTable
 } from '@site/src/components/status/tables'
@@ -46,9 +47,8 @@ The sheet predicts $h_Z = \sigma_z^2/(\pi G \Sigma)$, with $\Sigma$ the mass per
 all the particles of the annulus with $|z| < 1.1$ kpc. The tracer is the profile
 $\exp(-\Delta\Phi/\sigma_z^2)$, with $\Delta\Phi$ from the fitted potential at the median
 radius of the annulus. It passes through the same self-consistent window as the stars, so
-that the measured and the predicted $h_Z$ come from one estimator. A second tracer uses the
-potential of the snapshot in place of the fit, for the reason given in open issue 2 of the
-[overview](./overview).
+that the measured and the predicted $h_Z$ come from one estimator. A second tracer uses the potential of the snapshot, averaged over azimuth, in place of the
+fit, as a check of the fit.
 
 ## Scale heights
 
@@ -77,9 +77,9 @@ $\sigma_z$ of their populations.
 The table gives the same comparison halo by halo, with the median ratio of each prediction
 to the measured $h_Z$ (snapshot $\Phi$ is the tracer in the snapshot's potential) and
 $\eta = \beta_h/\beta_z$, the ratio of the age exponents of $h_Z$ and $\sigma_z$ over
-0-10 Gyr, which spans <Metric name="etaRange" /> across the seven halos. In Au23 the tracer
-in the snapshot's potential falls well below the measured $h_Z$, which is the disagreement
-between the two potentials of open issue 2 of the [overview](./overview).
+0-10 Gyr, which spans <Metric name="etaRange" /> across the seven halos. The tracer in the
+snapshot's potential follows the tracer in the fit in every halo, as the
+[overview](./overview) quantifies.
 
 ## Age dependence
 
@@ -128,8 +128,8 @@ trends of the seven halos, which are independent simulations, scattered symmetri
 about 0, a split of signs this unequal would occur with a probability of
 <Metric name="trendSignTest2" /> (sign test). The tracer may therefore fall slightly short
 of the thickness of the oldest populations in every halo, by an amount that only some halos
-resolve on their own. We have not identified the cause, which open issue 1 of the
-[overview](./overview) records.
+resolve on their own. The [vertical Jeans equation](#the-vertical-jeans-equation) removes
+that pattern.
 
 The $\chi^2$ per degree of freedom of the tracer's fits is <Metric name="tracerChi2Range" />,
 so the ratios scatter about a power law by more than their bootstrap errors, as the bumps
@@ -150,13 +150,67 @@ tracer (open squares) and of the sheet (open triangles). Error bars are the erro
 
 </details>
 
+## The vertical Jeans equation
+
+The isothermal tracer solves the vertical Jeans equation of a steady, axisymmetric
+population,
+
+$$
+\frac{1}{R}\frac{\partial (R\nu\sigma_{Rz})}{\partial R} + \frac{\partial (\nu\sigma_z^2)}{\partial z}
+= -\nu\frac{\partial \Phi}{\partial z},
+$$
+
+under two assumptions: $\sigma_z$ does not change with height, and the first term, the tilt
+term, vanishes. A population of 1 Gyr of ages mixes stars of several dispersions, so its
+$\sigma_z$ can grow with height and its velocities can have heavier tails than one
+Gaussian. We
+measure, in slices of $|z|$, the variance of $v_z$ of each population weighted by initial
+mass, without clipping, because the equation needs the second moment of all its stars, and
+the tilt term from three radial bins of the annulus. Writing the tilt term as $\nu t(z)$,
+the equation integrates to
+
+$$
+\nu(z) = \frac{\sigma_z^2(0)}{\sigma_z^2(z)}
+\exp\left[-\int_0^z \frac{\partial_{z'}\Phi + t}{\sigma_z^2}\,dz'\right],
+$$
+
+which goes through the same self-consistent window as the stars, without and with $t$
+(`experiments.jeans`). The profile is a diagnostic of the tracer's assumptions, not a
+prediction, because it uses the kinematics measured at every height. Figure 1 shows both
+profiles with the buttons "Jeans, $\sigma_z(z)$" and "Jeans, $\sigma_z(z)$ and tilt".
+
+<JeansTrendTable />
+
+Without the tilt term, the Jeans heights match the measured ones within 10 percent in
+<Metric name="jeansSigmaWithin10" /> of the <Metric name="populations" /> populations, with a
+median ratio of <Metric name="jeansSigmaMedian" />. Their trends with age lie within 2
+standard errors of 0 in <Metric name="jeansSigmaWithin2" /> of the 14 cases, and
+<Metric name="jeansSigmaNegative2" /> of their trends over 2-10 Gyr are negative, so the
+pattern of signs of the tracer is gone. The difference between the tracer and the Jeans
+heights has two parts, the change of the dispersion with height and the full rather than
+the clipped second moment, which the records do not separate. Both are departures from a
+population of one isothermal component, which is what the tracer assumes.
+
+The old populations of Au19 remain short: those older than 5 Gyr reach
+<Metric name="au19JeansOld" /> of their measured $h_Z$ in the Jeans heights, as in the
+tracer. With the tilt term, the Jeans heights reach a median ratio of
+<Metric name="jeansMedian" />, but they lie within 10 percent in only
+<Metric name="jeansWithin10" /> populations, because three radial bins of one annulus measure
+the radial derivative of $\nu\sigma_{Rz}$ poorly. Whether the tilt term or a departure from
+equilibrium holds up the old populations of Au19 is open issue 1 of the
+[overview](./overview).
+
 ## Limitations
 
 Both predictions take $\sigma_z$ from the stars within 0.3 kpc of the plane and assume
-that it does not change with height, which the records do not test. The tracer also takes
+that it does not change with height, an assumption whose cost the Jeans heights above
+measure. That $\sigma_z$ is clipped at 4 standard deviations, which removes the tails of a
+population that mixes several dispersions, so it is smaller than the second moment of the
+population; how much this moves each tracer height on its own has not been measured. The tracer also takes
 $\Delta\Phi$ at a single radius, which neglects the radial terms of the vertical Jeans
-equation. Its potential is an axisymmetric fit, which cannot follow a bar (open issue 2 of
-the [overview](./overview)). The bootstrap errors of the predictions carry those of
+equation. Its potential is an axisymmetric fit, which cannot
+follow a bar, although averaged over azimuth the snapshot's potential agrees with it
+([overview](./overview)). The bootstrap errors of the predictions carry those of
 $\sigma_z$, but not those of the fitted potential, whose accuracy we know only on the mock
 galaxy of the overview. The trend tests a power law in age, so a prediction that fails in
 a few bins without a trend, as a bump in the ratios would, shows up in $\chi^2_\nu$ rather

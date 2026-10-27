@@ -4,6 +4,7 @@ title: Overview
 
 import Claim from '@site/src/components/status/Claim'
 import Metric from '@site/src/components/status/Metric'
+import { JrMetric, MwMetric } from '@site/src/components/status/RecordMetric'
 
 # Overview
 
@@ -34,7 +35,7 @@ et al. 2025) divides by $h_Z$, the two pictures also predict different age depen
 $a$.
 
 We test the claim on the seven Auriga halos of Table 1 of Palicio et al. (2025) at
-$z = 0$, with the star particles of the annulus $7.5 < R < 9$ kpc split into ten bins of
+$z = 0$ ([why these seven](../explorations/rendered-disks#why-these-seven-halos)), with the star particles of the annulus $7.5 < R < 9$ kpc split into ten bins of
 1 Gyr in age, from 0 to 10 Gyr. [Tracer or sheet](./tracer-vs-sheet) describes the
 measurement and the two predictions, whereas [Fixed-window bias](./window-bias) tests the
 estimator of $h_Z$ on profiles of known shape.
@@ -49,11 +50,24 @@ with age lies within <Metric name="trendMax0" /> standard errors of 0 in every h
 whereas that of the sheet lies at least <Metric name="sheetTrendMin" /> standard errors
 from 0 in every halo and range of ages.
 
-Two parts of the claim are not yet established. Over 2-10 Gyr, the trend of the tracer is
-negative in <Metric name="trendNegative2" /> halos, and more than 2 standard errors from 0
-in <Metric name="trendOutside2" />, which open issue 1 below records. The Milky Way, the
-second test of the paper, has not been ported to this package, so these pages say nothing
-about it.
+Over 2-10 Gyr, the trend of the tracer is negative in <Metric name="trendNegative2" />
+halos, and more than 2 standard errors from 0 in <Metric name="trendOutside2" />. The
+vertical Jeans equation removes that pattern when each population enters with the second
+moment of its velocities measured at every height, rather than as one isothermal component
+with a clipped midplane dispersion.
+
+In the Milky Way, star counts of Gaia giants split into ages by LAMOST and by APOGEE give
+the same answer. The tracer predicts $h_Z$ with ratios of
+<MwMetric name="lamostTracer" /> and <MwMetric name="apogeeTracer" />, and its trend with age
+over 0-10 Gyr is <MwMetric name="lamostTracerTrend0" /> and
+<MwMetric name="apogeeTracerTrend0" />, whereas that of the sheet is
+<MwMetric name="lamostSheetTrend0" /> and <MwMetric name="apogeeSheetTrend0" />.
+
+Three parts of the claim are not yet established. The old populations of Au19 fall short
+even of the Jeans heights (open issue 1 below). No model of this analysis turns the
+relation within a galaxy into the one across galaxies (open issue 2). The tracer exceeds
+the window-free heights of Imig et al. (2025) by factors of <MwMetric name="imigRatio" />,
+because their heights are thinner than the star counts (open issue 3).
 
 ## Status board
 
@@ -179,51 +193,110 @@ $0.5 \le h_Z/Z_\mathrm{lim} < 1$, the three medians are <Metric name="windowMidH
 
 </Claim>
 
-### Open and preliminary
+<Claim
+  status="reproduced"
+  title="Averaged over azimuth, the snapshot's potential agrees with the fit"
+  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
+>
 
-<Claim status="open" title="1. The oldest populations">
-
-Over 2-10 Gyr, the trend of the tracer lies more than 2 standard errors from 0 in
-<Metric name="trendOutside2" />. Over that range, <Metric name="trendNegative2" /> trends
-are negative, with a median of <Metric name="trendMedian2" />. If the trends of the seven
-halos scattered symmetrically about 0, a split of signs this unequal would occur with a
-probability of <Metric name="trendSignTest2" />, so the tracer may fall slightly short of
-the thickness of the oldest populations in every halo. In Au19, whose shortfall is the
-largest, the populations older than 5 Gyr have tracer ratios of
-<Metric name="au19Old" />. One hypothesis is that the radial terms of the vertical Jeans
-equation, which the tracer neglects by taking $\Delta\Phi$ at a single radius, matter for
-the thick old populations. It has not been tested.
-
-</Claim>
-
-<Claim status="preliminary" title="2. Au23: the fitted and the snapshot potentials disagree">
-
-At the median radius of the annulus of Au23, $\Delta\Phi$ of the snapshot rises above that
-of the axisymmetric fit by <Metric name="au23Residual" /> $(\mathrm{km\,s^{-1}})^2$ at
-$z = 1$ kpc, whereas in the other six halos the difference stays within
-<Metric name="otherResidual" /> $(\mathrm{km\,s^{-1}})^2$ at that height. The tracer in the
-snapshot's potential is therefore <Metric name="au23Snapshot" /> times the tracer in the
-fit. A check outside this package indicates that the snapshot's median over a slice of
-height is dominated by the stars crowded along the bar of Au23, in which case the fit is
-the right potential to use. Until that check is a command of the package, the tracer of
-Au23 rests on the fitted potential without an independent test.
+At the median radius of each annulus, the potential of the snapshot minus that of the
+axisymmetric fit, averaged over eight equal sectors of azimuth, changes by
+<Metric name="residualRange" /> $(\mathrm{km\,s^{-1}})^2$ between the plane and
+$z = 1$ kpc in the seven halos. The tracer in the snapshot's potential is therefore
+<Metric name="snapshotRange" /> times the tracer in the fit, in every population. The
+median over all the stars of a slice, which an earlier version of the package used, weights
+each azimuth by its number of stars, which the bar of Au23 makes depend on height.
 
 </Claim>
 
-<Claim status="open" title="3. The link to the relation of Palicio et al. across galaxies">
+<Claim
+  status="reproduced"
+  title="With a proxy for their radial action, the window sets the slope across galaxies"
+  command="uv run experiments auriga jr-relation 2 3 16 19 23 24 27"
+>
 
-Palicio et al. (2025) relate $J_R$ to $h_Z$ across galaxies, with one $h_Z$ per galaxy
-fitted in its fixed windows (Sect. 3.4), whereas this analysis relates
-$J_{R,\mathrm{med}}$ to $h_Z$ population by population, within one annulus of each galaxy.
-Whether the relation within a galaxy, together with the bias of the fixed windows, explains
-the relation across galaxies has not been tested.
+Palicio et al. (2025) read their $J_{R,w}$ from a map of each galaxy without a stated rule,
+so we measure a proxy that follows the construction of their maps. Across the seven halos,
+the slope of the proxy against the whole-disk $h_Z$ is <JrMetric name="slopePalicio" />
+with $h_Z$ in their windows and <JrMetric name="slopeScaled" /> in the self-consistent
+window, against their <JrMetric name="palicioSlope" /> km/s. See
+[Across galaxies](./across-galaxies).
 
 </Claim>
 
-<Claim status="open" title="4. The Milky Way">
+<Claim
+  status="reproduced"
+  title="The age trend of the tracer comes from treating each population as one isothermal component"
+  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
+>
 
-The paper also applies the tracer to mono-age populations of the Milky Way. None of that
-analysis is part of this package yet, so these pages make no statement about the Milky
-Way.
+Over 2-10 Gyr, the trend of the isothermal tracer is negative in
+<Metric name="trendNegative2" /> halos, a split of signs that would occur with a probability
+of <Metric name="trendSignTest2" /> if the trends scattered symmetrically about 0. The
+vertical Jeans equation, integrated in the fitted potential with the variance of $v_z$ of
+each population measured at every height, removes that pattern:
+<Metric name="jeansSigmaNegative2" /> of its trends over 2-10 Gyr are negative, and
+<Metric name="jeansSigmaWithin2" /> of its 14 trends lie within 2 standard errors of 0. Its
+heights match the measured ones within 10 percent in <Metric name="jeansSigmaWithin10" /> of
+the <Metric name="populations" /> populations, with a median ratio of
+<Metric name="jeansSigmaMedian" />. The Jeans heights differ from the tracer in two ways,
+the change of the dispersion with height and the full rather than the clipped second
+moment, which the records do not separate. See
+[Tracer or sheet](./tracer-vs-sheet#the-vertical-jeans-equation).
+
+</Claim>
+
+<Claim
+  status="reproduced"
+  title="In the Milky Way, the tracer predicts the star-count $h_Z$ of the mono-age populations"
+  command="uv run experiments milky-way analyze"
+>
+
+Gaia DR3 giants in a cylinder of radius 1.5 kpc around the Sun, split into ages by the
+LAMOST red clump and by APOGEE DR17, give the star-count $h_Z$ of five populations of 2 Gyr. The tracer in McMillan
+(2017) predicts it within 10 percent in <MwMetric name="lamostWithin10" /> bins with LAMOST
+and <MwMetric name="apogeeWithin10" /> with APOGEE, and its trend with age over 0-10 Gyr is
+<MwMetric name="lamostTracerTrend0" /> and <MwMetric name="apogeeTracerTrend0" />. The
+sheet's trend is <MwMetric name="lamostSheetTrend0" /> and
+<MwMetric name="apogeeSheetTrend0" />. See [Milky Way](./milky-way).
+
+</Claim>
+
+### Open
+
+<Claim status="open" title="1. The old populations of Au19">
+
+With the dispersions measured at every height, the Jeans heights of the Au19 populations
+older than 5 Gyr are <Metric name="au19JeansOld" /> times their measured $h_Z$, as short as
+the isothermal tracer, whose ratios are <Metric name="au19Old" />. The Jeans heights leave
+out the tilt term of the vertical Jeans equation, which we measure only from three radial
+bins of one annulus. With it, the heights scatter too much to decide whether it holds these
+populations up: they lie within 10 percent of the measured $h_Z$ in only
+<Metric name="jeansWithin10" /> of the <Metric name="populations" /> populations. Neither the
+tilt term nor a departure from equilibrium has been tested as the cause.
+
+</Claim>
+
+<Claim status="open" title="2. Whether the relation within a galaxy predicts the one across galaxies">
+
+Palicio et al. (2025) relate the radial action of each galaxy to the $h_Z$ of its whole
+disk, whereas this analysis relates $J_{R,\mathrm{med}}$ to $h_Z$ population by population,
+within one annulus of each galaxy. The two compare different quantities, and no model of
+this analysis turns the first into the second. See
+[Across galaxies](./across-galaxies).
+
+</Claim>
+
+<Claim status="open" title="3. The window-free heights of Imig et al. are thinner than the star counts">
+
+Imig et al. (2025) fit the populations of APOGEE DR17 over the whole disk with its
+selection function, without a window of $|z|$. Pooled over $[\mathrm{M/H}]$ in each of
+their age bins, their $h_Z$ is <MwMetric name="imigHz7" />, whereas the star counts give
+<MwMetric name="lamostHz68" /> with LAMOST and <MwMetric name="apogeeHz68" /> with APOGEE at
+6-8 Gyr. The tracer therefore exceeds their heights by factors of
+<MwMetric name="imigRatio" />, with a trend of <MwMetric name="imigTrend" />. Four differences
+between the measurements could explain it, none of them tested: their ages come from
+another catalog, their populations are weighted by mass rather than by counts of giants,
+their scale height flares with radius, and their bins of $[\mathrm{M/H}]$ are pooled here. See [Milky Way](./milky-way#the-heights-of-imig-et-al).
 
 </Claim>

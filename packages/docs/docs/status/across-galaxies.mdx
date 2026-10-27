@@ -1,0 +1,89 @@
+---
+title: Across galaxies
+---
+
+import JrRelationChart from '@site/src/components/status/JrRelationChart'
+import { JrMetric } from '@site/src/components/status/RecordMetric'
+import { JrTable } from '@site/src/components/status/recordTables'
+
+# Across galaxies
+
+Palicio et al. (2025, Sect. 3.4) relate the radial action of each galaxy to the scale
+height of its whole disk, across 23 simulated galaxies, whereas the populations of this
+analysis relate $J_{R,\mathrm{med}}$ to $h_Z$ within one annulus of one galaxy. This page
+measures their relation in the seven Auriga halos with a reproducible stand-in for their
+radial action, and asks how much of it the window of their scale heights sets.
+
+```bash
+OMP_NUM_THREADS=4 uv run experiments auriga jr-map 2 3 16 19 23 24 27
+uv run experiments auriga jr-relation 2 3 16 19 23 24 27
+```
+
+## A proxy for their radial action
+
+Palicio et al. describe their radial action as "an individual reference value,
+$J_{R,w}$, that separates the high and low radial action regions" of the face-on map of
+the median $J_R$ of each galaxy, which they read from the map rather than compute with a
+stated rule. Their paper lists neither the value for each galaxy nor the solar angular
+momentum $L_\odot$ in which they quote the slope, $3.69\times10^{-2}\,L_\odot/\mathrm{kpc}$.
+We therefore define a proxy that follows the construction of their maps as far as the
+paper describes it (`experiments.jr_map`). The star particles with $|Z| < Z_\mathrm{lim}$
+inside the square $|X|, |Y| < L_\mathrm{kpc}$ fill cells of 0.375 kpc, their cell width,
+and each cell with at least 10 particles takes the median $J_R$ of its particles,
+weighted by stellar mass as they weight it. The proxy is the median of the cell values
+whose centers lie at $0.2\,L_\mathrm{kpc} \le R < L_\mathrm{kpc}$, the radial range of
+their $h_Z$, so that half of those cells lie above it and half below. Unlike their maps,
+the cells are not smoothed with an Epanechnikov kernel of 0.5 kpc, and $J_R$ comes from
+the Staeckel fudge of AGAMA in the potential of `experiments.potential`, not from their
+fit and code. With $L_\odot = R_0V_0$, $R_0 = 8.2$ kpc and $V_0 = 233$ km/s, the value
+that the companion project
+[`jr-hz-relation`](https://github.com/caverac/jr-hz-relation) adopts, their slope is
+<JrMetric name="palicioSlope" /> km/s.
+
+The whole-disk $h_Z$ of each halo comes from `experiments auriga analyze`, once in their
+windows, averaging the exponential fits within $|Z| < Z_\mathrm{lim}$ and
+$Z_\mathrm{lim}/2$ over $0.2\,L_\mathrm{kpc} \le R < L_\mathrm{kpc}$, and once in the
+self-consistent window $L = 2h_Z$ over the same radii.
+
+## The relation
+
+<JrRelationChart />
+
+_Figure 6. The proxy $J_{R,w}$ of every halo against its whole-disk $h_Z$ in the windows
+of Palicio et al. (filled circles) and in the self-consistent window (open circles), joined
+for each halo. The solid and dashed lines are the least-squares lines through each set,
+and the dotted line has the slope of Palicio et al., drawn through the mean point of the
+filled circles because their intercept is not published. Colors identify the halos, as on
+the buttons._
+
+<JrTable />
+
+The proxy spans <JrMetric name="jrRange" /> kpc km/s across the seven halos, and their
+whole-disk $h_Z$ spans <JrMetric name="hzPalicioRange" /> kpc in the windows of Palicio et
+al. and <JrMetric name="hzScaledRange" /> kpc in the self-consistent window. With $h_Z$
+measured in their windows, the least-squares slope of $J_{R,w}$ against $h_Z$ is
+<JrMetric name="slopePalicio" />, which lies <JrMetric name="palicioDeviation" /> standard
+errors below their slope of <JrMetric name="palicioSlope" /> km/s. With $h_Z$ in the
+self-consistent window, the slope is <JrMetric name="slopeScaled" />, within
+<JrMetric name="scaledDeviation" /> standard errors of theirs. The two fits differ mostly
+through the halos whose heights the fixed windows inflate most, with ratios of the fixed-
+to the self-consistent $h_Z$ of <JrMetric name="largestShifts" />.
+
+Because seven halos leave both slopes uncertain by a large fraction of their value, and
+because the proxy is not their $J_{R,w}$, these numbers neither confirm nor refute their
+relation. The two
+slopes do differ by more than the error of either, which suggests that a relation across
+galaxies measured with fixed windows depends on how far each disk extends beyond its
+window. Whether the relation within a galaxy, population by population, predicts the one
+across galaxies is still untested. The two compare different quantities: the
+$J_{R,\mathrm{med}}$ of one population of one annulus, and a statistic of the map of $J_R$
+of the whole disk.
+
+## Limitations
+
+The proxy differs from their $J_{R,w}$ in three ways that we cannot remove: their value is
+read from each map rather than computed, their maps are smoothed with a kernel of 0.5 kpc,
+and their $J_R$ come from their own potential fits and code. The fit uses seven of their 23
+galaxies, by ordinary least squares, whereas theirs clips outliers iteratively, keeping in
+each step only the points whose discrepancy lies within the 75th percentile. Their slope
+in km/s assumes the $L_\odot$ of the companion project, which their paper does not state.

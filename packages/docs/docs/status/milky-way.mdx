@@ -1,0 +1,132 @@
+---
+title: Milky Way
+---
+
+import MilkyWayChart from '@site/src/components/status/MilkyWayChart'
+import { MwMetric } from '@site/src/components/status/RecordMetric'
+import { ImigTable, MwBinTable, MwTrendTable } from '@site/src/components/status/recordTables'
+
+# Milky Way
+
+This page tests the isothermal tracer on the mono-age populations of the Milky Way, whose
+scale heights come from star counts rather than from star particles, and compares it with
+the heights that Imig et al. (2025) fit without a window of $|z|$. The measurement follows
+the one of the Auriga disks as closely as the data allow, so that the two tests can be
+read side by side.
+
+```bash
+uv run experiments milky-way fetch
+uv run experiments milky-way check
+OMP_NUM_THREADS=4 uv run experiments milky-way analyze
+```
+
+## Measurement
+
+A spectroscopic survey cannot give the density of a population against $|z|$ without its
+selection function, whereas a complete photometric sample can. We count the Gaia DR3
+giants of a cylinder of radius 1.5 kpc around the Sun, within $|z| < 1.2$ kpc, whose
+reddening-free Wesenheit absolute magnitude
+$M_W = G - 1.9\,(G_\mathrm{BP} - G_\mathrm{RP}) + 5\log_{10}(\varpi/\mathrm{mas}) - 10$
+lies in a window, and split each slice of $|z|$ into ages with the fraction of its
+spectroscopic stars that belong to the population (`experiments.mw_counts`). Two surveys
+give the ages. The primary red-clump stars of LAMOST (Huang et al. 2020) split the
+<MwMetric name="lamostGaia" /> Gaia stars within 0.3 mag of the red-clump peak of $M_W$,
+through <MwMetric name="lamostMatched" /> matches by position and $G$. APOGEE DR17, with
+the ages of the astroNN catalog, splits the <MwMetric name="apogeeGaia" /> giants of the
+box $-2.6 < M_W < -0.9$ through <MwMetric name="apogeeMatched" /> matches by Gaia source
+identifier. Both surveys select their targets by magnitude and color, not by age at a
+fixed position, so the fraction of a slice is unbiased although their completeness changes
+with $|z|$.
+
+A population is a range of ages of the low-$[\alpha/\mathrm{Fe}]$ disk with
+$[\mathrm{Fe/H}] > -0.6$, in the counts and in the kinematics of both surveys
+(`experiments.mw_catalogs`). We fit $h_Z$ to the counts in the self-consistent window
+$L = 2h_Z$, as for the Auriga populations; because the counts stop at $|z| = 1.2$ kpc, a
+population whose window would reach beyond it has no $h_Z$. The kinematics come from the
+giants of the solar annulus $7.5 < R < 9$ kpc: $\sigma_z$ from those with
+$|z| < 0.3$ kpc, with their median velocity error removed in quadrature, and
+$J_{R,\mathrm{med}}$ from those with $|z| < 0.5$ kpc, in the potential of McMillan (2017).
+Every star is placed in the Galactocentric frame of the astroNN catalog, with the Sun at
+$R_0 = $ <MwMetric name="r0" /> kpc and 20.8 pc above the plane (Bennett & Bovy 2019).
+
+The tracer is the profile $\exp(-\Delta\Phi/\sigma_z^2)$ of McMillan (2017) at $R_0$, and
+the sheet uses the mass of the same potential within $|z| < 1.1$ kpc,
+$\Sigma = $ <MwMetric name="sigmaSurf" /> $M_\odot\,\mathrm{pc}^{-2}$, as the Auriga sheet
+uses the mass of all particles in the same layer. Both go through the self-consistent
+window. The errors of the ratios come from <MwMetric name="nBootstrap" /> bootstrap draws
+that resample, in each draw, the Gaia stars, their matches and the kinematic stars of the
+population.
+
+## Scale heights
+
+<MilkyWayChart />
+
+_Figure 5. Predicted over measured $h_Z$ for every mono-age population of the Milky Way,
+against its median age $\tau$: the tracer (filled markers, solid lines) and the sheet (open
+markers, dashed lines) over the star counts of LAMOST (circles) and of APOGEE (squares),
+and the tracer over the pooled heights of Imig et al. (diamonds, dotted line). The gray
+band marks agreement within 10 percent. The buttons hide or show each series._
+
+<MwBinTable />
+
+With the star counts of LAMOST, the tracer predicts $h_Z$ within 10 percent in
+<MwMetric name="lamostWithin10" /> age bins, with ratios of <MwMetric name="lamostTracer" />;
+with those of APOGEE, in <MwMetric name="apogeeWithin10" />, with ratios of
+<MwMetric name="apogeeTracer" />. The sheet gives ratios of <MwMetric name="lamostSheet" />
+and <MwMetric name="apogeeSheet" />: it is too thin for the young populations, and its ratio
+rises with age, as in the Auriga disks, although it does not overshoot the oldest
+populations as much as it does there.
+
+## Age dependence
+
+<MwTrendTable />
+
+Over 0-10 Gyr, the trend of the tracer is <MwMetric name="lamostTracerTrend0" /> with
+LAMOST and <MwMetric name="apogeeTracerTrend0" /> with APOGEE, so the tracer reproduces how
+$h_Z$ changes with age in the Milky Way as it does in the Auriga disks. The trend of the
+sheet is <MwMetric name="lamostSheetTrend0" /> and <MwMetric name="apogeeSheetTrend0" />.
+Over 2-10 Gyr, with four bins, the trends of the tracer are
+<MwMetric name="lamostTracerTrend2" /> and <MwMetric name="apogeeTracerTrend2" />, and those
+of the sheet <MwMetric name="lamostSheetTrend2" /> and <MwMetric name="apogeeSheetTrend2" />,
+so over that range only the LAMOST counts exclude the trend of the sheet. The exponent
+$\eta = \beta_h/\beta_z$ over 0-10 Gyr is <MwMetric name="lamostEta" /> with LAMOST and
+<MwMetric name="apogeeEta" /> with APOGEE, inside the range that the Auriga disks span.
+
+## The heights of Imig et al.
+
+Imig et al. (2025) fit every population of APOGEE DR17 in bins of
+$[\alpha/\mathrm{M}]$, $[\mathrm{M/H}]$ and age with an exponential vertical profile over
+the whole footprint of the survey, with its selection function, so their heights carry no
+window of $|z|$. We pool their low-$[\alpha/\mathrm{M}]$ populations with
+$[\mathrm{M/H}] > -0.6$ in each of their age bins up to 10 Gyr, weighting each by its
+surface density at the solar radius, and fit the pooled profile in the self-consistent
+window (`experiments.mw_imig`). Their ages come from the distmass catalog, whereas the
+$\sigma_z$ of the tracer comes from the APOGEE stars with astroNN ages in the same range,
+so the comparison mixes two age scales.
+
+<ImigTable />
+
+The tracer exceeds the pooled heights of Imig et al. by factors of
+<MwMetric name="imigRatio" />, with a median of <MwMetric name="imigRatioMedian" />, and its
+ratio grows with age, with a trend of <MwMetric name="imigTrend" />. The disagreement lies in
+the heights, not in the tracer: their pooled $h_Z$ is <MwMetric name="imigHz7" />, whereas
+the star counts give <MwMetric name="lamostHz68" /> with LAMOST and
+<MwMetric name="apogeeHz68" /> with APOGEE at 6-8 Gyr. Four differences between the two
+measurements could produce it, and we have tested none: their ages come from another
+catalog, their populations are weighted by mass rather than by counts of giants, whose
+number per unit mass depends on age, their $h_Z$ comes from a fit over the whole disk with
+a scale height that flares linearly with radius, and their bins of $[\mathrm{M/H}]$ are
+pooled here into one population.
+
+## Limitations
+
+The age fraction of a slice assumes that the spectroscopic targeting does not depend on
+age at a fixed position, which holds for selections in magnitude and color but has not been
+checked against the targeting flags. The counts stop at $|z| = 1.2$ kpc, so the window of
+the oldest populations, about twice their $h_Z$, comes close to the edge of the counts. The
+kinematic samples cover the annulus $7.5 < R < 9$ kpc, whereas the counts cover the
+cylinder of radius 1.5 kpc around the Sun. Ages carry typical errors of 30 percent for the
+LAMOST red clump (Huang et al. 2020), with our cut at 50 percent, and up to 40 percent by
+our cut for APOGEE, so bins of 2 Gyr mix their neighbors. The potential of McMillan (2017) enters without its errors, and
+the clipped $\sigma_z$ of the tracer removes the tails of populations that mix several
+dispersions, as in the Auriga disks.

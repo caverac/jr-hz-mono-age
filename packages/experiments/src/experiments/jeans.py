@@ -30,8 +30,6 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from experiments.stats import clipped_dispersion
-
 FloatArray = NDArray[np.float64]
 
 JEANS_EDGES_KPC = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0)
@@ -59,6 +57,12 @@ class JeansStars:
     weight: FloatArray
 
 
+def _variance(values: FloatArray, weight: FloatArray) -> float:
+    """Return the variance of *values* about their mean, both weighted by *weight*."""
+    mean = np.average(values, weights=weight)
+    return float(np.average((values - mean) ** 2, weights=weight))
+
+
 def _ring(stars: JeansStars, ring: NDArray[np.bool_], volume: float) -> tuple[float, float, float]:
     """Return the mean R, the density nu and R nu sigma_Rz of the stars *ring* of one radial bin of a slice."""
     radius = float(np.mean(stars.r[ring]))
@@ -83,8 +87,10 @@ def _tilt(stars: JeansStars, inside: NDArray[np.bool_], r_edges: FloatArray, r_m
 def jeans_profile(stars: JeansStars, r_lo: float, r_hi: float, r_mid: float) -> JeansProfile:
     """Return sigma_z^2 and t of *stars* in the slices of ``JEANS_EDGES_KPC`` up to the first sparse one.
 
-    sigma_z^2 is the variance of v_z in the slice, clipped as the midplane sigma_z is
-    (:func:`experiments.stats.clipped_dispersion`); t uses the radial bins of the
+    sigma_z^2 is the variance of v_z in the slice, weighted by initial mass as the density
+    is, and not clipped: the Jeans equation needs the second moment <v_z^2> of all the
+    stars of the population, and clipping lowers it for the heavy tails of a population
+    that mixes several dispersions. t uses the radial bins of the
     annulus [*r_lo*, *r_hi*) and is NaN where a radial bin is sparse.
     """
     absz = np.abs(stars.z)
@@ -95,7 +101,7 @@ def jeans_profile(stars: JeansStars, r_lo: float, r_hi: float, r_mid: float) -> 
         if np.count_nonzero(inside) < JEANS_MIN_PER_SLICE:
             break
         z_mid.append(float(np.median(absz[inside])))
-        sigma2.append(clipped_dispersion(stars.v_z[inside]) ** 2)
+        sigma2.append(_variance(stars.v_z[inside], stars.weight[inside]))
         tilt.append(_tilt(stars, inside, r_edges, r_mid, hi - lo))
     return JeansProfile(tuple(z_mid), tuple(sigma2), tuple(tilt))
 

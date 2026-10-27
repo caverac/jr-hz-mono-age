@@ -3,6 +3,8 @@ import { Pending } from '@site/src/components/status/controls'
 import type { StatusData } from '@site/src/components/status/data'
 import { FAMILIES } from '@site/src/components/status/families'
 import {
+  AGE_RANGES,
+  ageRange,
   exponentComparisons,
   extent,
   haloSummaries,
@@ -85,6 +87,8 @@ function fromRecords(rows: (data: StatusData) => TableProps): () => ReactNode {
 const PREDICTORS: readonly (readonly [Predictor, string])[] = [
   ['tracer', 'tracer, fitted $\\Phi$'],
   ['tracerSnapshot', 'tracer, snapshot $\\Phi$'],
+  ['jeansSigma', 'Jeans, $\\sigma_z(z)$'],
+  ['jeans', 'Jeans, $\\sigma_z(z)$ and tilt'],
   ['sheet', 'sheet']
 ]
 
@@ -218,4 +222,32 @@ export const WindowTable = fromRecords((data) => ({
     fixed(row.halos),
     ...FAMILIES.map(([name]) => fixed(row.curves[name]))
   ])
+}))
+
+/** The trends of h_pred / h_Z of the Jeans diagnostics, without and with the tilt term. */
+export const JeansTrendTable = fromRecords((data) => ({
+  groups: [
+    ['', 2],
+    ['Jeans, $\\sigma_z(z)$', 2],
+    ['Jeans, $\\sigma_z(z)$ and tilt', 2]
+  ],
+  head: ['halo', '$\\tau$ (Gyr)', 'trend', '$/\\sigma$', 'trend', '$/\\sigma$'],
+  rows: data.halos.flatMap((halo) =>
+    AGE_RANGES.flatMap(([lo, hi]) => {
+      const range = ageRange(halo, lo, hi)
+      if (range === undefined) {
+        return []
+      }
+      return [
+        [
+          halo.label,
+          `${lo}-${hi}`,
+          ...[range.trends.jeansSigma, range.trends.jeans].flatMap((t) => [
+            `$${signed(t.value, 3)} \\pm ${fixed(t.err, 3)}$`,
+            `$${signed(significance(t), 1)}$`
+          ])
+        ]
+      ]
+    })
+  )
 }))

@@ -77,6 +77,18 @@ def test_profile_recovers_sigma_z_and_the_tilt_term() -> None:
     assert slope == pytest.approx(alpha * (1.0 / r_mid - 1.0 / 3.0), rel=0.2)
 
 
+def test_profile_uses_the_full_second_moment() -> None:
+    """A heavy-tailed population keeps its tails: sigma_z^2 is the plain mass-weighted variance, not a clipped one."""
+    rng = np.random.default_rng(9)
+    n = 400_000
+    r = rng.uniform(7.5, 9.0, n)
+    z = rng.uniform(-0.19, 0.19, n)
+    hot = rng.uniform(size=n) < 0.2
+    v_z = np.where(hot, rng.normal(0.0, 80.0, n), rng.normal(0.0, 15.0, n))
+    profile = jeans_profile(JeansStars(r, z, np.zeros(n), v_z, np.ones(n)), 7.5, 9.0, 8.25)
+    assert profile.sigma2[0] == pytest.approx(0.2 * 80.0**2 + 0.8 * 15.0**2, rel=0.02)
+
+
 def test_sparse_slices_end_the_profile_and_sparse_rings_leave_no_tilt() -> None:
     """The profile stops at the first slice of too few stars; a slice whose radial bin is sparse has a NaN tilt."""
     stars = sample(3_000, 0.0, np.random.default_rng(5))
