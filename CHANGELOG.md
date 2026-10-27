@@ -1,3 +1,9 @@
+# [1.1.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.0.0...v1.1.0) (2026-10-27)
+
+### Features
+
+- **experiments:** moved code from research notes this project ([854a9b6](https://github.com/caverac/jr-hz-mono-age/commit/854a9b6bd2da0585fd12189145604386ed7df081))
+
 # 1.0.0 (2026-10-26)
 
 ### Features
