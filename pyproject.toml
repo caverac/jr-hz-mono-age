@@ -64,6 +64,10 @@ profile = "black"
 line_length = 120
 known_first_party = ["experiments"]
 
+[tool.pylint.main]
+# AGAMA is a C extension: pylint must load it to see its members (agama.Potential, ...).
+extension-pkg-allow-list = ["agama"]
+
 [tool.pylint.format]
 max-line-length = 120
 

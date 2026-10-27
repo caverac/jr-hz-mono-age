@@ -6,19 +6,20 @@ workspace-internal package, not a published PyPI distribution; it exists only to
 derive every number and figure in `packages/pre-print/`.
 
 - `cli.py`: the command line. `paths` prints where the engine reads the Auriga
-  snapshots (`staging/auriga/`) and writes tables (`assets/data/`) and figures
-  (`assets/figures/`).
+  snapshots (`staging/auriga/`) and writes results (`staging/results/`), tables
+  (`assets/data/`) and figures (`assets/figures/`).
 - `auriga.py`, `globus_transfer.py`, `snapshot_check.py`: the layout of the Auriga
   release and the record of a download, the Globus transfers, and the integrity check
   of a local copy, behind the `auriga` commands.
+- `cosmology.py`, `snapshot.py`, `potential.py`, `heights.py`, `populations.py`,
+  `whole_disk.py`, `palicio.py`, `analysis.py`, `mock.py`: the analysis of a halo, from
+  the snapshot to the mono-age populations, and the mock galaxy that checks it.
 
-The Auriga analysis (snapshot reading, the AGAMA potential fit and the scale-height
-estimators) is not in the package yet. AGAMA comes from the non-default `auriga`
+AGAMA, which the analysis and its tests need, comes from the non-default `auriga`
 dependency group, because it compiles GSL from source:
 
 ```bash
-uv sync                      # engine and dev tools
-uv sync --group auriga       # adds AGAMA (~18 min the first time)
+uv sync --group auriga       # engine, dev tools and AGAMA (~18 min the first time)
 uv run pytest                # tests + 100% coverage gate
 uv run experiments --help
 ```
@@ -75,3 +76,42 @@ that sit exactly on the center of the main subhalo, which the AGAMA potential fi
 leave out. The z = 0 snapshot and catalog of Au24 at Level 4 take 6.8 GB. The
 `globus` service restarts with Docker Desktop until
 `docker compose -f docker/compose.yaml stop globus`.
+
+## Analyzing the halos
+
+`experiments auriga analyze` reads each halo once, fits its potential, and measures its
+mono-age populations and its whole disk. `experiments auriga mock-check` runs the same
+analysis on a mock galaxy whose answer is known. Both print a report and write a JSON
+record to `staging/results/`, which git ignores until the paper is public:
+
+```bash
+OMP_NUM_THREADS=4 caffeinate -i uv run experiments auriga mock-check
+OMP_NUM_THREADS=4 caffeinate -i uv run experiments auriga analyze 2 3 16 19 23 24 27
+```
+
+The analysis of one halo runs in these steps:
+
+1. `snapshot.py` reads the particles within 300 kpc of the main galaxy in physical
+   units, drops wind particles, and rotates them into the frame of the angular momentum
+   of the stars inside 10 kpc.
+2. `potential.py` fits an axisymmetric AGAMA potential: a CylSpline for the gas and stars
+   of the disk region and a Multipole for the rest, without the particle at the origin.
+3. `populations.py` splits the star particles of $7.5 < R < 9$ kpc into 1 Gyr age bins.
+   Per bin it measures $J_{R,\rm med}$, $\sigma_R$, $\sigma_z$, and $h_Z$ in the
+   self-consistent window $k\,h_Z$ (`--k`, default 2) and in Palicio's fixed window.
+   The isothermal sheet and the isothermal tracer predict $h_Z$ through the same
+   windows, the tracer both in the fitted potential and in the snapshot's. Errors come
+   from 300 bootstrap resamplings (`--n-bootstrap`).
+4. `populations.py` fits the age exponents over 0-10, 2-10, 0-8 and 2-8 Gyr, and repeats
+   the exponent of $a = J_{R,\rm med}/h_Z$ for $k = 1.5$, 2 and 3 and for fixed windows of
+   0.5 to 2.5 kpc.
+5. `whole_disk.py` measures all star particles in rings over Palicio's radial range.
+
+Palicio's window of each halo, $Z_{\rm lim}$ and $L_{\rm kpc}$, comes from Palicio et al.
+(2025, A&A 695, A193, Table 1) through `palicio.py`; `--z-lim` and `--l-kpc` replace it.
+With `OMP_NUM_THREADS=4`, Au24 at Level 4 takes about 3 min and 3.7 GB of memory.
+
+The mock (`mock.py`) samples an AGAMA disk and halo and five quasi-isothermal stellar
+populations, and writes them as Arepo chunks, tilted, moving and wrapped across two faces
+of the periodic box. `mock-check` compares the analysis with the truth: the spin axis,
+the ages, $v_c$ and $\Delta\Phi(z)$ of the fit, and $h_Z$ and $J_{R,\rm med}$ per bin.

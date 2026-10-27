@@ -31,14 +31,15 @@ Node 25, uv; see `.mise.toml`).
 
 ```bash
 mise install               # tool versions
-uv sync                    # Python engine and dev tools (uv workspace)
-uv sync --group auriga     # adds AGAMA, compiled from a pinned commit (~18 min)
+uv sync --group auriga     # Python engine, dev tools and AGAMA (pinned commit, ~18 min the first time)
 yarn install               # JS/TS dependencies (docs site)
 ```
 
 The Auriga snapshots (several GB per halo) are read from `staging/auriga/`, which git
-ignores. They are downloaded through Globus with `uv run experiments auriga download`;
-[`packages/experiments`](packages/experiments/README.md) lists the steps.
+ignores. They are downloaded through Globus with `uv run experiments auriga download`
+and analyzed with `uv run experiments auriga analyze`, which writes its results to
+`staging/results/`; [`packages/experiments`](packages/experiments/README.md) lists the
+steps.
 
 ## Command-line interface
 

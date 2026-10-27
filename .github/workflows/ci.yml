@@ -24,14 +24,18 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          # The cache keeps the AGAMA wheel, which takes ~18 min to build from source.
+          enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: uv sync
+      - name: Install dependencies (with AGAMA)
+        run: uv sync --group auriga
 
       - name: Check formatting (black)
         run: uv run black --check packages/experiments/src packages/experiments/tests
@@ -56,14 +60,18 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          # The cache keeps the AGAMA wheel, which takes ~18 min to build from source.
+          enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: uv sync
+      - name: Install dependencies (with AGAMA)
+        run: uv sync --group auriga
 
       - name: Run mypy (strict)
         run: uv run mypy packages/experiments/src packages/experiments/tests
@@ -76,14 +84,18 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          # The cache keeps the AGAMA wheel, which takes ~18 min to build from source.
+          enable-cache: true
+          cache-dependency-glob: uv.lock
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        run: uv sync
+      - name: Install dependencies (with AGAMA)
+        run: uv sync --group auriga
 
       - name: Run tests + coverage gate
         working-directory: packages/experiments
