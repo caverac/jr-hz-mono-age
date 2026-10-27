@@ -1,3 +1,4 @@
+import { haloColor } from '@site/src/components/render/halos'
 import { Pending } from '@site/src/components/status/controls'
 import type { Estimate, StatusData } from '@site/src/components/status/data'
 import useStatusData from '@site/src/components/status/useStatusData'
@@ -86,6 +87,7 @@ function Panel({ panel, series, domain, width, xLabel, reference }: PanelProps):
               series.map((s, j) => {
                 const estimate = row.values[s.key]
                 const at = y(i) + offset(j)
+                const color = haloColor(row.halo)
                 return estimate === undefined ? null : (
                   <g key={`${row.halo}-${s.key}`}>
                     <line
@@ -94,8 +96,15 @@ function Panel({ panel, series, domain, width, xLabel, reference }: PanelProps):
                       y1={at}
                       y2={at}
                       className="viz-line viz-line--thin"
+                      style={{ stroke: color }}
                     />
-                    <Marker shape={s.marker} open={s.open} x={x(estimate.value)} y={at} />
+                    <Marker
+                      shape={s.marker}
+                      open={s.open}
+                      color={color}
+                      x={x(estimate.value)}
+                      y={at}
+                    />
                   </g>
                 )
               })
@@ -118,7 +127,7 @@ interface HaloRowsChartProps {
 
 /**
  * Estimates of every halo, one row per halo and one panel per range of ages, stacked on a
- * shared x axis.
+ * shared x axis. The markers take the color of their halo; their shape tells the series.
  */
 export default function HaloRowsChart({
   build,

@@ -1,3 +1,5 @@
+import MathLabel from '@site/src/components/MathLabel'
+import { haloColor } from '@site/src/components/render/halos'
 import {
   Chips,
   fadeClass,
@@ -11,13 +13,7 @@ import { family, windowPoints } from '@site/src/components/status/metrics'
 import useStatusData from '@site/src/components/status/useStatusData'
 import Chart, { Axis, bandPath, linePath, ticksWithin } from '@site/src/components/viz/Chart'
 import { useElementWidth } from '@site/src/components/viz/hooks'
-import {
-  dashClass,
-  Legend,
-  Marker,
-  SMALL_MARKER_AREA,
-  type Dash
-} from '@site/src/components/viz/marks'
+import { dashClass, Legend, Marker, Swatch, type Dash } from '@site/src/components/viz/marks'
 import * as d3 from 'd3'
 import React, { type ReactNode, useState } from 'react'
 
@@ -55,9 +51,27 @@ function Curve({ injection, name, dash, pick, x, y }: CurveProps): ReactNode {
         className={dashClass(dash)}
       />
       {rows.map((r) => (
-        <Marker key={r.x} shape="square" open x={r.x} y={y(r.s.median)} size={SMALL_MARKER_AREA} />
+        <Marker key={r.x} shape="square" open x={r.x} y={y(r.s.median)} />
       ))}
     </g>
+  )
+}
+
+/** One Auriga population on the diagram. */
+type WindowPoint = ReturnType<typeof windowPoints>[number]
+
+/** The readout of the hovered population, or how to get one. */
+function Readout({ hovered }: { readonly hovered: WindowPoint | null }): ReactNode {
+  if (hovered === null) {
+    return <p className="viz-note">Point at a population to read its ratio.</p>
+  }
+  return (
+    <p className="viz-note">
+      <Swatch color={haloColor(hovered.halo)} />
+      <MathLabel
+        label={`${hovered.halo}, ${hovered.ageLo}-${hovered.ageHi} Gyr: $h_Z/Z_\\mathrm{lim} = ${hovered.x.toFixed(2)}$, $h_{Z_\\mathrm{lim}}/h_Z = ${hovered.y.toFixed(2)}$.`}
+      />
+    </p>
   )
 }
 
@@ -66,9 +80,10 @@ interface PlotProps {
   readonly width: number
   readonly shown: ReadonlySet<string>
   readonly selected: string | null
+  readonly onHover: (hovered: WindowPoint | null) => void
 }
 
-function Plots({ data, width, shown, selected }: PlotProps): ReactNode {
+function Plots({ data, width, shown, selected, onHover }: PlotProps): ReactNode {
   const { injection } = data
   const halos = windowPoints(data).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
   const xs = [
@@ -126,14 +141,16 @@ function Plots({ data, width, shown, selected }: PlotProps): ReactNode {
                   />
                 ))}
               </g>
-              {halos.map((p, i) => (
+              {halos.map((p) => (
                 <Marker
-                  key={i}
+                  key={`${p.halo}-${p.ageLo}`}
                   shape="circle"
                   x={x(p.x)}
                   y={y(p.y)}
-                  size={SMALL_MARKER_AREA}
+                  color={haloColor(p.halo)}
                   className={fadeClass(selected, p.halo)}
+                  onMouseEnter={() => onHover(p)}
+                  onMouseLeave={() => onHover(null)}
                 />
               ))}
             </>
@@ -199,13 +216,20 @@ export default function WindowBiasChart(): ReactNode {
   const { value, error } = useStatusData()
   const [shown, setShown] = useState<ReadonlySet<string>>(new Set(FAMILIES.map(([name]) => name)))
   const [selected, setSelected] = useState<string | null>(null)
+  const [hovered, setHovered] = useState<WindowPoint | null>(null)
   return (
     <div className="viz" ref={ref}>
       {value === null ? (
         <Pending error={error} />
       ) : (
         <>
-          <Plots data={value} width={width} shown={shown} selected={selected} />
+          <Plots
+            data={value}
+            width={width}
+            shown={shown}
+            selected={selected}
+            onHover={setHovered}
+          />
           <Legend
             entries={[
               ...FAMILIES.filter(([name]) => shown.has(name)).map(([, label, dash]) => ({
@@ -215,7 +239,7 @@ export default function WindowBiasChart(): ReactNode {
                 open: true
               })),
               { label: '16th to 84th percentile', band: true },
-              { label: 'Auriga populations', marker: 'circle' }
+              { label: 'Auriga populations, colored by halo', marker: 'circle' }
             ]}
           />
           <div className="viz-controls">
@@ -227,6 +251,7 @@ export default function WindowBiasChart(): ReactNode {
             />
             <HaloPicker selected={selected} onSelect={setSelected} />
           </div>
+          <Readout hovered={hovered} />
         </>
       )}
     </div>

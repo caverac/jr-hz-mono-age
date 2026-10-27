@@ -1,5 +1,6 @@
 import MathLabel from '@site/src/components/MathLabel'
-import { HALOS } from '@site/src/components/render/halos'
+import { HALOS, haloColor } from '@site/src/components/render/halos'
+import { Swatch } from '@site/src/components/viz/marks'
 import React, { type ReactNode } from 'react'
 
 /** What a chart shows while the records load, or when they cannot be read. */
@@ -17,6 +18,8 @@ interface ChipsProps<T extends string> {
   readonly isPressed: (option: T) => boolean
   readonly onToggle: (option: T) => void
   readonly label: string
+  /** The color key shown before the label of an option, if it has one. */
+  readonly swatch?: (option: T) => string | undefined
 }
 
 /** A row of toggle buttons. */
@@ -24,21 +27,26 @@ export function Chips<T extends string>({
   options,
   isPressed,
   onToggle,
-  label
+  label,
+  swatch
 }: ChipsProps<T>): ReactNode {
   return (
     <div className="viz-chips" role="group" aria-label={label}>
-      {options.map(([option, text]) => (
-        <button
-          key={option}
-          type="button"
-          className="viz-chip"
-          aria-pressed={isPressed(option)}
-          onClick={() => onToggle(option)}
-        >
-          <MathLabel label={text} />
-        </button>
-      ))}
+      {options.map(([option, text]) => {
+        const color = swatch?.(option)
+        return (
+          <button
+            key={option}
+            type="button"
+            className="viz-chip"
+            aria-pressed={isPressed(option)}
+            onClick={() => onToggle(option)}
+          >
+            {color === undefined ? null : <Swatch color={color} />}
+            <MathLabel label={text} />
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -51,7 +59,7 @@ interface HaloPickerProps {
   readonly onSelect: (halo: string | null) => void
 }
 
-/** Buttons that highlight one halo in a chart, or none. */
+/** Buttons that highlight one halo in a chart, or none, each with the color of its halo. */
 export function HaloPicker({ selected, onSelect }: HaloPickerProps): ReactNode {
   const options: readonly (readonly [string, string])[] = [
     [ALL, 'all'],
@@ -63,6 +71,7 @@ export function HaloPicker({ selected, onSelect }: HaloPickerProps): ReactNode {
       options={options}
       isPressed={(option) => (option === ALL ? selected === null : option === selected)}
       onToggle={(option) => onSelect(option === ALL || option === selected ? null : option)}
+      swatch={(option) => (option === ALL ? undefined : haloColor(option))}
     />
   )
 }

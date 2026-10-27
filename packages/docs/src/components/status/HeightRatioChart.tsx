@@ -1,4 +1,5 @@
 import MathLabel from '@site/src/components/MathLabel'
+import { haloColor } from '@site/src/components/render/halos'
 import {
   Chips,
   fadeClass,
@@ -11,7 +12,7 @@ import { type Predictor, ratio } from '@site/src/components/status/metrics'
 import useStatusData from '@site/src/components/status/useStatusData'
 import Chart, { Axis, linePath, ticksWithin } from '@site/src/components/viz/Chart'
 import { useElementWidth } from '@site/src/components/viz/hooks'
-import { dashClass, Legend, Marker, type LegendEntry } from '@site/src/components/viz/marks'
+import { dashClass, Legend, Marker, Swatch, type LegendEntry } from '@site/src/components/viz/marks'
 import * as d3 from 'd3'
 import React, { type ReactNode, useState } from 'react'
 
@@ -51,9 +52,12 @@ function Readout({ hovered }: { readonly hovered: Hovered | null }): ReactNode {
     return <p className="viz-note">Point at a population to read its ratios.</p>
   }
   const { halo, bin } = hovered
-  const parts = PREDICTORS.map((p) => `${LABELS[p]}: ${format(ratio(bin, p))}`)
+  const parts = PREDICTORS.map(
+    (p) => `${LABELS[p]}: $${format(ratio(bin, p))} \\pm ${format(bin.ratios[p].err)}$`
+  )
   return (
     <p className="viz-note">
+      <Swatch color={haloColor(halo)} />
       <MathLabel
         label={`${halo}, ${bin.ageLo}-${bin.ageHi} Gyr, $h_Z = ${bin.measured.value.toFixed(3)} \\pm ${bin.measured.err.toFixed(3)}$ kpc. ${parts.join('; ')}.`}
       />
@@ -113,11 +117,13 @@ function Plot({ data, width, shown, selected, onHover }: PlotProps): ReactNode {
                 const points = halo.bins
                   .map((bin) => ({ bin, r: ratio(bin, p) }))
                   .filter(({ r }) => Number.isFinite(r))
+                const color = haloColor(halo.label)
                 return (
                   <g key={`${halo.label}-${p}`} className={fadeClass(selected, halo.label)}>
                     <path
                       d={linePath(points.map(({ bin, r }) => [x(bin.ageMedian), y(r)] as const))}
-                      className={`${dashClass(style.dash)} viz-line--thin`}
+                      className={`${dashClass(style.dash)} viz-line--series`}
+                      style={{ stroke: color }}
                     />
                     {points.map(({ bin, r }) => {
                       const spread = bin.ratios[p].err
@@ -129,10 +135,12 @@ function Plot({ data, width, shown, selected, onHover }: PlotProps): ReactNode {
                             y1={y(Math.max(r - spread, domain[0]))}
                             y2={y(r + spread)}
                             className="viz-line viz-line--thin"
+                            style={{ stroke: color }}
                           />
                           <Marker
                             shape={style.marker}
                             open={style.open}
+                            color={color}
                             x={x(bin.ageMedian)}
                             y={y(r)}
                             onMouseEnter={() => onHover({ halo: halo.label, bin })}

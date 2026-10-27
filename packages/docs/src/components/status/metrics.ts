@@ -261,6 +261,8 @@ export function windowPoints(data: StatusData) {
   return data.halos.flatMap((halo) =>
     halo.bins.map((bin) => ({
       halo: halo.label,
+      ageLo: bin.ageLo,
+      ageHi: bin.ageHi,
       x: bin.measured.value / halo.zLim,
       y: bin.fixed / bin.measured.value
     }))
