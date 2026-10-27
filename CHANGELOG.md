@@ -1,3 +1,9 @@
+# [1.2.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.1.0...v1.2.0) (2026-10-27)
+
+### Features
+
+- **docs:** added renders to documentation ([35db36d](https://github.com/caverac/jr-hz-mono-age/commit/35db36d5a9122a2257f530744c45d013c88cc08a))
+
 # [1.1.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.0.0...v1.1.0) (2026-10-27)
 
 ### Features
