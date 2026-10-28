@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,7 @@ from mw_fixtures import RC_PEAK, scale_height, write_world
 
 from experiments import mw_counts
 from experiments.commands import milky_way
-from experiments.heights import Z_GRID, scaled_profile_hz
+from experiments.heights import Z_GRID, particle_hz, scaled_particle_hz
 from experiments.mw_analysis import SolarModel, Survey, measure_bin, solar_model
 from experiments.mw_catalogs import (
     apogee_age_tracers,
@@ -27,17 +28,33 @@ from experiments.mw_catalogs import (
 )
 from experiments.mw_counts import (
     APOGEE_BOX,
+    BIAS_SCALES_KPC,
     MW_FIT_RANGE,
+    SLICE_EDGES_KPC,
+    CountMoments,
     apogee_count_sample,
     count_hz,
     count_sample,
+    exponential_slices,
     fit_luminosity_function,
     gaia_cylinder,
     lamost_count_sample,
+    predicted_hz,
+    profile_slices,
     slice_fraction,
+    slice_of,
 )
 from experiments.mw_dynamics import R0_KPC, V_SUN_KMS, Phase, Sky, cylindrical_actions, galactocentric, mcmillan17
-from experiments.mw_imig import R_SUN_IMIG_KPC, count_pooled_hz, mass_pooled_hz, pooled_hz, read_imig, split_normal
+from experiments.mw_imig import (
+    NODE_R_KPC,
+    NODE_WEIGHT,
+    R_SUN_IMIG_KPC,
+    cylinder_profile,
+    cylinder_slices,
+    pooled_slices,
+    read_imig,
+    split_normal,
+)
 from experiments.mw_pipeline import MilkyWay, analyze_milky_way, source_path
 from experiments.mw_sources import GAIA_PATH, FileSource
 from experiments.potential import circular_velocity
@@ -149,6 +166,60 @@ def test_count_hz_recovers_the_scale_of_a_population() -> None:
     assert np.all(np.isnan(count_hz(flat, 2.0, 4.0, 2.0)))
 
 
+CENTERS = 0.5 * (np.asarray(SLICE_EDGES_KPC)[1:] + np.asarray(SLICE_EDGES_KPC)[:-1])
+
+
+@pytest.mark.parametrize("window", [1.0e-4, 0.05, 0.3, 1.0, 3.0])
+def test_count_moments_fit_as_the_scan_of_particle_hz(window: float) -> None:
+    """Running sums fit as particle_hz does, with each multiplicity a repeated star and the fraction interpolated.
+
+    The narrowest window has too few stars in its inner half, so both fits are NaN.
+    """
+    rng = np.random.default_rng(5)
+    absz = np.sort(rng.uniform(0.0, 1.2, 20_000))
+    fraction = rng.uniform(0.1, 1.0, CENTERS.size)
+    multiplicity = rng.integers(0, 3, absz.size).astype(np.float64)
+    repeats = multiplicity.astype(np.int64)
+    expected = particle_hz(np.repeat(absz, repeats), np.repeat(np.interp(absz, CENTERS, fraction), repeats), window)
+    assert CountMoments.of(absz, multiplicity).hz(fraction, window) == pytest.approx(expected, rel=1e-12, nan_ok=True)
+
+
+def test_count_moments_count_the_stars_of_each_slice_and_need_weight() -> None:
+    """The stars of a slice carry their multiplicities, and a window without weight has no fit."""
+    rng = np.random.default_rng(6)
+    absz = np.sort(rng.uniform(0.0, 1.2, 5_000))
+    multiplicity = rng.integers(0, 3, absz.size).astype(np.float64)
+    moments = CountMoments.of(absz, multiplicity)
+    expected = np.bincount(slice_of(absz), weights=multiplicity, minlength=CENTERS.size)
+    assert moments.per_slice() == pytest.approx(expected)
+    assert np.isnan(moments.hz(np.zeros(CENTERS.size), 0.5))
+
+
+def test_count_moments_need_heights_in_ascending_order() -> None:
+    """Running sums over unsorted heights would not hold the stars inside a window."""
+    with pytest.raises(ValueError, match="ascending"):
+        CountMoments.of(np.array([0.2, 0.1]), np.ones(2))
+
+
+def test_slices_of_an_exponential() -> None:
+    """The slices of an exponential hold its integral over each slice, and sum to its mass below 1.2 kpc."""
+    slices = exponential_slices(0.3)
+    assert slices.sum() == pytest.approx(0.3 * (1.0 - np.exp(-1.2 / 0.3)))
+    assert profile_slices(np.exp(-Z_GRID / 0.3)) == pytest.approx(slices, rel=1e-4)
+
+
+def test_a_prediction_goes_through_the_slices_of_the_counts() -> None:
+    """A constant fraction gives the h_Z of the Gaia stars, whereas a thin exponential comes out thicker."""
+    rng = np.random.default_rng(7)
+    absz = rng.exponential(0.5, 300_000)
+    absz = absz[absz < 1.2]
+    sample = count_sample(absz, absz[:100], np.ones(100), np.ones(100, dtype=bool))
+    gaia = predicted_hz(sample, sample.moments.per_slice(), 2.0)
+    assert gaia == pytest.approx(scaled_particle_hz(absz, np.ones_like(absz), 2.0), rel=1e-9)
+    assert predicted_hz(sample, exponential_slices(0.15), 2.0)[0] > 1.1 * 0.15
+    assert predicted_hz(sample, exponential_slices(0.45), 2.0)[0] == pytest.approx(0.45, rel=0.02)
+
+
 def test_count_sample_sorts_the_gaia_stars_and_ranks_the_catalog() -> None:
     """The heights are kept in ascending order, and the rank of each catalog row points at its star."""
     absz = np.array([0.5, 0.1, 0.9, 0.3])
@@ -173,16 +244,29 @@ def test_a_resampled_count_sample_holds_the_stars_of_a_copy() -> None:
     assert np.all(twice.gaia_count[draw.gaia_count == 0] == 0)
 
 
-def test_imig_pooling_and_draws(world_root: Path) -> None:
-    """Pooled exponentials of one scale give that scale, by mass or by counts moved by the flare; HIGH rows are out."""
+def test_imig_model_in_the_cylinder(world_root: Path) -> None:
+    """Without flare or radial gradient their model is an exponential in every slice; HIGH rows are out.
+
+    A flare mixes thinner and thicker exponentials, which raises the top slices, and the
+    broken exponential weights each node by Sigma(R) / Sigma(R_sun) on its side of the break.
+    """
     populations = read_imig(source_path(world_root, "imig"))
     assert [p.h.size for p in populations] == [2, 2, 2, 2]
-    single = scaled_profile_hz(np.exp(-Z_GRID / 0.3), 2.0)[0]
-    assert pooled_hz(np.array([0.3, 0.3]), np.array([1.0, 2.0]), 2.0) == pytest.approx(single)
-    assert mass_pooled_hz(np.array([0.3, 0.3]), np.array([1.0, 2.0]), 2.0) == pytest.approx(single)
-    flared = count_pooled_hz(np.array([0.3]), np.array([1.0]), np.array([0.1]), 2.0)
-    moved = scaled_profile_hz(np.exp(-Z_GRID / (0.3 + 0.1 * (R0_KPC - R_SUN_IMIG_KPC))), 2.0)[0]
-    assert flared == pytest.approx(moved)
+    assert NODE_WEIGHT.sum() == pytest.approx(1.0)
+    pops = populations[0]
+    flat = replace(pops, a_flare=np.zeros(2), hr_in=np.full(2, 1.0e12), hr_out=np.full(2, 1.0e12))
+    rows, h = np.array([0, 1]), np.array([0.3, 0.3])
+    assert cylinder_slices(flat, rows, h) == pytest.approx(np.tile(exponential_slices(0.3), (2, 1)), rel=1e-9)
+    assert cylinder_profile(flat, 0) == pytest.approx(np.exp(-Z_GRID / flat.h[0]), rel=1e-9)
+    assert pooled_slices(flat, h, np.array([1.0, 2.0])) == pytest.approx(3.0 * exponential_slices(0.3), rel=1e-9)
+    flared = replace(flat, a_flare=np.full(2, 0.1))
+    assert cylinder_slices(flared, rows, h)[0, -1] > cylinder_slices(flat, rows, h)[0, -1]
+    broken = replace(flat, hr_in=np.full(2, -5.0), hr_out=np.full(2, 2.0), r_break=np.full(2, R_SUN_IMIG_KPC))
+    radial = np.exp(-(NODE_R_KPC - R_SUN_IMIG_KPC) / np.where(NODE_R_KPC <= R_SUN_IMIG_KPC, -5.0, 2.0))
+    expected = (radial * NODE_WEIGHT).sum() * exponential_slices(0.3)
+    assert cylinder_slices(broken, rows[:1], h[:1])[0] == pytest.approx(expected, rel=1e-9)
+    with pytest.raises(ValueError, match="negative"):
+        cylinder_slices(replace(flat, a_flare=np.full(2, 0.1)), rows, np.array([0.05, 0.05]))
     draws = split_normal(np.random.default_rng(2), np.full(1000, 1.0), np.tile([0.1, 0.3], (1000, 1)))
     assert np.all(draws > 0.0) and np.mean(draws > 1.0) == pytest.approx(0.5, abs=0.06)
 
@@ -201,7 +285,9 @@ def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
     first = result.imig.bins[0]
     assert np.isfinite(first.heights.imig_counts.value) and first.kinematics.n_kin > 0
     assert first.ratios.imig_mass.value == pytest.approx(first.kinematics.tracer / first.heights.imig_mass.value)
-    assert len(result.rc_peak) == 12 and result.r0_kpc == R0_KPC
+    assert len(result.rc_peak) == 12 and result.r0_kpc == R0_KPC and result.slice_edges_kpc == SLICE_EDGES_KPC
+    for survey in result.surveys:
+        assert survey.bias.scales == list(BIAS_SCALES_KPC) and survey.bias.ratios[0] > 1.0
     assert len(result.imig_cells.cells) == 8 and result.imig_cells.min_matches == 100
     assert len(result.imig_cells_lamost.cells) == 8
     boxed = [t.cells.n_matches for t in result.imig_cells_targeting]

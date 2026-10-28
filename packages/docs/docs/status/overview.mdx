@@ -75,17 +75,20 @@ halos is <JrMetric name="slopeScaledMixture" />, against <JrMetric name="slopeSc
 the measured ones, so the heights of the relation across galaxies follow from the tracers
 within each disk, although its radial actions do not.
 
-One part of the claim is not yet established. Over the window-free heights of Imig et al.
-(2025), the tracer gives ratios of <MwMetric name="imigMassRatio" />, because our star counts
-are thicker than their heights by factors of <MwMetric name="imigGap" /> on the same age
-scale and with the same weighting. Population by population, the counts exceed their
-heights by a median factor of <MwMetric name="cellsMedian" />, which grows with metallicity
-from <MwMetric name="cellsMetalPoor" /> below $[\mathrm{M/H}] = -0.1$ to
+One part of the claim is not yet established. Over the heights of Imig et al. (2025), whose
+model we put through our cylinder and counts, the tracer gives ratios of
+<MwMetric name="imigMassRatio" />, because above 4 Gyr our star counts are thicker than their
+heights by factors of <MwMetric name="imigGapOld" /> on the same age scale and with the same
+weighting. Population by population, the counts exceed their model by a median factor of
+<MwMetric name="cellsMedian" />, which grows with metallicity from
+<MwMetric name="cellsMetalPoor" /> below $[\mathrm{M/H}] = -0.1$ to
 <MwMetric name="cellsMetalRich" /> above $0.1$. At fixed age, the slope of $\ln h_Z$ per dex
 of $[\mathrm{M/H}]$ is <MwMetric name="slopeCountsApogee" /> for the APOGEE counts and
 <MwMetric name="slopeCountsLamost" /> for the LAMOST counts, whereas it is
-<MwMetric name="slopeImigApogee" /> for their heights in the APOGEE cells. The tracer
-agrees with the counts, so in the Milky Way the claim depends on which of the two
+<MwMetric name="slopeImigApogee" /> for their model in the APOGEE cells. The difference lies
+in the profile near the plane, where the metal-rich counts hold
+<MwMetric name="shapeRichMidplane" /> of the share of their model at $|z| < 0.1$ kpc. The
+tracer agrees with the counts, so in the Milky Way the claim depends on which of the two
 measurements of the vertical profile is right (open issue below).
 
 ## Status board
@@ -326,30 +329,32 @@ within 10 percent in <MwMetric name="lamostWithin10" /> bins with LAMOST,
 and <MwMetric name="distmassTracerTrend0" />. The sheet's trend is
 <MwMetric name="lamostSheetTrend0" />, <MwMetric name="apogeeSheetTrend0" /> and
 <MwMetric name="distmassSheetTrend0" />. Over 2-10 Gyr on the distmass scale, the trend of
-the tracer is <MwMetric name="distmassTracerTrend2" />, set by its bin of 2-4 Gyr. See
-[Milky Way](./milky-way).
+the tracer is <MwMetric name="distmassTracerTrend2" />, set by its bin of 2-4 Gyr. Both
+predictions go through the slices and the window of the counts, which make an exponential
+of 0.20 kpc <MwMetric name="biasApogee20" /> times thicker. See [Milky Way](./milky-way).
 
 </Claim>
 
 <Claim
   status="reproduced"
-  title="On the same age scale and with the same weighting, the heights of Imig et al. are thinner than the star counts"
+  title="Through our counts, the heights of Imig et al. are thinner than the star counts above 4 Gyr and at high metallicity"
   command="uv run experiments milky-way analyze"
 >
 
-In each age bin of Imig et al. (2025) up to 10 Gyr, pooling their populations by counts of
-giants at $R_0$ rather than by mass changes their heights by factors of
-<MwMetric name="imigWeighting" />, whereas moving our APOGEE counts to their distmass ages
-makes the counts thinner by factors of <MwMetric name="imigAgeScale" />. On the same age
-scale and with the same weighting, the counts remain thicker than their heights by factors
-of <MwMetric name="imigGap" />, reaching <MwMetric name="imigGapOld" /> above 4 Gyr. The
+In each age bin of Imig et al. (2025) up to 10 Gyr, their model goes through our cylinder
+and counts. Pooling their populations by counts of giants at their Sun rather than by mass
+changes their heights by factors of <MwMetric name="imigWeighting" />, whereas moving our
+APOGEE counts to their distmass ages makes the counts thinner by factors of
+<MwMetric name="imigAgeScale" />. On the same age scale and with the same weighting, our
+counts over their heights are <MwMetric name="imigGapYoung" /> below 4 Gyr and
+<MwMetric name="imigGapOld" /> above. The
 tracer, with the $\sigma_z$ of the same ages, gives ratios of
 <MwMetric name="countsDistmassRatio" /> over these counts, with a trend of
 <MwMetric name="countsDistmassTrend" />, against ratios of <MwMetric name="imigMassRatio" />
 and a trend of <MwMetric name="imigMassTrend" /> over their heights pooled by mass. Compared
 one population at a time, in the <MwMetric name="cellsMeasured" /> cells of age and
 $[\mathrm{M/H}]$ with <MwMetric name="cellsMin" /> matched stars, the counts exceed their
-heights by a median factor of <MwMetric name="cellsMedian" />. The slope of the logarithm of
+model by a median factor of <MwMetric name="cellsMedian" />. The slope of the logarithm of
 the ratio is <MwMetric name="cellsTrend" /> per dex of $[\mathrm{M/H}]$. See
 [Milky Way](./milky-way#one-population-at-a-time).
 
@@ -361,7 +366,7 @@ the ratio is <MwMetric name="cellsTrend" /> per dex of $[\mathrm{M/H}]$. See
 
 Neither the age scale, the weighting nor the pooling over $[\mathrm{M/H}]$ explains the
 difference, which lies in the measurement of the vertical profile and grows with
-metallicity. The counts agree with their heights for the metal-poor populations
+metallicity. The counts agree with their model for the metal-poor populations
 (<MwMetric name="cellsMetalPoor" />), whereas they do not for the metal-rich ones
 (<MwMetric name="cellsMetalRich" />). Two differences between the measurements could depend
 on metallicity. Their $h_Z$ is a parameter of a fit over the footprint of APOGEE with a single
@@ -371,15 +376,21 @@ $|z| < 1.2$ kpc. Our counts, in turn, assume that the targeting does not depend 
 population at a fixed position. With only the APOGEE matches of one box of $H$ and
 $(J-K_s)_0$ inside the limits of every cohort they come from, the slope of the logarithm of
 the ratio is <MwMetric name="boxTrendB" /> per dex, so the targeting limits do not cause it.
-At fixed
-age, the slope of $\ln h_Z$ per dex of $[\mathrm{M/H}]$ is
+At fixed age, the slope of $\ln h_Z$ per dex of $[\mathrm{M/H}]$ is
 <MwMetric name="slopeCountsApogee" /> for the APOGEE counts and
 <MwMetric name="slopeCountsLamost" /> for the counts of LAMOST, whose targeting,
 metallicities and ages are its own, whereas it is <MwMetric name="slopeImigApogee" /> and
-<MwMetric name="slopeImigLamost" /> for their heights in the same cells. Unless both surveys share a bias of the targeting, the selection of APOGEE, its
-spacing in apparent $H$ included, does not cause the difference either. Their global fit
-remains untested. Because the tracer agrees with the counts, the claim holds in the Milky
-Way only if the counts measure the profile correctly. See
-[Milky Way](./milky-way#the-counts-of-lamost).
+<MwMetric name="slopeImigLamost" /> for their model in the same cells. Unless both surveys
+share a bias of the targeting, the selection of APOGEE, its spacing in apparent $H$
+included, does not cause the difference either. Nor does the geometry of their fit:
+averaged over our cylinder, their model changes their heights by factors of
+<MwMetric name="modelGeometry" />, and our slices by <MwMetric name="modelSlices" />. The
+difference lies in the profile near the plane, where our metal-rich counts hold
+<MwMetric name="shapeRichMidplane" /> of the share of their model at $|z| < 0.1$ kpc and up
+to <MwMetric name="shapeRichPeak" /> higher up. Checks outside the package point away from
+dust and from the bright limit of APOGEE, whereas stars of the high-alpha sequence below
+the split of their Eq. (1) at $[\mathrm{M/H}] > 0.1$ remain untested. Because the tracer
+agrees with the counts, the claim holds in the Milky Way only if the counts measure the
+profile correctly. See [Milky Way](./milky-way#their-model-in-our-cylinder).
 
 </Claim>

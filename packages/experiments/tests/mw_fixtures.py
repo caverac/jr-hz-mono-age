@@ -131,6 +131,9 @@ def write_world(root: Path) -> dict[str, np.ndarray]:
         fits.Column(name="MIN_M_H", format="D", array=np.array([r[2] - 0.15 for r in rows] + [-0.05])),
         fits.Column(name="MAX_M_H", format="D", array=np.array([r[2] + 0.15 for r in rows] + [0.05])),
         fits.Column(name="N_STARS_OBS", format="K", array=np.full(n_imig, 500)),
+        fits.Column(name="HR_IN", format="D", array=np.full(n_imig, -5.0)),
+        fits.Column(name="HR_OUT", format="D", array=np.full(n_imig, 2.0)),
+        fits.Column(name="R_BREAK", format="D", array=np.array([8.0, 9.0] * (len(rows) // 2) + [9.0])),
     ]
     fits.BinTableHDU.from_columns(columns).writeto(_path(root, "imig"), overwrite=True)
     return {"absz": np.abs(z), "age": age, "m_w": m_w}

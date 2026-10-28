@@ -15,13 +15,13 @@ from experiments.heights import (
     G_PC,
     N_MIN_HALF_WINDOW,
     Z_GRID,
-    SortedHeights,
     particle_hz,
     profile_hz,
     scaled_particle_hz,
     scaled_profile_hz,
     self_consistent_window,
     sheet_hz,
+    sheet_profile,
     tracer_profile,
     truncated_exp_scale,
 )
@@ -61,27 +61,6 @@ def test_particle_hz_needs_particles_in_the_inner_half() -> None:
     """With fewer than ``N_MIN_HALF_WINDOW`` particles inside window / 2 there is no fit."""
     absz = np.concatenate([np.full(N_MIN_HALF_WINDOW - 1, 0.1), np.full(100, 0.8)])
     assert np.isnan(particle_hz(absz, np.ones_like(absz), 1.0))
-
-
-@pytest.mark.parametrize("window", [1.0e-4, 0.05, 0.3, 1.0, 3.0, 20.0])
-def test_sorted_heights_give_the_scan_of_particle_hz(window: float) -> None:
-    """Running sums over sorted heights fit as the scan does, with each multiplicity a repeated particle.
-
-    The narrowest window has too few particles in its inner half, so both fits are NaN.
-    """
-    rng = np.random.default_rng(5)
-    absz = np.sort(rng.exponential(0.4, 20_000))
-    weight = rng.uniform(0.5, 2.0, absz.size)
-    multiplicity = rng.integers(0, 3, absz.size).astype(np.float64)
-    repeats = multiplicity.astype(np.int64)
-    expected = particle_hz(np.repeat(absz, repeats), np.repeat(weight, repeats), window)
-    assert SortedHeights.of(absz, weight, multiplicity).hz(window) == pytest.approx(expected, rel=1e-12, nan_ok=True)
-
-
-def test_sorted_heights_need_heights_in_ascending_order() -> None:
-    """Running sums over unsorted heights would not hold the particles inside a window."""
-    with pytest.raises(ValueError, match="ascending"):
-        SortedHeights.of(np.array([0.2, 0.1]), np.ones(2), np.ones(2))
 
 
 @pytest.mark.parametrize("scale", [0.3, 1.0])
@@ -146,3 +125,11 @@ def test_sheet_hz() -> None:
     """The sheet height is sigma_z^2 / (pi G Sigma), converted from pc to kpc."""
     assert sheet_hz(20.0, 50.0) == pytest.approx(400.0 / (np.pi * G_PC * 50.0) / 1.0e3)
     assert sheet_hz(20.0, 50.0) == pytest.approx(0.5921, abs=1e-4)
+
+
+@pytest.mark.parametrize("sigma_z", [10.0, 15.0, 25.0])
+def test_the_sheet_profile_returns_its_scale_in_the_window(sigma_z: float) -> None:
+    """At k = 2 the windowed sech^2 layer of the sheet returns sigma_z^2 / (pi G Sigma); a thin sheet stays finite."""
+    assert scaled_profile_hz(sheet_profile(sigma_z, 50.0), 2.0)[0] == pytest.approx(sheet_hz(sigma_z, 50.0), rel=0.003)
+    thin = sheet_profile(1.0, 500.0)
+    assert np.all(np.isfinite(thin)) and thin[0] == pytest.approx(1.0) and thin[-1] == 0.0

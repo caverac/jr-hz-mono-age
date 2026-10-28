@@ -6,15 +6,25 @@ This module removes the pooling. Every population that
 :func:`experiments.mw_imig.read_imig` keeps is compared with our APOGEE counts of the same
 cell: the stars of the same ages on the distmass scale and of the same [M/H] bin,
 below the [alpha/M] of their Eq. (1) (:func:`imig_low_alpha`), with the ASPCAP abundances
-that they bin in. Their h_Z moves to R_0 by its flare. A single exponential returns its
-scale height in any window, so their h_Z needs no window, whereas our counts go through the
-self-consistent window of :func:`experiments.mw_counts.count_hz`.
+that they bin in. Each cell carries three heights of theirs, so that the geometry and the
+slices can be taken out in turn:
 
-A cell with fewer than ``MIN_CELL_MATCHES`` matched stars is listed without our h_Z. The
-errors come from ``N_DRAWS`` draws that resample the counts of each [M/H] bin, one draw for
-all its age cells, and draw their h_Z from a split normal. The summary is the median ratio
-of the measured cells and the slope of ln(counts / Imig) against the center of the [M/H]
-bin.
+- ``imig_sun``: their h_Z at their Sun, as published;
+- ``imig_window``: their model averaged over the disk of our cylinder
+  (:func:`experiments.mw_imig.cylinder_profile`), in the continuous self-consistent window;
+- ``imig``: the same model through our counts (:func:`experiments.mw_counts.predicted_hz`),
+  with the interpolation between slices that our h_Z goes through. It is the one compared
+  with ours.
+
+``shape`` is our counts of the cell over that model in each slice of |z|, each normalized
+to its sum, which shows where the two profiles differ.
+
+A cell with fewer than ``MIN_CELL_MATCHES`` matched stars is listed without our h_Z and
+without their model through our counts. The errors come from ``N_DRAWS`` draws that
+resample the counts of each [M/H] bin, one draw for all its age cells, and draw their h_Z
+at their Sun from a split normal; in each draw their model goes through the counts of the
+draw. The summary is the median ratio of the measured cells and the slope of
+ln(counts / Imig) against the center of the [M/H] bin.
 
 Our counts assume that the targeting does not depend on the population at a fixed position,
 whereas APOGEE targets by (J - K_s)_0 and H, with limits that change between cohorts, and
@@ -37,6 +47,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
+from experiments.heights import scaled_profile_hz
 from experiments.mw_analysis import SolarModel
 from experiments.mw_catalogs import (
     Apogee,
@@ -46,9 +57,15 @@ from experiments.mw_catalogs import (
     lamost_age_tracers,
     lamost_low_alpha,
 )
-from experiments.mw_counts import CountSample, apogee_count_sample, count_hz, lamost_count_sample
-from experiments.mw_dynamics import R0_KPC
-from experiments.mw_imig import N_DRAWS, R_SUN_IMIG_KPC, ImigPopulations, split_normal
+from experiments.mw_counts import (
+    CountSample,
+    apogee_count_sample,
+    count_hz,
+    lamost_count_sample,
+    predicted_hz,
+    slice_fraction,
+)
+from experiments.mw_imig import N_DRAWS, ImigPopulations, cylinder_profile, cylinder_slices, split_normal
 from experiments.populations import Estimate, Trend, fit_grouped_log_slope, fit_log_slope
 from experiments.stats import half_width
 
@@ -77,7 +94,7 @@ class MetallicityCounts:
 
 @dataclass(frozen=True)
 class ImigCell:  # pylint: disable=too-many-instance-attributes
-    """One population of Imig et al. against our counts of its ages and [M/H]: their h_Z at R_0, ours, the ratio."""
+    """One population of Imig et al. against our counts of its ages and [M/H]: their h_Z, ours, the ratio."""
 
     age_lo: float
     age_hi: float
@@ -85,14 +102,20 @@ class ImigCell:  # pylint: disable=too-many-instance-attributes
     m_h_hi: float
     n_stars: int  # their stars in the cell
     n_matched: int  # our matched stars in the cell
-    imig: Estimate  # kpc
+    imig_sun: Estimate  # kpc, at their Sun
+    imig_window: float  # kpc, their model in our cylinder, in the continuous window
+    imig: Estimate  # kpc, their model through our counts; NaN with fewer than the minimum of matches
     counts: Estimate  # kpc; NaN with fewer than the minimum of matches
     ratio: Estimate  # counts / imig
+    shape: list[float]  # ours over their model in each slice, each normalized to its sum; empty without the minimum
 
 
 @dataclass(frozen=True)
 class MetallicitySlopes:
-    """The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin: ours and theirs, same cells."""
+    """The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin, in the same cells.
+
+    ``counts`` is that of our counts and ``imig`` that of their model through our counts.
+    """
 
     counts: Trend
     imig: Trend
@@ -174,34 +197,84 @@ class _Target:
     pops: ImigPopulations
     index: int
 
+    def sun_draws(self, rng: np.random.Generator, n_draws: int) -> FloatArray:
+        """Return *n_draws* draws of their h_Z at their Sun from its split normal."""
+        pops, i = self.pops, self.index
+        return split_normal(rng, np.full(n_draws, pops.h[i]), np.tile(pops.h_err[i], (n_draws, 1)))
 
-def _count_heights(
+    def model_slices(self, h: FloatArray) -> FloatArray:
+        """Return the mass of their model in each slice of our counts, one row per value *h* of h_Z at their Sun."""
+        return cylinder_slices(self.pops, np.full(h.size, self.index), h)
+
+    def heights(self, sample: CountSample, slices: FloatArray, k: float) -> tuple[float, float]:
+        """Return our h_Z of the cell in *sample* and that of their model of mass *slices* through the same counts."""
+        return count_hz(sample, self.pops.age_lo, self.pops.age_hi, k)[0], predicted_hz(sample, slices, k)[0]
+
+
+@dataclass(frozen=True)
+class _Heights:
+    """Ours and their model through our counts for the targets of one [M/H] bin, and their h_Z at their Sun.
+
+    ``point`` holds ours and theirs at the best values (2, targets) and ``draws`` one row per
+    draw (2, draws, targets); a target without the minimum of matches has NaN for both.
+    ``shapes`` holds the shape of each measured target.
+    """
+
+    n_matched: list[int]
+    point: FloatArray
+    draws: FloatArray
+    sun_draws: FloatArray  # (draws, targets)
+    shapes: dict[int, list[float]]
+
+
+def _shape(counts: CountSample, target: _Target, slices: FloatArray) -> list[float]:
+    """Return our counts of *target* over their model of mass *slices*, in each slice, each normalized to its sum."""
+    ours = counts.moments.per_slice() * slice_fraction(counts, target.pops.age_lo, target.pops.age_hi)
+    return [float(v) for v in (ours / ours.sum()) / (slices / slices.sum())]
+
+
+def _heights(
     counts: CountSample, targets: list[_Target], model: SolarModel, rng: np.random.Generator, settings: CellSettings
-) -> tuple[list[int], FloatArray, FloatArray]:
-    """Return the matches of every target in *counts*, our h_Z of each, and its draws; NaN without enough matches.
+) -> _Heights:
+    """Return our h_Z and their model through our counts for every target of *counts*, with their draws.
 
-    Every draw resamples *counts* once for all the targets.
+    Their h_Z at their Sun is drawn first for every target. Every draw then resamples *counts*
+    once for all the targets, and their model of the draw goes through the same counts.
     """
     n_matched = [int(np.count_nonzero(_in_cell(counts, t.pops))) for t in targets]
     measured = [j for j, n in enumerate(n_matched) if n >= settings.min_matches]
-    point = np.full(len(targets), np.nan)
-    draws = np.full((settings.n_draws, len(targets)), np.nan)
+    sun_draws = np.column_stack([t.sun_draws(rng, settings.n_draws) for t in targets])
+    best = {j: targets[j].model_slices(targets[j].pops.h[[targets[j].index]])[0] for j in measured}
+    drawn = {j: targets[j].model_slices(sun_draws[:, j]) for j in measured}
+    point = np.full((2, len(targets)), np.nan)
+    draws = np.full((2, settings.n_draws, len(targets)), np.nan)
     for j in measured:
-        point[j] = count_hz(counts, targets[j].pops.age_lo, targets[j].pops.age_hi, model.k)[0]
-    if measured:
-        for d in range(settings.n_draws):
-            sample = counts.resampled(rng)
-            for j in measured:
-                draws[d, j] = count_hz(sample, targets[j].pops.age_lo, targets[j].pops.age_hi, model.k)[0]
-    return n_matched, point, draws
+        point[:, j] = targets[j].heights(counts, best[j], model.k)
+    for d in range(settings.n_draws if measured else 0):
+        sample = counts.resampled(rng)
+        for j in measured:
+            draws[:, d, j] = targets[j].heights(sample, drawn[j][d], model.k)
+    return _Heights(n_matched, point, draws, sun_draws, {j: _shape(counts, targets[j], best[j]) for j in measured})
 
 
-def _imig_height(target: _Target, rng: np.random.Generator, n_draws: int) -> tuple[float, FloatArray]:
-    """Return their h_Z of *target* moved to R_0 by its flare, and *n_draws* draws of it from its errors."""
+def _cell(metal: MetallicityCounts, target: _Target, heights: _Heights, j: int, k: float) -> ImigCell:
+    """Return the cell of *target*, the target *j* of the [M/H] bin of *metal*, from the *heights* of the bin."""
     pops, i = target.pops, target.index
-    shift = pops.a_flare[i] * (R0_KPC - R_SUN_IMIG_KPC)
-    draws = split_normal(rng, np.full(n_draws, pops.h[i]), np.tile(pops.h_err[i], (n_draws, 1))) + shift
-    return float(pops.h[i] + shift), draws
+    (ours, theirs), (ours_draws, theirs_draws) = heights.point[:, j], heights.draws[:, :, j]
+    return ImigCell(
+        age_lo=pops.age_lo,
+        age_hi=pops.age_hi,
+        m_h_lo=metal.m_h_lo,
+        m_h_hi=metal.m_h_hi,
+        n_stars=int(pops.n_stars[i]),
+        n_matched=heights.n_matched[j],
+        imig_sun=Estimate(float(pops.h[i]), half_width(heights.sun_draws[:, j])),
+        imig_window=scaled_profile_hz(cylinder_profile(pops, i), k)[0],
+        imig=Estimate(float(theirs), half_width(theirs_draws)),
+        counts=Estimate(float(ours), half_width(ours_draws)),
+        ratio=Estimate(float(ours / theirs), half_width(ours_draws / theirs_draws)),
+        shape=heights.shapes.get(j, []),
+    )
 
 
 def _metallicity_cells(
@@ -213,24 +286,8 @@ def _metallicity_cells(
 ) -> list[ImigCell]:
     """Return the cells of the [M/H] bin of *metal*, one per age bin of *populations* that holds it."""
     targets = [_Target(pops, int(i)) for pops in populations for i in np.flatnonzero(pops.m_h_lo == metal.m_h_lo)]
-    n_matched, point, draws = _count_heights(metal.counts, targets, model, rng, settings)
-    cells = []
-    for j, target in enumerate(targets):
-        h, h_draws = _imig_height(target, rng, settings.n_draws)
-        cells.append(
-            ImigCell(
-                age_lo=target.pops.age_lo,
-                age_hi=target.pops.age_hi,
-                m_h_lo=metal.m_h_lo,
-                m_h_hi=metal.m_h_hi,
-                n_stars=int(target.pops.n_stars[target.index]),
-                n_matched=n_matched[j],
-                imig=Estimate(h, half_width(h_draws)),
-                counts=Estimate(float(point[j]), half_width(draws[:, j])),
-                ratio=Estimate(float(point[j] / h), half_width(draws[:, j] / h_draws)),
-            )
-        )
-    return cells
+    heights = _heights(metal.counts, targets, model, rng, settings)
+    return [_cell(metal, target, heights, j, model.k) for j, target in enumerate(targets)]
 
 
 def measure_cells(

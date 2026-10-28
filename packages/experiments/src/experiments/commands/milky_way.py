@@ -82,6 +82,8 @@ def survey_lines(survey: MwSurvey) -> list[str]:
     for rng in survey.ranges:
         trends = ", ".join(f"{k} {t.value:+.3f}+/-{t.err:.3f}" for k, t in rng.trends.items())
         lines.append(f"  {rng.lo:g}-{rng.hi:g} Gyr ({rng.n_bins} bins): trends {trends}; eta {rng.eta:.2f}")
+    bias = ", ".join(f"{h:.2f} {r:.3f}" for h, r in zip(survey.bias.scales, survey.bias.ratios, strict=True))
+    lines.append(f"  counts of an exponential over its scale (kpc): {bias}")
     return lines
 
 

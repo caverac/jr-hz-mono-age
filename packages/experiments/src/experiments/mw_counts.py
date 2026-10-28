@@ -26,22 +26,32 @@ changes with z. h_Z is fitted to the weighted counts as to the star particles of
 Auriga disks (:func:`experiments.heights.particle_hz`), in the self-consistent window
 L = k h_Z. The counts stop at ``Z_MAX_KPC``, so a window beyond it has no h_Z.
 
+The slices bias the counts of a thin population. Below the first center and between
+centers, the interpolated fraction falls more slowly than the population, so an
+exponential of 0.20 kpc comes out about 9 percent thicker and one of 0.15 kpc about 18
+percent; above 0.4 kpc the bias is below 1.5 percent. A predicted profile is therefore
+compared with the counts after it goes through the same slices, interpolation and window
+(:func:`predicted_hz`): its mass in each slice, over the Gaia stars of the slice, is its
+fraction.
+
 A sample keeps its Gaia stars in ascending |z| (:func:`count_sample`), and a bootstrap
-draw enters each star with its multiplicity instead of copying it, so that the windows of
-the self-consistent search read running sums (:class:`experiments.heights.SortedHeights`)
-rather than scan the cylinder about 650 times per draw.
+draw enters each star with its multiplicity instead of copying it. The windows of the
+self-consistent search read running sums of the heights (:class:`CountMoments`), shared by
+every population and prediction of the sample, rather than scan the cylinder about 650
+times per fit.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 
 import astropy.coordinates as coord
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import minimize
 
-from experiments.heights import SortedHeights, self_consistent_window
+from experiments.heights import N_MIN_HALF_WINDOW, Z_GRID, self_consistent_window, truncated_exp_scale
 from experiments.mw_catalogs import AgeTracers, GaiaStars
 from experiments.mw_dynamics import DEG, Z_SUN_KPC
 
@@ -51,6 +61,7 @@ BoolArray = NDArray[np.bool_]
 R_CYL_KPC = 1.5
 Z_MAX_KPC = 1.2
 SLICE_EDGES_KPC = tuple(0.1 * k for k in range(13))
+BIAS_SCALES_KPC = (0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60)
 WESENHEIT_COEFF = 1.9  # A_G / E(BP - RP) of red giants
 G_MAX = 15.5
 BP_RP_MIN = 1.0
@@ -65,6 +76,85 @@ MATCH_MAX_DG = 0.05
 # the wings of the red clump in some slices; the bounds hold every component to the shape
 # it has where the fit is unambiguous.
 SHAPE_BOUNDS = ((-1.95, -1.55), (0.05, 0.20), (-1.5, -1.0), (0.08, 0.25), (-1.0, 3.0))
+_EDGES = np.asarray(SLICE_EDGES_KPC)
+_CENTERS = 0.5 * (_EDGES[1:] + _EDGES[:-1])
+
+
+def _segments(fraction: FloatArray) -> tuple[FloatArray, FloatArray]:
+    """Return a and b of the weight a + b |z| that *fraction* gives on each segment of |z|.
+
+    The weight interpolates the fraction of each slice linearly between the slice centers and
+    holds it constant beyond the first and the last, as ``np.interp`` does: segment 0 ends at
+    the first center, segment s runs between centers s - 1 and s, and the last starts at the
+    last center.
+    """
+    slope = np.diff(fraction) / np.diff(_CENTERS)
+    a = np.concatenate(([fraction[0]], fraction[:-1] - slope * _CENTERS[:-1], [fraction[-1]]))
+    b = np.concatenate(([0.0], slope, [0.0]))
+    return a, b
+
+
+@dataclass(frozen=True)
+class CountMoments:
+    """The Gaia heights of a sample in ascending order, with the running sums that the fit of any population needs.
+
+    A population weights each star by the fraction of its slice, interpolated between the
+    slice centers (:func:`_segments`), so the weight is a + b |z| on each segment. The
+    weight and the weight times |z| inside a window are then sums over the segments of the
+    running sums of the multiplicity c, of c |z| and of c z^2, which entry i of ``c0``,
+    ``c1`` and ``c2`` totals over the first i stars. ``bounds`` holds the first star of each
+    segment and the number of stars, so that a window costs one binary search whatever the
+    fraction.
+    """
+
+    absz: FloatArray
+    c0: FloatArray
+    c1: FloatArray
+    c2: FloatArray
+    bounds: NDArray[np.int64]
+
+    @classmethod
+    def of(cls, absz: FloatArray, multiplicity: FloatArray) -> CountMoments:
+        """Return the running sums of heights *absz* in ascending order, entering *multiplicity* times each."""
+        if np.any(np.diff(absz) < 0.0):
+            raise ValueError("the heights are not in ascending order")
+
+        def running(values: FloatArray) -> FloatArray:
+            return np.concatenate(([0.0], np.cumsum(values)))
+
+        knots = np.searchsorted(absz, _CENTERS, side="right")
+        bounds = np.concatenate(([0], knots, [absz.size])).astype(np.int64)
+        return cls(absz, running(multiplicity), running(multiplicity * absz), running(multiplicity * absz**2), bounds)
+
+    def per_slice(self) -> FloatArray:
+        """Return the stars of each slice of ``SLICE_EDGES_KPC``, each entered with its multiplicity."""
+        return np.asarray(np.diff(self.c0[np.searchsorted(self.absz, _EDGES, side="left")]), dtype=np.float64)
+
+    def hz(self, fraction: FloatArray, window: float) -> float:
+        """Return the windowed h_Z of the stars weighted by *fraction* of their slices; NaN if *window* cannot fit it.
+
+        This is :func:`experiments.heights.particle_hz` of the stars, each entered with its
+        multiplicity and weighted by ``np.interp(absz, slice centers, fraction)``.
+        """
+        if self.c0[np.searchsorted(self.absz, 0.5 * window, side="right")] < N_MIN_HALF_WINDOW:
+            return float("nan")
+        a, b = _segments(fraction)
+        scales = []
+        for limit in (window, 0.5 * window):
+            ends = np.minimum(self.bounds, np.searchsorted(self.absz, limit, side="right"))
+            d0, d1, d2 = (np.diff(c[ends]) for c in (self.c0, self.c1, self.c2))
+            weight = float(a @ d0 + b @ d1)
+            if weight <= 0.0:
+                return float("nan")
+            scales.append(truncated_exp_scale(float(a @ d1 + b @ d2) / weight, limit))
+        return float(np.mean(scales))
+
+    def fit(self, fraction: FloatArray, k: float) -> tuple[float, float]:
+        """Return h_Z (kpc) of the stars weighted by *fraction* and its window k h_Z; NaN for both beyond the counts."""
+        hz, window = self_consistent_window(lambda w: self.hz(fraction, w), k)
+        if not np.isfinite(window) or window > Z_MAX_KPC:
+            return float("nan"), float("nan")
+        return hz, window
 
 
 @dataclass(frozen=True)
@@ -82,6 +172,11 @@ class CountSample:
     tracer_absz: FloatArray
     tracer_age: FloatArray
     tracer_in_disk: BoolArray
+
+    @cached_property
+    def moments(self) -> CountMoments:
+        """The running sums of the Gaia heights, computed once for every fit of the sample."""
+        return CountMoments.of(self.gaia_absz, self.gaia_count)
 
     def resampled(self, rng: np.random.Generator) -> CountSample:
         """Return a bootstrap copy, with the Gaia stars and the matches resampled independently.
@@ -303,17 +398,48 @@ def slice_fraction(sample: CountSample, lo: float, hi: float) -> FloatArray:
     return np.divide(hits, total, out=np.zeros_like(hits), where=total > 0)
 
 
-def population_weight(sample: CountSample, lo: float, hi: float) -> FloatArray:
-    """Return P(pop | z) at the |z| of every Gaia star, interpolated between the centers of the slices."""
-    edges = np.asarray(SLICE_EDGES_KPC)
-    centers = 0.5 * (edges[1:] + edges[:-1])
-    return np.asarray(np.interp(sample.gaia_absz, centers, slice_fraction(sample, lo, hi)), dtype=np.float64)
-
-
 def count_hz(sample: CountSample, lo: float, hi: float, k: float) -> tuple[float, float]:
-    """Return h_Z (kpc) of the population of ages [*lo*, *hi*) and its window k h_Z; NaN for both beyond the counts."""
-    heights = SortedHeights.of(sample.gaia_absz, population_weight(sample, lo, hi), sample.gaia_count)
-    hz, window = self_consistent_window(heights.hz, k)
-    if not np.isfinite(window) or window > Z_MAX_KPC:
-        return float("nan"), float("nan")
-    return hz, window
+    """Return h_Z (kpc) of the population of ages [*lo*, *hi*) and its window k h_Z; NaN for both beyond the counts.
+
+    Each Gaia star is weighted by P(pop | z), the fraction of its slice interpolated between
+    the slice centers.
+    """
+    return sample.moments.fit(slice_fraction(sample, lo, hi), k)
+
+
+def predicted_hz(sample: CountSample, slice_mass: FloatArray, k: float) -> tuple[float, float]:
+    """Return h_Z and its window that the counts of *sample* give a population with *slice_mass* in each slice.
+
+    The fraction of a slice is the mass of the population in it over the Gaia stars of the
+    slice, so the population goes through the interpolation and the window of
+    :func:`count_hz` as a measured one does, bias included. Only the shape of *slice_mass*
+    matters.
+    """
+    gaia = sample.moments.per_slice()
+    return sample.moments.fit(np.divide(slice_mass, gaia, out=np.zeros_like(slice_mass), where=gaia > 0.0), k)
+
+
+def profile_slices(rho: FloatArray, z_grid: FloatArray = Z_GRID) -> FloatArray:
+    """Return the integral of the profile *rho* on *z_grid* over each slice of ``SLICE_EDGES_KPC``, by trapezoids."""
+    cumulative = np.concatenate(([0.0], np.cumsum(0.5 * (rho[1:] + rho[:-1]) * np.diff(z_grid))))
+    return np.asarray(np.diff(np.interp(_EDGES, z_grid, cumulative)), dtype=np.float64)
+
+
+def exponential_slices(scale: float) -> FloatArray:
+    """Return the integral of exp(-|z| / *scale*) over each slice of ``SLICE_EDGES_KPC``."""
+    return np.asarray(-scale * np.diff(np.exp(-_EDGES / scale)), dtype=np.float64)
+
+
+@dataclass(frozen=True)
+class CountBias:
+    """h_Z that the counts of a sample give exponentials of known scales (kpc), over the scale; NaN past the counts."""
+
+    scales: list[float]
+    ratios: list[float]
+
+
+def count_bias(sample: CountSample, k: float) -> CountBias:
+    """Return the bias of the counts of *sample* for an exponential of each scale of ``BIAS_SCALES_KPC``."""
+    return CountBias(
+        list(BIAS_SCALES_KPC), [predicted_hz(sample, exponential_slices(h), k)[0] / h for h in BIAS_SCALES_KPC]
+    )

@@ -3,29 +3,39 @@
 Imig et al. (2025, ApJ 990, 203) fit every population of APOGEE DR17 in bins of
 [alpha/M], [M/H] and age with an exponential vertical profile over the whole survey
 footprint, correcting for its selection function, so their heights carry no window of
-|z|. Their h_Z is the scale height at the solar radius R_sun = ``R_SUN_IMIG_KPC``, which
-flares linearly with radius, their density is a number density of red giants at R_sun,
-and their ages come from the distmass catalog.
+|z|. Their model (Section III.3, Eqs. 9, 11 and 12) is nu(R, z) = nu_sun Sigma(R) xi(R, z):
+Sigma a broken exponential of the midplane density, with scale lengths h_R,in inside
+R_break and h_R,out outside, and xi = exp(-|z| / h_Z(R)) with the linear flare
+h_Z(R) = h_Z,sun + A_flare (R - R_sun). Their Sun is at R_sun = ``R_SUN_IMIG_KPC``
+(Sections II.2 and III.3), nu_sun is a number density of red giants, and their ages come
+from the distmass catalog. The grids ``HZ_R_PROFILE`` of their table pivot the flare at
+8.122 kpc instead, which would change h_Z at their Sun by at most 0.013 kpc for the
+populations kept here.
 
-For each of their age bins up to ``AGE_MAX_GYR``, this module measures four h_Z, all in
-the self-consistent window, so that each difference between their heights and our star
-counts can be taken out in turn:
+Our counts are around the Sun, so their model enters them around their Sun, whatever the
+radius of the Sun in either frame: :func:`cylinder_slices` integrates it over the disk of
+our cylinder around R_sun and over each slice of |z|. Their plane lies 6 pc below ours
+(Z_sun = 27 pc against 20.8 pc), which is neglected.
+
+For each of their age bins up to ``AGE_MAX_GYR``, this module measures four h_Z, all
+through our counts (:func:`experiments.mw_counts.predicted_hz`), so that each difference
+between their heights and our star counts can be taken out in turn:
 
 - ``imig_mass``: their low-[alpha/M] populations with [M/H] > ``M_H_MIN`` pooled by their
-  surface mass densities, rho(z) = sum_i Sigma_i / (2 h_i) exp(-|z| / h_i);
-- ``imig_counts``: the same populations pooled by their number densities of red giants,
-  n(z) = sum_i nu_i exp(-|z| / h_i), with each h_i moved to R_0 by its flare,
-  h_i(R_0) = h_i + A_flare,i (R_0 - R_sun): the analog of our counts of giants at R_0;
+  midplane mass densities at R_sun, Sigma_i / (2 h_i);
+- ``imig_counts``: the same populations pooled by their number densities of red giants
+  nu_i at R_sun, the analog of our counts of giants;
 - ``counts_astronn`` and ``counts_distmass``: our counts of the Gaia giants split into ages
   by APOGEE (:mod:`experiments.mw_counts`), in the same range of ages, with the ages of
   astroNN and with those of distmass.
 
 The tracer of each bin uses the sigma_z of the APOGEE kinematic stars of the same ages on
 the distmass scale, theirs, so that its comparison with their heights holds the age scale
-fixed. The errors come from ``N_DRAWS`` draws in which every h_i, Sigma_i and nu_i comes
-from a split normal with its published lower and upper errors, and the counts and the
-kinematic stars are resampled; the flare parameters keep their best values, whose effect
-on h_i at R_0 is at most 0.0175 kpc.
+fixed, and it goes through the same counts. The errors come from ``N_DRAWS`` draws in which
+every h_i, Sigma_i and nu_i comes from a split normal with its published lower and upper
+errors, and the counts and the kinematic stars are resampled; the flare and the radial
+profile keep their best values. Every model height of a draw goes through the counts of
+that draw.
 """
 
 from __future__ import annotations
@@ -37,11 +47,17 @@ import numpy as np
 from astropy.io import fits
 from numpy.typing import NDArray
 
-from experiments.heights import Z_GRID, scaled_profile_hz, tracer_profile
+from experiments.heights import Z_GRID, tracer_profile
 from experiments.mw_analysis import SolarModel
 from experiments.mw_catalogs import KinematicStars
-from experiments.mw_counts import CountSample, count_hz
-from experiments.mw_dynamics import R0_KPC
+from experiments.mw_counts import (
+    R_CYL_KPC,
+    SLICE_EDGES_KPC,
+    CountSample,
+    count_hz,
+    predicted_hz,
+    profile_slices,
+)
 from experiments.populations import Z_MID_MAX_KPC, Estimate, Trend, fit_trend
 from experiments.stats import deconvolved_dispersion, half_width
 
@@ -53,8 +69,13 @@ R_SUN_IMIG_KPC = 8.3
 N_DRAWS = 300
 COLUMNS = (
     "MIN_AGE", "MAX_AGE", "H_Z", "H_Z_ERR", "SMD_0", "SMD_0_ERRS", "NU_0", "NU_0_ERRS", "A_FLARE",
-    "MIN_M_H", "MAX_M_H", "N_STARS_OBS",
+    "MIN_M_H", "MAX_M_H", "N_STARS_OBS", "HR_IN", "HR_OUT", "R_BREAK",
 )  # fmt: skip
+# Nodes of the mean over the disk of our cylinder: Gauss-Legendre in the distance from the Sun,
+# midpoints in azimuth. The kink of Sigma at R_break makes the convergence slow; with these, the
+# mass of every slice of every population is within 2e-4 of 64 x 256 nodes.
+N_RHO_NODES = 32
+N_PHI_NODES = 64
 
 
 @dataclass(frozen=True)
@@ -69,7 +90,10 @@ class ImigHeights:
 
 @dataclass(frozen=True)
 class ImigKinematics:
-    """The APOGEE kinematic stars of one age bin on the distmass scale: their count, sigma_z and the tracer h_Z."""
+    """The APOGEE kinematic stars of one age bin on the distmass scale: their count, sigma_z, the tracer h_Z.
+
+    The tracer h_Z is the one our distmass counts give its profile.
+    """
 
     n_kin: int
     sigma_z: Estimate
@@ -100,8 +124,9 @@ class ImigCheck:
 class ImigPopulations:  # pylint: disable=too-many-instance-attributes
     """The populations of one age bin: h_Z, Sigma and nu at R_sun with lower and upper errors, the flare, the [M/H] bin.
 
-    ``m_h_lo`` and ``m_h_hi`` are the edges of the [M/H] bin of each population, and
-    ``n_stars`` the number of their stars in it.
+    ``m_h_lo`` and ``m_h_hi`` are the edges of the [M/H] bin of each population,
+    ``n_stars`` the number of their stars in it, and ``hr_in``, ``hr_out`` and ``r_break``
+    (kpc) its broken exponential in R.
     """
 
     age_lo: float
@@ -116,6 +141,9 @@ class ImigPopulations:  # pylint: disable=too-many-instance-attributes
     m_h_lo: FloatArray
     m_h_hi: FloatArray
     n_stars: FloatArray
+    hr_in: FloatArray
+    hr_out: FloatArray
+    r_break: FloatArray
 
 
 @dataclass(frozen=True)
@@ -135,6 +163,7 @@ def read_imig(path: Path) -> list[ImigPopulations]:
         (group == "LOW") & (table["M_H"] > M_H_MIN) & (table["MAX_AGE"] <= AGE_MAX_GYR + 0.01)
         & np.isfinite(table["H_Z"]) & np.isfinite(table["SMD_0"]) & (table["SMD_0"] > 0.0)
         & np.isfinite(table["NU_0"]) & (table["NU_0"] > 0.0)
+        & np.isfinite(table["HR_IN"]) & np.isfinite(table["HR_OUT"]) & np.isfinite(table["R_BREAK"])
     )  # fmt: skip
     cols = {k: np.asarray(table[k][keep], dtype=np.float64) for k in COLUMNS}
     bins = []
@@ -149,20 +178,66 @@ def read_imig(path: Path) -> list[ImigPopulations]:
     return bins
 
 
-def pooled_hz(h: FloatArray, midplane: FloatArray, k: float) -> float:
-    """Return h_Z (kpc) of the sum of exponentials of scales *h* and midplane densities *midplane*, in k h_Z."""
-    rho = np.sum(midplane[:, None] * np.exp(-Z_GRID[None, :] / h[:, None]), axis=0)
-    return scaled_profile_hz(np.asarray(rho, dtype=np.float64), k)[0]
+def _cylinder_nodes() -> tuple[FloatArray, FloatArray]:
+    """Return R (kpc) and the weight of the nodes over the disk of radius ``R_CYL_KPC`` around their Sun.
+
+    The weights sum to one, so a sum over the nodes is a mean over the disk.
+    """
+    x, w = np.polynomial.legendre.leggauss(N_RHO_NODES)
+    rho = 0.5 * R_CYL_KPC * (x + 1.0)
+    phi = (np.arange(N_PHI_NODES) + 0.5) * 2.0 * np.pi / N_PHI_NODES
+    r = np.sqrt(R_SUN_IMIG_KPC**2 + rho[:, None] ** 2 - 2.0 * R_SUN_IMIG_KPC * rho[:, None] * np.cos(phi[None, :]))
+    weight = np.repeat(0.5 * R_CYL_KPC * w * rho * 2.0 * np.pi / N_PHI_NODES, N_PHI_NODES) / (np.pi * R_CYL_KPC**2)
+    return np.asarray(r.ravel(), dtype=np.float64), np.asarray(weight, dtype=np.float64)
 
 
-def mass_pooled_hz(h: FloatArray, sigma: FloatArray, k: float) -> float:
-    """Return h_Z of the populations of scales *h* and surface mass densities *sigma*, pooled by mass."""
-    return pooled_hz(h, sigma / (2.0 * h), k)
+NODE_R_KPC, NODE_WEIGHT = _cylinder_nodes()
 
 
-def count_pooled_hz(h: FloatArray, nu: FloatArray, a_flare: FloatArray, k: float) -> float:
-    """Return h_Z of the populations of scales *h* at R_sun and densities of giants *nu*, pooled by counts at R_0."""
-    return pooled_hz(h + a_flare * (R0_KPC - R_SUN_IMIG_KPC), nu, k)
+def _model_at_nodes(pops: ImigPopulations, rows: NDArray[np.int64], h: FloatArray) -> tuple[FloatArray, FloatArray]:
+    """Return Sigma(R) / Sigma(R_sun) and h_Z(R) of the populations *rows* at the nodes, with *h* at R_sun.
+
+    Both have one row per entry of *rows*. Their Eq. (11) is continuous at R_break, so the
+    midplane density relative to R_sun needs no constant.
+    """
+
+    def log_sigma(r: FloatArray) -> FloatArray:
+        r_break = pops.r_break[rows, None]
+        inner = -(r - r_break) / pops.hr_in[rows, None]
+        return np.asarray(np.where(r <= r_break, inner, -(r - r_break) / pops.hr_out[rows, None]), dtype=np.float64)
+
+    radial = np.exp(log_sigma(NODE_R_KPC[None, :]) - log_sigma(np.full((1, 1), R_SUN_IMIG_KPC)))
+    scale = h[:, None] + pops.a_flare[rows, None] * (NODE_R_KPC[None, :] - R_SUN_IMIG_KPC)
+    if np.any(scale <= 0.0):
+        raise ValueError("the flare makes h_Z negative inside the cylinder")
+    return np.asarray(radial, dtype=np.float64), np.asarray(scale, dtype=np.float64)
+
+
+def cylinder_slices(pops: ImigPopulations, rows: NDArray[np.int64], h: FloatArray) -> FloatArray:
+    """Return the mass of each population *rows* of *pops* in every slice of our counts, with *h* at their Sun.
+
+    The mass is nu(R, z) / nu_sun integrated over the slice of |z| and averaged over the disk
+    of the cylinder around their Sun: per unit midplane density at R_sun. One row per entry of
+    *rows*, so that *rows* may repeat one population with a draw of its h_Z in each.
+    """
+    radial, scale = _model_at_nodes(pops, rows, h)
+    edges = np.asarray(SLICE_EDGES_KPC)
+    per_node = -scale[:, :, None] * np.diff(np.exp(-edges[None, None, :] / scale[:, :, None]), axis=2)
+    return np.asarray(np.einsum("pns,pn->ps", per_node, radial * NODE_WEIGHT[None, :]), dtype=np.float64)
+
+
+def cylinder_profile(pops: ImigPopulations, row: int, z_grid: FloatArray = Z_GRID) -> FloatArray:
+    """Return the density of population *row* on *z_grid*, averaged over the disk of the cylinder, per nu_sun."""
+    radial, scale = _model_at_nodes(pops, np.array([row]), pops.h[[row]])
+    return np.asarray(np.exp(-z_grid[:, None] / scale[0][None, :]) @ (radial[0] * NODE_WEIGHT), dtype=np.float64)
+
+
+def pooled_slices(pops: ImigPopulations, h: FloatArray, midplane: FloatArray) -> FloatArray:
+    """Return the mass in every slice of all the populations of *pops*, of scales *h* and midplane densities *midplane*.
+
+    The scales *h* are at their Sun, and *midplane* are the densities there.
+    """
+    return np.asarray(midplane @ cylinder_slices(pops, np.arange(h.size), h), dtype=np.float64)
 
 
 def split_normal(rng: np.random.Generator, value: FloatArray, err: FloatArray) -> FloatArray:
@@ -171,40 +246,57 @@ def split_normal(rng: np.random.Generator, value: FloatArray, err: FloatArray) -
     return np.asarray(np.maximum(value + np.where(z < 0.0, err[:, 0], err[:, 1]) * z, 1e-3 * value), dtype=np.float64)
 
 
-def _tracer(sigma_z: float, model: SolarModel) -> float:
-    """Return h_Z (kpc) of the isothermal tracer of *sigma_z* in *model*, in the window k h_Z."""
-    return scaled_profile_hz(tracer_profile(model.phi, sigma_z), model.k)[0]
+@dataclass(frozen=True)
+class _Parameters:
+    """Their h_Z, Sigma and nu at R_sun of the populations of one bin: the best values or one draw."""
+
+    h: FloatArray
+    sigma: FloatArray
+    nu: FloatArray
+
+    @classmethod
+    def of(cls, pops: ImigPopulations, rng: np.random.Generator | None) -> _Parameters:
+        """Return the best values (*rng* None), or one draw of every parameter from its split normal."""
+        if rng is None:
+            return cls(pops.h, pops.sigma, pops.nu)
+        pairs = ((pops.h, pops.h_err), (pops.sigma, pops.sigma_err), (pops.nu, pops.nu_err))
+        h, sigma, nu = (split_normal(rng, value, err) for value, err in pairs)
+        return cls(h, sigma, nu)
+
+    def heights(self, pops: ImigPopulations, counts: CountSample, k: float) -> tuple[float, float]:
+        """Return h_Z through *counts* of the populations pooled by mass and by number of giants."""
+        by_mass = pooled_slices(pops, self.h, self.sigma / (2.0 * self.h))
+        return predicted_hz(counts, by_mass, k)[0], predicted_hz(counts, pooled_slices(pops, self.h, self.nu), k)[0]
 
 
 @dataclass(frozen=True)
 class _Values:
-    """What one draw of a bin gives: the four heights and sigma_z."""
+    """What one draw of a bin gives: the four heights, sigma_z and the tracer, all through the counts of the draw."""
 
     heights: tuple[float, float, float, float]
     sigma_z: float
+    tracer: float
 
 
 def _values(pops: ImigPopulations, inputs: ImigInputs, model: SolarModel, rng: np.random.Generator | None) -> _Values:
-    """Return the heights and sigma_z of one bin, at the best values (*rng* None) or for one draw."""
+    """Return the heights, sigma_z and the tracer of one bin, at the best values (*rng* None) or for one draw."""
     kin = inputs.kinematics
     in_age = (kin.age >= pops.age_lo) & (kin.age < pops.age_hi) & (np.abs(kin.phase.z) < Z_MID_MAX_KPC)
     v_z, v_z_err = kin.phase.v_z[in_age], kin.v_z_err[in_age]
-    h, sigma, nu = pops.h, pops.sigma, pops.nu
+    parameters = _Parameters.of(pops, rng)
     astronn, distmass = inputs.counts_astronn, inputs.counts_distmass
     if rng is not None:
-        h, sigma, nu = (
-            split_normal(rng, v, e) for v, e in ((h, pops.h_err), (sigma, pops.sigma_err), (nu, pops.nu_err))
-        )
         rows = rng.integers(0, v_z.size, v_z.size)
         v_z, v_z_err = v_z[rows], v_z_err[rows]
         astronn, distmass = astronn.resampled(rng), distmass.resampled(rng)
     heights = (
-        mass_pooled_hz(h, sigma, model.k),
-        count_pooled_hz(h, nu, pops.a_flare, model.k),
+        *parameters.heights(pops, distmass, model.k),
         count_hz(astronn, pops.age_lo, pops.age_hi, model.k)[0],
         count_hz(distmass, pops.age_lo, pops.age_hi, model.k)[0],
     )
-    return _Values(heights, deconvolved_dispersion(v_z, v_z_err))
+    sigma_z = deconvolved_dispersion(v_z, v_z_err)
+    tracer = predicted_hz(distmass, profile_slices(tracer_profile(model.phi, sigma_z)), model.k)[0]
+    return _Values(heights, sigma_z, tracer)
 
 
 def measure_imig_bin(
@@ -213,8 +305,8 @@ def measure_imig_bin(
     """Return the four heights of one age bin, the tracer of the kinematic stars of its ages, and their ratios."""
     point = _values(pops, inputs, model, None)
     draws = [_values(pops, inputs, model, rng) for _ in range(n_draws)]
-    tracers = np.array([_tracer(d.sigma_z, model) for d in draws])
-    tracer = _tracer(point.sigma_z, model)
+    tracers = np.array([d.tracer for d in draws])
+    tracer = point.tracer
     n_heights = len(fields(ImigHeights))
 
     kin = inputs.kinematics

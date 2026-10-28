@@ -12,18 +12,18 @@ population inside L = k h(L), the smallest root of that equation, so that popula
 one profile shape are fitted over the same part of their profiles: an exponential
 returns its scale height at any k.
 
-Two predictions of h_Z from the midplane dispersion sigma_z go through the same windows:
+Two predictions of h_Z come from the midplane dispersion sigma_z:
 
 - the self-gravitating isothermal sheet, h_Z = sigma_z^2 / (pi G Sigma), with Sigma the
-  surface density of all the mass near the plane;
+  surface density of all the mass near the plane: the z_0 of its profile sech^2(|z| / z_0),
+  which the window L = 2 h_Z returns, so that the scale is compared with the windowed fit;
 - the isothermal tracer of the total potential, rho(z) ~ exp(-Delta Phi(z) / sigma_z^2),
-  whose profile is fitted as the particles are.
+  whose profile goes through the same window as the particles.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -70,45 +70,6 @@ def particle_hz(absz: FloatArray, weight: FloatArray, window: float) -> float:
         mean_z = float(np.sum(weight[inside] * absz[inside]) / np.sum(weight[inside]))
         scales.append(truncated_exp_scale(mean_z, limit))
     return float(np.mean(scales))
-
-
-@dataclass(frozen=True)
-class SortedHeights:
-    """Particle heights in ascending order, with the running sums that :func:`particle_hz` takes in each window.
-
-    :func:`particle_hz` scans every particle for each window, and the self-consistent
-    search asks for about 70 windows. Sorted once, the particles inside a window are a
-    prefix of the array, so each window costs one binary search. Entry i of ``count``,
-    ``weight`` and ``moment`` totals the multiplicity, the weight and the weight times |z|
-    of the first i particles.
-    """
-
-    absz: FloatArray
-    count: FloatArray
-    weight: FloatArray
-    moment: FloatArray
-
-    @classmethod
-    def of(cls, absz: FloatArray, weight: FloatArray, multiplicity: FloatArray) -> SortedHeights:
-        """Return the running sums of heights *absz* in ascending order, entering *multiplicity* times each."""
-        if np.any(np.diff(absz) < 0.0):
-            raise ValueError("the heights are not in ascending order")
-
-        def running(values: FloatArray) -> FloatArray:
-            return np.concatenate(([0.0], np.cumsum(values)))
-
-        mass = multiplicity * weight
-        return cls(absz, running(multiplicity), running(mass), running(mass * absz))
-
-    def hz(self, window: float) -> float:
-        """Return :func:`particle_hz` of the heights, each entered with its multiplicity, in *window*."""
-        if self.count[np.searchsorted(self.absz, 0.5 * window, side="right")] < N_MIN_HALF_WINDOW:
-            return float("nan")
-        scales = []
-        for limit in (window, 0.5 * window):
-            inside = np.searchsorted(self.absz, limit, side="right")
-            scales.append(truncated_exp_scale(float(self.moment[inside] / self.weight[inside]), limit))
-        return float(np.mean(scales))
 
 
 def _profile_mean(rho: FloatArray, limit: float, z_grid: FloatArray) -> float:
@@ -177,3 +138,14 @@ def scaled_profile_hz(rho: FloatArray, k: float, z_grid: FloatArray = Z_GRID) ->
 def sheet_hz(sigma_z: float, sigma_surf: float) -> float:
     """Return sigma_z^2 / (pi G Sigma) in kpc, for sigma_z in km/s and Sigma in Msun/pc^2."""
     return float(sigma_z**2 / (np.pi * G_PC * sigma_surf) / 1.0e3)
+
+
+def sheet_profile(sigma_z: float, sigma_surf: float, z_grid: FloatArray = Z_GRID) -> FloatArray:
+    """Return the self-gravitating isothermal sheet sech^2(|z| / z_0) on *z_grid*, with z_0 = :func:`sheet_hz`.
+
+    Its h_Z in the self-consistent window L = 2 h_Z is z_0 to 0.2 percent, so at k = 2 the
+    profile and the scale are the same prediction. sech^2 x = 4 e^{-2x} / (1 + e^{-2x})^2,
+    which does not overflow for thin sheets.
+    """
+    decay = np.exp(-2.0 * np.abs(z_grid) / sheet_hz(sigma_z, sigma_surf))
+    return np.asarray(4.0 * decay / (1.0 + decay) ** 2, dtype=np.float64)

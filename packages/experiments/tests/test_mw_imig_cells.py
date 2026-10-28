@@ -78,18 +78,20 @@ def test_cells_compare_each_population_with_its_counts(metals: Metals) -> None:
     for cell in measured:
         assert cell.counts.value > 0.0 and cell.ratio.value == pytest.approx(cell.counts.value / cell.imig.value)
         assert cell.ratio.err > 0.0 and cell.n_stars == 500
+        assert cell.imig_sun.value > 0.0 and cell.imig_window > 0.0 and cell.imig.err > 0.0
+        assert len(cell.shape) == 12 and all(np.isfinite(cell.shape[:6]))
     assert np.isfinite(cells.median_ratio) and np.isfinite(cells.trend.value)
     assert np.isfinite(cells.slopes.counts.value) and np.isfinite(cells.slopes.imig.value)
 
 
 def test_cells_without_enough_matches_have_no_counts(metals: Metals) -> None:
-    """Below the minimum of matches a cell keeps their h_Z but has no counts, and the summary is NaN."""
+    """Below the minimum of matches a cell keeps their h_Z at their Sun but has no counts, and the summary is NaN."""
     populations, metallicities = metals
     cells = measure_cells(populations, metallicities, MODEL, np.random.default_rng(1), CellSettings(3, 10**6))
     assert cells.n_measured == 0 and np.isnan(cells.median_ratio) and np.isnan(cells.trend.value)
     assert np.isnan(cells.slopes.counts.value) and np.isnan(cells.slopes.imig.value)
-    assert all(np.isnan(c.counts.value) and np.isnan(c.ratio.value) for c in cells.cells)
-    assert all(c.imig.value > 0.0 and c.imig.err > 0.0 for c in cells.cells)
+    assert all(np.isnan(c.counts.value) and np.isnan(c.ratio.value) and np.isnan(c.imig.value) for c in cells.cells)
+    assert all(c.imig_sun.value > 0.0 and c.imig_sun.err > 0.0 and c.shape == [] for c in cells.cells)
 
 
 def test_the_report_summarizes_each_metallicity_bin() -> None:
@@ -97,7 +99,7 @@ def test_the_report_summarizes_each_metallicity_bin() -> None:
 
     def cell(m_h_lo: float, n_matched: int, ratio: float) -> ImigCell:
         h = Estimate(0.3, 0.01)
-        return ImigCell(1.0, 1.26, m_h_lo, m_h_lo + 0.1, 500, n_matched, h, h, Estimate(ratio, 0.1))
+        return ImigCell(1.0, 1.26, m_h_lo, m_h_lo + 0.1, 500, n_matched, h, 0.3, h, h, Estimate(ratio, 0.1), [])
 
     slopes = MetallicitySlopes(Trend(0.1, 0.1, 1.0), Trend(-1.0, 0.1, 1.0))
     cells = ImigCells(

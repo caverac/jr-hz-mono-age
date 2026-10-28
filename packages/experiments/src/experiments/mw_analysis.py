@@ -9,8 +9,12 @@ For each survey (:mod:`experiments.mw_catalogs`) and each age bin of ``AGE_EDGES
   the dispersions are clipped and their median velocity error is removed in quadrature
   (:func:`experiments.stats.deconvolved_dispersion`); J_R is computed in McMillan (2017);
 - the isothermal tracer, exp(-Delta Phi / sigma_z^2) at R_0 in McMillan (2017), goes through
-  the same window; the sheet is sigma_z^2 / (pi G Sigma), with Sigma the mass of the
-  potential within |z| < 1.1 kpc at R_0, as for the Auriga disks;
+  the same counts: its mass in each slice sets its fraction, which the interpolation and the
+  window of the counts then fit (:func:`experiments.mw_counts.predicted_hz`);
+- the sheet, sigma_z^2 / (pi G Sigma) with Sigma the mass of the potential within
+  |z| < 1.1 kpc at R_0, as for the Auriga disks, goes through the same counts with its
+  profile sech^2(|z| / z_0) (:func:`experiments.heights.sheet_profile`), whose windowed h_Z
+  at k = 2 is that scale;
 - the ratios h_pred / h_Z carry the errors of one bootstrap that resamples, in each draw,
   the Gaia stars, their spectroscopic matches and the kinematic stars of the bin.
 
@@ -27,9 +31,16 @@ import agama
 import numpy as np
 from numpy.typing import NDArray
 
-from experiments.heights import scaled_profile_hz, sheet_hz, tracer_profile
+from experiments.heights import sheet_profile, tracer_profile
 from experiments.mw_catalogs import KinematicStars
-from experiments.mw_counts import CountSample, count_hz
+from experiments.mw_counts import (
+    CountBias,
+    CountSample,
+    count_bias,
+    count_hz,
+    predicted_hz,
+    profile_slices,
+)
 from experiments.mw_dynamics import R0_KPC, solar_vertical_potential, surface_density
 from experiments.populations import (
     K_MAIN,
@@ -96,7 +107,7 @@ class MwHeights:
 
 @dataclass(frozen=True)
 class MwPredictions:
-    """h_Z (kpc) of one age bin predicted by the sheet and by the isothermal tracer."""
+    """h_Z (kpc) of one age bin predicted by the sheet and by the isothermal tracer, as the counts measure them."""
 
     sheet: float
     tracer: float
@@ -137,13 +148,14 @@ class MwRange:
 
 @dataclass(frozen=True)
 class MwSurvey:
-    """The test with one survey."""
+    """The test with one survey, and what its counts give exponentials of known scales."""
 
     name: str
     n_gaia: int
     n_matched: int
     bins: list[MwBin]
     ranges: list[MwRange]
+    bias: CountBias
 
 
 @dataclass(frozen=True)
@@ -162,7 +174,10 @@ class _Values:
 def _values(
     counts: CountSample, kin: KinematicStars, jr: FloatArray, bounds: tuple[float, float], model: SolarModel
 ) -> _Values:
-    """Return h_Z, the kinematics and the predictions of the age bin *bounds*, from *counts* and its stars *kin*."""
+    """Return h_Z, the kinematics and the predictions of the age bin *bounds*, from *counts* and its stars *kin*.
+
+    The predictions go through *counts*, the sample that h_Z comes from.
+    """
     hz, window = count_hz(counts, bounds[0], bounds[1], model.k)
     absz = np.abs(kin.phase.z)
     jr_rows = (absz < Z_JR_MAX_KPC) & np.isfinite(jr) & (jr >= 0.0)
@@ -174,8 +189,8 @@ def _values(
         sigma_r=deconvolved_dispersion(kin.phase.v_r[jr_rows], kin.v_r_err[jr_rows]),
         sigma_z=sigma_z,
         jr_median=float(np.median(jr[jr_rows])),
-        sheet=sheet_hz(sigma_z, model.sigma_surf),
-        tracer=scaled_profile_hz(tracer_profile(model.phi, sigma_z), model.k)[0],
+        sheet=predicted_hz(counts, profile_slices(sheet_profile(sigma_z, model.sigma_surf)), model.k)[0],
+        tracer=predicted_hz(counts, profile_slices(tracer_profile(model.phi, sigma_z)), model.k)[0],
     )
 
 
@@ -262,4 +277,5 @@ def measure_survey(
         n_matched=int(survey.counts.tracer_age.size),
         bins=bins,
         ranges=[measure_range(bins, lo, hi) for lo, hi in AGE_RANGES],
+        bias=count_bias(survey.counts, model.k),
     )

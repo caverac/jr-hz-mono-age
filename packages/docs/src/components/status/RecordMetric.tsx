@@ -6,15 +6,17 @@ import {
   type Line,
   parseJrRelation
 } from '@site/src/components/status/jrRelation'
-import { extent, trendText } from '@site/src/components/status/metrics'
+import { extent, median, trendText } from '@site/src/components/status/metrics'
 import {
   boxText,
   cellMedian,
   type ImigBin,
+  type ImigCell,
   type ImigCells,
   type ImigHeight,
   imigAge,
   isMeasured,
+  measuredIn,
   MILKY_WAY_PATH,
   type MilkyWayData,
   type MwRange,
@@ -125,6 +127,26 @@ function medianText(cells: ImigCells, lo: number, hi: number): string {
   return `${fixed(median)} over ${n} cells`
 }
 
+/** What the counts of the survey `name` give an exponential of `scale` kpc, over the scale. */
+function biasText(data: MilkyWayData, name: string, scale: number): string {
+  const { scales, ratios } = survey(data, name).bias
+  return fixed(ratios[scales.findIndex((s) => Math.abs(s - scale) < 1e-9)] ?? Number.NaN)
+}
+
+/** The range over the measured APOGEE cells of `value`, with three decimals. */
+function cellRange(data: MilkyWayData, value: (cell: ImigCell) => number): string {
+  const cells = data.imigCells.cells.filter((c) => isMeasured(data.imigCells, c))
+  return between(extent(cells.map(value)), 3)
+}
+
+/** The median shape of the measured APOGEE cells with [M/H] in [lo, hi), slice by slice. */
+function medianShape(data: MilkyWayData, lo: number, hi: number): readonly number[] {
+  const shapes = measuredIn(data.imigCells, lo, hi).map((c) => c.shape)
+  return data.sliceEdges
+    .slice(1)
+    .map((_, i) => median(shapes.map((shape) => shape[i] ?? Number.NaN)))
+}
+
 /** The targeting box `index` of the record and its cells. */
 function targeted(data: MilkyWayData, index: number): TargetedCells {
   const found = data.imigCellsTargeting[index]
@@ -192,7 +214,6 @@ const MW_METRICS = {
   countsDistmassHz7: (d: MilkyWayData) => imigHeight(d, 'countsDistmass', 7),
   imigWeighting: (d: MilkyWayData) => heightRatios(d, 'imigCounts', 'imigMass'),
   imigAgeScale: (d: MilkyWayData) => heightRatios(d, 'countsAstronn', 'countsDistmass'),
-  imigGap: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts'),
   imigGapYoung: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts', 0, 4),
   imigGapOld: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts', 4),
   imigMassRatio: (d: MilkyWayData) => imigRatios(d, 'imigMass'),
@@ -226,6 +247,25 @@ const MW_METRICS = {
   slopeImigApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.imig),
   slopeCountsLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.counts),
   slopeImigLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.imig),
+  distmassTracerOld: (d: MilkyWayData) =>
+    between(
+      extent(
+        survey(d, 'apogee_distmass')
+          .bins.filter((b) => b.ageLo >= 4)
+          .map((b) => b.ratioTracer.value)
+      )
+    ),
+  biasApogee15: (d: MilkyWayData) => biasText(d, 'apogee', 0.15),
+  biasApogee20: (d: MilkyWayData) => biasText(d, 'apogee', 0.2),
+  biasApogee40: (d: MilkyWayData) => biasText(d, 'apogee', 0.4),
+  modelGeometry: (d: MilkyWayData) => cellRange(d, (c) => c.imigWindow / c.imigSun.value),
+  modelSlices: (d: MilkyWayData) => cellRange(d, (c) => c.imig.value / c.imigWindow),
+  shapePoorMidplane: (d: MilkyWayData) =>
+    fixed(medianShape(d, Number.NEGATIVE_INFINITY, -0.1)[0] ?? Number.NaN),
+  shapeRichMidplane: (d: MilkyWayData) =>
+    fixed(medianShape(d, 0.1, Number.POSITIVE_INFINITY)[0] ?? Number.NaN),
+  shapeRichPeak: (d: MilkyWayData) =>
+    fixed(Math.max(...medianShape(d, 0.1, Number.POSITIVE_INFINITY))),
   lamostCells: (d: MilkyWayData) => String(d.imigCellsLamost.nMeasured),
   lamostCellMatches: (d: MilkyWayData) => count(d.imigCellsLamost.nMatches),
   cellsStars: (d: MilkyWayData) => {

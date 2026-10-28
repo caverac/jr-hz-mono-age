@@ -13,6 +13,7 @@ import {
   field,
   list,
   num,
+  numbers,
   str,
   type Trend,
   trend
@@ -46,7 +47,9 @@ export interface MwBin {
   readonly nMatched: number
   /** The fraction of bootstrap draws without an h_Z. */
   readonly failed: number
+  /** h_Z (kpc) of an exponential of the scale of the sheet, through the same counts. */
   readonly sheet: number
+  /** h_Z (kpc) of the tracer profile, through the same counts. */
   readonly tracer: number
   readonly ratioTracer: Estimate
   readonly ratioSheet: Estimate
@@ -61,18 +64,25 @@ export interface MwRange {
   readonly eta: number
 }
 
+/** What the counts of a survey give exponentials of known scales (kpc), over each scale. */
+export interface CountBias {
+  readonly scales: readonly number[]
+  readonly ratios: readonly number[]
+}
+
 export interface MwSurvey {
   readonly name: string
   readonly nGaia: number
   readonly nMatched: number
   readonly bins: readonly MwBin[]
   readonly ranges: readonly MwRange[]
+  readonly bias: CountBias
 }
 
 /**
  * The four h_Z of an age bin of Imig et al.: their populations pooled by mass and by counts
- * of giants at R_0, and our APOGEE star counts of the same ages on the astroNN and the
- * distmass scales.
+ * of giants at their Sun, as their model gives them through our cylinder and counts, and
+ * our APOGEE star counts of the same ages on the astroNN and the distmass scales.
  */
 export type ImigHeight = 'imigMass' | 'imigCounts' | 'countsAstronn' | 'countsDistmass'
 
@@ -97,7 +107,7 @@ export interface ImigBin {
   readonly ratios: Readonly<Record<ImigHeight, Estimate>>
 }
 
-/** One population of Imig et al. against our counts of its ages and [M/H]: their h_Z at R_0, ours (kpc), the ratio. */
+/** One population of Imig et al. against our counts of its ages and [M/H]: their h_Z (kpc), ours, the ratio. */
 export interface ImigCell {
   readonly ageLo: number
   readonly ageHi: number
@@ -107,14 +117,24 @@ export interface ImigCell {
   readonly nStars: number
   /** Our matched stars in the cell. */
   readonly nMatched: number
+  /** Their h_Z at their Sun, as published. */
+  readonly imigSun: Estimate
+  /** Their model over the disk of our cylinder, in the continuous window. */
+  readonly imigWindow: number
+  /** Their model through our cylinder and counts; NaN with fewer than `minMatches` matches. */
   readonly imig: Estimate
   /** NaN with fewer than `minMatches` matches. */
   readonly counts: Estimate
-  /** Our counts over their h_Z. */
+  /** Our counts over their model through our counts. */
   readonly ratio: Estimate
+  /** Our counts over their model in each slice of |z|, each normalized to its sum; empty without the minimum. */
+  readonly shape: readonly number[]
 }
 
-/** The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin: ours and theirs in the same cells. */
+/**
+ * The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin, in the same
+ * cells: of our counts, and of their model through our counts.
+ */
 export interface MetallicitySlopes {
   readonly counts: Trend
   readonly imig: Trend
@@ -154,6 +174,8 @@ export interface MilkyWayData {
   readonly sigmaSurf: number
   readonly k: number
   readonly nBootstrap: number
+  /** The |z| slices of the counts (kpc). */
+  readonly sliceEdges: readonly number[]
   readonly surveys: readonly MwSurvey[]
   readonly imig: {
     readonly bins: readonly ImigBin[]
@@ -240,9 +262,12 @@ function parseImigCell(cell: unknown): ImigCell {
     mhHi: num(cell, 'm_h_hi'),
     nStars: num(cell, 'n_stars'),
     nMatched: num(cell, 'n_matched'),
+    imigSun: estimate(cell, 'imig_sun'),
+    imigWindow: num(cell, 'imig_window'),
     imig: estimate(cell, 'imig'),
     counts: estimate(cell, 'counts'),
-    ratio: estimate(cell, 'ratio')
+    ratio: estimate(cell, 'ratio'),
+    shape: numbers(cell, 'shape')
   }
 }
 
@@ -267,16 +292,20 @@ export function boxText(box: TargetingBox): string {
   return `$${box.hLo} < H < ${box.hHi}$, $${box.jkLo} < (J-K_s)_0${red}$`
 }
 
+/** The measured cells whose [M/H] center lies in [lo, hi). */
+export function measuredIn(cells: ImigCells, lo: number, hi: number): readonly ImigCell[] {
+  return cells.cells
+    .filter((c) => isMeasured(cells, c))
+    .filter((c) => 0.5 * (c.mhLo + c.mhHi) >= lo && 0.5 * (c.mhLo + c.mhHi) < hi)
+}
+
 /** The median ratio of the measured cells whose [M/H] center lies in [lo, hi), and their number. */
 export function cellMedian(
   cells: ImigCells,
   lo: number,
   hi: number
 ): { median: number; n: number } {
-  const ratios = cells.cells
-    .filter((c) => isMeasured(cells, c))
-    .filter((c) => 0.5 * (c.mhLo + c.mhHi) >= lo && 0.5 * (c.mhLo + c.mhHi) < hi)
-    .map((c) => c.ratio.value)
+  const ratios = measuredIn(cells, lo, hi).map((c) => c.ratio.value)
   return { median: median(ratios), n: ratios.length }
 }
 
@@ -285,6 +314,13 @@ export const METALLICITY_RANGES: readonly (readonly [number, number])[] = [
   [Number.NEGATIVE_INFINITY, -0.1],
   [-0.1, 0.1],
   [0.1, Number.POSITIVE_INFINITY]
+]
+
+/** The ranges of `METALLICITY_RANGES` as the tables head them. */
+export const METALLICITY_LABELS: readonly string[] = [
+  '$[\\mathrm{M/H}] < -0.1$',
+  '$-0.1$ to $0.1$',
+  '$> 0.1$'
 ]
 
 /** Whether `cell` has enough matches for our h_Z, and a finite ratio. */
@@ -300,12 +336,17 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
     sigmaSurf: num(record, 'sigma_surf'),
     k: num(record, 'k'),
     nBootstrap: num(record, 'n_bootstrap'),
+    sliceEdges: numbers(record, 'slice_edges_kpc'),
     surveys: list(record, 'surveys').map((survey) => ({
       name: str(survey, 'name'),
       nGaia: num(survey, 'n_gaia'),
       nMatched: num(survey, 'n_matched'),
       bins: list(survey, 'bins').map(parseBin),
-      ranges: list(survey, 'ranges').map(parseRange)
+      ranges: list(survey, 'ranges').map(parseRange),
+      bias: {
+        scales: numbers(field(survey, 'bias'), 'scales'),
+        ratios: numbers(field(survey, 'bias'), 'ratios')
+      }
     })),
     imig: {
       bins: list(imig, 'bins').map(parseImigBin),

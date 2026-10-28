@@ -33,7 +33,7 @@ from experiments.mw_catalogs import (
     read_lamost,
     with_distmass_ages,
 )
-from experiments.mw_counts import RedClump, apogee_count_sample, lamost_count_sample
+from experiments.mw_counts import SLICE_EDGES_KPC, RedClump, apogee_count_sample, lamost_count_sample
 from experiments.mw_dynamics import R0_KPC, cylindrical_actions, mcmillan17
 from experiments.mw_imig import N_DRAWS, ImigCheck, ImigInputs, measure_imig, read_imig
 from experiments.mw_imig_cells import (
@@ -65,6 +65,7 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     k: float
     n_bootstrap: int
     rc_peak: tuple[float, ...]  # M_W of the red-clump peak in each |z| slice of the counts
+    slice_edges_kpc: tuple[float, ...]  # the |z| slices of the counts
     surveys: list[MwSurvey]
     imig: ImigCheck
     imig_cells: ImigCells
@@ -120,6 +121,7 @@ def analyze_milky_way(  # pylint: disable=too-many-locals
         k=model.k,
         n_bootstrap=n_bootstrap,
         rc_peak=tuple(fit.mu_rc for fit in clump.fits),
+        slice_edges_kpc=SLICE_EDGES_KPC,
         surveys=[measure_survey(survey, model, rng, n_bootstrap) for survey in (lamost, astronn, distmass)],
         imig=measure_imig(
             populations, ImigInputs(astronn.counts, distmass.counts, distmass.kinematics), model, rng, n_draws

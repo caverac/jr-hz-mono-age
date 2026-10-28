@@ -12,6 +12,8 @@ import {
   type ImigCells,
   type ImigHeight,
   isMeasured,
+  measuredIn,
+  METALLICITY_LABELS,
   METALLICITY_RANGES,
   MILKY_WAY_PATH,
   type MilkyWayData,
@@ -212,15 +214,7 @@ export const TargetingTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
       ['median counts over Imig et al.', 3],
       ['', 1]
     ],
-    head: [
-      'matches used',
-      'matches',
-      'cells',
-      '$[\\mathrm{M/H}] < -0.1$',
-      '$-0.1$ to $0.1$',
-      '$> 0.1$',
-      'slope per dex'
-    ],
+    head: ['matches used', 'matches', 'cells', ...METALLICITY_LABELS, 'slope per dex'],
     rows: [
       row('all', data.imigCells),
       ...data.imigCellsTargeting.map((t) => row(boxText(t.box), t.cells))
@@ -251,6 +245,91 @@ export const SlopeTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
       ...data.imigCellsTargeting.map((t) => row(`APOGEE, ${boxText(t.box)}`, t.cells)),
       row('LAMOST', data.imigCellsLamost)
     ]
+  }
+})
+
+/** A ratio with three digits, or "none" where the record has none. */
+function ratioCell(value: number): string {
+  return Number.isFinite(value) ? fixed(value, 3) : 'none'
+}
+
+/**
+ * What the counts give an exponential of each scale, over the scale, for the Gaia stars of
+ * each survey: the red clump of LAMOST and the giant box of APOGEE, whose two age scales
+ * share it.
+ */
+export const CountBiasTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const samples = [
+    { name: 'LAMOST red clump', survey: 'lamost' },
+    { name: 'APOGEE giant box', survey: 'apogee' }
+  ]
+  const scales = data.surveys[0]?.bias.scales ?? []
+  return {
+    groups: [
+      ['', 1],
+      ['scale of the exponential (kpc)', scales.length]
+    ],
+    head: ['Gaia stars', ...scales.map((scale) => fixed(scale))],
+    rows: samples.map(({ name, survey }) => [
+      name,
+      ...(data.surveys.find((s) => s.name === survey)?.bias.ratios ?? []).map(ratioCell)
+    ])
+  }
+})
+
+/**
+ * Their heights in the measured APOGEE cells of each range of [M/H], as medians: their model
+ * over our cylinder in the continuous window over their h_Z at their Sun, the same model
+ * through our counts over the continuous window, and our counts over their model through
+ * our counts.
+ */
+export const ImigModelTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({
+  groups: [
+    ['', 2],
+    ['their model', 2],
+    ['', 1]
+  ],
+  head: [
+    '$[\\mathrm{M/H}]$',
+    'cells',
+    'cylinder over published',
+    'counts over cylinder',
+    'ours over theirs'
+  ],
+  rows: METALLICITY_RANGES.map(([lo, hi], j) => {
+    const cells = measuredIn(data.imigCells, lo, hi)
+    return [
+      METALLICITY_LABELS[j] ?? '',
+      String(cells.length),
+      ratioCell(median(cells.map((c) => c.imigWindow / c.imigSun.value))),
+      ratioCell(median(cells.map((c) => c.imig.value / c.imigWindow))),
+      fixed(median(cells.map((c) => c.ratio.value)))
+    ]
+  })
+}))
+
+/**
+ * Our counts over their model through our counts, in each slice of |z|, each normalized to
+ * its sum: the median over the measured APOGEE cells of each range of [M/H].
+ */
+export const ImigShapeTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const edges = data.sliceEdges
+  const slices = edges
+    .slice(1)
+    .map((hi, i) => `${fixed(edges[i] ?? Number.NaN, 1)}-${fixed(hi, 1)}`)
+  return {
+    groups: [
+      ['', 1],
+      ['$|z|$ (kpc)', slices.length]
+    ],
+    head: ['$[\\mathrm{M/H}]$', ...slices],
+    rows: METALLICITY_RANGES.map(([lo, hi], j) => {
+      const shapes = measuredIn(data.imigCells, lo, hi).map((c) => c.shape)
+      return [
+        METALLICITY_LABELS[j] ?? '',
+        ...slices.map((_, i) => fixed(median(shapes.map((shape) => shape[i] ?? Number.NaN))))
+      ]
+    })
   }
 })
 
