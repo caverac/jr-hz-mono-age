@@ -5,7 +5,9 @@ age, and whose Wesenheit magnitudes follow a red clump at M_W = -1.75 above a fl
 background. LAMOST and APOGEE observe a random subset of them, with ages, abundances of the
 low-[alpha/Fe] disk, and the phase-space coordinates of stars of the solar annulus. The
 distmass ages are 10 percent older than the astroNN ones, and one APOGEE star in ten lies
-on the high-[alpha/M] side of the split of Imig et al. in its ASPCAP abundances. The heights and dispersions are
+on the high-[alpha/M] side of the split of Imig et al. in its ASPCAP abundances. One APOGEE
+star in seven comes from a cohort with a red limit (J - K_s)_0 < 0.8, and one in eleven is
+redder than that limit. The heights and dispersions are
 not tied to each other: the files only exercise the reading, matching and measuring code.
 """
 
@@ -100,10 +102,14 @@ def write_world(root: Path) -> dict[str, np.ndarray]:
             "AGE_ERR": np.tile([0.15, -0.13], (n_ap, 1)),
         }
     ).write(_path(root, "distmass"), overwrite=True)  # fmt: skip
+    row = np.arange(n_ap)
     Table(
         {
             "EXTRATARG": np.zeros(n_ap, dtype=np.int16), "M_H": ap_fe,
-            "ALPHA_M": np.where(np.arange(n_ap) % 10 == 0, 0.3, 0.0),
+            "ALPHA_M": np.where(row % 10 == 0, 0.3, 0.0),
+            "J": np.where(row % 11 == 0, 9.95, 9.65), "K": np.full(n_ap, 9.0), "H": np.full(n_ap, 9.2),
+            "AK_TARG": np.zeros(n_ap), "MIN_H": np.full(n_ap, 7.0), "MAX_H": np.full(n_ap, 12.2),
+            "MIN_JK": np.full(n_ap, 0.5), "MAX_JK": np.where(row % 7 == 0, 0.8, 9999.99),
         }
     ).write(_path(root, "allstar"), overwrite=True)  # fmt: skip
 

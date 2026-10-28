@@ -6,9 +6,12 @@ import {
   type Line,
   parseJrRelation
 } from '@site/src/components/status/jrRelation'
-import { extent, median, trendText } from '@site/src/components/status/metrics'
+import { extent, trendText } from '@site/src/components/status/metrics'
 import {
+  boxText,
+  cellMedian,
   type ImigBin,
+  type ImigCells,
   type ImigHeight,
   imigAge,
   isMeasured,
@@ -16,7 +19,8 @@ import {
   type MilkyWayData,
   type MwRange,
   type MwSurvey,
-  parseMilkyWay
+  parseMilkyWay,
+  type TargetedCells
 } from '@site/src/components/status/milkyWay'
 import useRecord from '@site/src/components/status/useRecord'
 import React, { type ReactNode } from 'react'
@@ -115,14 +119,19 @@ function imigHeight(data: MilkyWayData, height: ImigHeight, age: number): string
     : `${plusMinus(bin.heights[height].value, bin.heights[height].err, 3, false)} kpc`
 }
 
-/** The median of our counts over their h_Z in the measured cells whose [M/H] center lies in [lo, hi), and their number. */
-function cellMedian(data: MilkyWayData, lo: number, hi: number): string {
-  const { imigCells } = data
-  const ratios = imigCells.cells
-    .filter((c) => isMeasured(imigCells, c))
-    .filter((c) => 0.5 * (c.mhLo + c.mhHi) >= lo && 0.5 * (c.mhLo + c.mhHi) < hi)
-    .map((c) => c.ratio.value)
-  return `${fixed(median(ratios))} over ${ratios.length} cells`
+/** The median of our counts over their h_Z in the measured `cells` whose [M/H] center lies in [lo, hi), and their number. */
+function medianText(cells: ImigCells, lo: number, hi: number): string {
+  const { median, n } = cellMedian(cells, lo, hi)
+  return `${fixed(median)} over ${n} cells`
+}
+
+/** The targeting box `index` of the record and its cells. */
+function targeted(data: MilkyWayData, index: number): TargetedCells {
+  const found = data.imigCellsTargeting[index]
+  if (found === undefined) {
+    throw new Error(`no targeting box ${index}`)
+  }
+  return found
 }
 
 /** The ages of the Imig et al. bins without the height `height`. */
@@ -199,9 +208,20 @@ const MW_METRICS = {
   cellsMeasured: (d: MilkyWayData) => `${d.imigCells.nMeasured} of ${d.imigCells.cells.length}`,
   cellsMedian: (d: MilkyWayData) => fixed(d.imigCells.medianRatio),
   cellsTrend: (d: MilkyWayData) => trendText(d.imigCells.trend),
-  cellsMetalPoor: (d: MilkyWayData) => cellMedian(d, Number.NEGATIVE_INFINITY, -0.1),
-  cellsMetalSolar: (d: MilkyWayData) => cellMedian(d, -0.1, 0.1),
-  cellsMetalRich: (d: MilkyWayData) => cellMedian(d, 0.1, Number.POSITIVE_INFINITY),
+  cellsMetalPoor: (d: MilkyWayData) => medianText(d.imigCells, Number.NEGATIVE_INFINITY, -0.1),
+  cellsMetalSolar: (d: MilkyWayData) => medianText(d.imigCells, -0.1, 0.1),
+  cellsMetalRich: (d: MilkyWayData) => medianText(d.imigCells, 0.1, Number.POSITIVE_INFINITY),
+  cellsMatches: (d: MilkyWayData) => count(d.imigCells.nMatches),
+  boxA: (d: MilkyWayData) => boxText(targeted(d, 0).box),
+  boxB: (d: MilkyWayData) => boxText(targeted(d, 1).box),
+  boxMatchesA: (d: MilkyWayData) => count(targeted(d, 0).cells.nMatches),
+  boxMatchesB: (d: MilkyWayData) => count(targeted(d, 1).cells.nMatches),
+  boxPoorA: (d: MilkyWayData) => medianText(targeted(d, 0).cells, Number.NEGATIVE_INFINITY, -0.1),
+  boxPoorB: (d: MilkyWayData) => medianText(targeted(d, 1).cells, Number.NEGATIVE_INFINITY, -0.1),
+  boxRichA: (d: MilkyWayData) => medianText(targeted(d, 0).cells, 0.1, Number.POSITIVE_INFINITY),
+  boxRichB: (d: MilkyWayData) => medianText(targeted(d, 1).cells, 0.1, Number.POSITIVE_INFINITY),
+  boxTrendA: (d: MilkyWayData) => trendText(targeted(d, 0).cells.trend),
+  boxTrendB: (d: MilkyWayData) => trendText(targeted(d, 1).cells.trend),
   cellsStars: (d: MilkyWayData) => {
     const measured = d.imigCells.cells.filter((c) => isMeasured(d.imigCells, c))
     const sum = (cells: readonly { readonly nStars: number }[]) =>

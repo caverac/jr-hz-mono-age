@@ -7,7 +7,8 @@
 APOGEE and the ages of distmass. It then compares the heights of Imig et al. (2025) with
 the APOGEE counts on both age scales and with the tracer (:mod:`experiments.mw_imig`), and
 each of their populations with the counts of the same ages and [M/H]
-(:mod:`experiments.mw_imig_cells`).
+(:mod:`experiments.mw_imig_cells`), with all the matches and with those of each targeting
+box.
 """
 
 from __future__ import annotations
@@ -34,7 +35,14 @@ from experiments.mw_catalogs import (
 from experiments.mw_counts import RedClump, apogee_count_sample, lamost_count_sample
 from experiments.mw_dynamics import R0_KPC, cylindrical_actions, mcmillan17
 from experiments.mw_imig import N_DRAWS, ImigCheck, ImigInputs, measure_imig, read_imig
-from experiments.mw_imig_cells import CellSettings, ImigCells, measure_cells, metallicity_counts
+from experiments.mw_imig_cells import (
+    TARGETING_BOXES,
+    CellSettings,
+    ImigCells,
+    TargetedCells,
+    measure_cells,
+    metallicity_counts,
+)
 from experiments.mw_sources import FILE_SOURCES, GAIA_PATH
 
 
@@ -42,8 +50,9 @@ from experiments.mw_sources import FILE_SOURCES, GAIA_PATH
 class MilkyWay:  # pylint: disable=too-many-instance-attributes
     """The Milky Way test: R_0 (kpc), Sigma (Msun/pc^2), k, the bootstrap size, the red-clump peaks, the surveys.
 
-    ``imig`` compares the pooled heights of Imig et al. with the counts and the tracer, and
-    ``imig_cells`` each of their populations with the counts of its ages and [M/H].
+    ``imig`` compares the pooled heights of Imig et al. with the counts and the tracer,
+    ``imig_cells`` each of their populations with the counts of its ages and [M/H], and
+    ``imig_cells_targeting`` the same with the matches of each targeting box.
     """
 
     r0_kpc: float
@@ -54,6 +63,7 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     surveys: list[MwSurvey]
     imig: ImigCheck
     imig_cells: ImigCells
+    imig_cells_targeting: list[TargetedCells]
 
 
 def source_path(root: Path, name: str) -> Path:
@@ -89,8 +99,13 @@ def analyze_milky_way(root: Path, n_bootstrap: int = N_BOOTSTRAP, n_draws: int =
     astronn = apogee_survey("apogee", apogee, gaia, pot)
     distmass_apogee = with_distmass_ages(apogee, source_path(root, "distmass"))
     distmass = apogee_survey("apogee_distmass", distmass_apogee, gaia, pot)
-    inputs = ImigInputs(astronn.counts, distmass.counts, distmass.kinematics)
     populations = read_imig(source_path(root, "imig"))
+
+    def cells(catalog: Apogee) -> ImigCells:
+        return measure_cells(
+            populations, metallicity_counts(gaia, catalog, populations), model, rng, CellSettings(n_draws)
+        )
+
     return MilkyWay(
         r0_kpc=R0_KPC,
         sigma_surf=model.sigma_surf,
@@ -98,8 +113,9 @@ def analyze_milky_way(root: Path, n_bootstrap: int = N_BOOTSTRAP, n_draws: int =
         n_bootstrap=n_bootstrap,
         rc_peak=tuple(fit.mu_rc for fit in clump.fits),
         surveys=[measure_survey(survey, model, rng, n_bootstrap) for survey in (lamost, astronn, distmass)],
-        imig=measure_imig(populations, inputs, model, rng, n_draws),
-        imig_cells=measure_cells(
-            populations, metallicity_counts(gaia, distmass_apogee, populations), model, rng, CellSettings(n_draws)
+        imig=measure_imig(
+            populations, ImigInputs(astronn.counts, distmass.counts, distmass.kinematics), model, rng, n_draws
         ),
+        imig_cells=cells(distmass_apogee),
+        imig_cells_targeting=[TargetedCells(box, cells(distmass_apogee.within(box))) for box in TARGETING_BOXES],
     )

@@ -9,7 +9,8 @@ import {
   ImigRatioTable,
   ImigTable,
   MwBinTable,
-  MwTrendTable
+  MwTrendTable,
+  TargetingTable
 } from '@site/src/components/status/recordTables'
 
 # Milky Way
@@ -187,7 +188,7 @@ disagreement. The ratio depends on metallicity instead. Its median is
 agree for the metal-poor populations, whereas they disagree for the metal-rich ones.
 
 Whatever causes the disagreement must therefore change with metallicity at fixed age, as
-two differences between the measurements can. Their $h_Z$ is a parameter of a fit over the
+two differences between the measurements could. Their $h_Z$ is a parameter of a fit over the
 footprint of APOGEE out to $R = 20$ kpc, in which a single exponential in $|z|$ holds at
 every radius and its scale changes only linearly with $R$, whereas ours is fit to a cylinder
 of radius 1.5 kpc around the Sun within $|z| < 1.2$ kpc. Each population enters their fit
@@ -199,12 +200,41 @@ color, however. Because the colors of giants change with metallicity, a color li
 changes across the fields at different $|z|$ would bias the fraction of each metallicity in
 the slices.
 
+### The targeting of APOGEE
+
+We test the second explanation with the targeting that APOGEE records for every star: the
+limits of $H$ and of $(J-K_s)_0$ of the cohort it was targeted in, and its color
+$(J-K_s)_0 = J - K_s - 1.5A_{K_s}$, with the extinction $A_{K_s}$ of the targeting
+(Zasowski et al. 2013). Our matches come from cohorts limited at $(J-K_s)_0 > 0.5$ and at
+$(J-K_s)_0 > 0.3$, and some cohorts also reject stars redder than $(J-K_s)_0 = 0.8$, the
+coolest and most metal-rich giants, in their fields only. We repeat the comparison of the
+cells with only the matches of a box of $H$ and $(J-K_s)_0$ that the limits of every cohort
+they come from contain, so that one selection holds in every field
+(`experiments.mw_catalogs.TargetingBox`). The first box, <MwMetric name="boxA" />, keeps
+<MwMetric name="boxMatchesA" /> of the <MwMetric name="cellsMatches" /> matches and drops the
+cohorts with a red limit, whereas the second, <MwMetric name="boxB" />, keeps
+<MwMetric name="boxMatchesB" /> by applying that red limit to every star.
+
+<TargetingTable />
+
+With one selection in every field, the metal-poor populations still agree with their fits,
+with medians of <MwMetric name="boxPoorA" /> and <MwMetric name="boxPoorB" />, whereas the
+metal-rich ones remain thicker in our counts, with medians of <MwMetric name="boxRichA" />
+and <MwMetric name="boxRichB" />. The slopes are <MwMetric name="boxTrendA" /> and
+<MwMetric name="boxTrendB" /> per dex of $[\mathrm{M/H}]$, as without the boxes. The
+targeting limits of APOGEE thus do not cause the disagreement. That leaves the global fit
+of Imig et al., or a selection that the limits do not record. Within a cohort, APOGEE spaces
+its targets evenly in apparent $H$ rather than drawing them at random (Zasowski et al. 2013,
+Section 4.4), so the chance that a star is targeted depends on its $H$ and, at a given
+distance, on its luminosity, which changes with the population.
+
 ## Limitations
 
 The fraction of a slice assumes that the spectroscopic targeting does not depend on the
 population, its age or its metallicity, at a fixed position, which a selection in magnitude
-and color satisfies only if its limits are the same for every field. We have not checked
-this against the targeting flags. If it fails, the counts of a population are biased in
+and color satisfies only if its limits are the same for every field. For APOGEE we have
+checked this with the targeting limits of every star, which do not change the cells, but not
+for LAMOST, whose matches split the counts of the main test. If it fails, the counts of a population are biased in
 the slices of $|z|$ where the targeting changes, which would bear on the disagreement with
 Imig et al., whose fit corrects for the selection function. The counts stop at
 $|z| = 1.2$ kpc, so the window of the oldest populations, about twice their $h_Z$, comes

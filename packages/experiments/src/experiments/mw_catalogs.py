@@ -53,6 +53,9 @@ LAMOST_COLUMNS = (
     "DISTANCE", "ERR_DISTANCE", "PMRA", "ERR_PMRA", "PMDEC", "ERR_PMDEC",
 )  # fmt: skip
 GAIA_COLUMNS = ("source_id", "l", "b", "parallax", "parallax_error", "phot_g_mean_mag", "bp_rp")
+ALLSTAR_COLUMNS = (
+    "EXTRATARG", "M_H", "ALPHA_M", "J", "K", "H", "AK_TARG", "MIN_H", "MAX_H", "MIN_JK", "MAX_JK",
+)  # fmt: skip
 
 
 def apogee_low_alpha(fe_h: FloatArray, mg_fe: FloatArray) -> BoolArray:
@@ -122,12 +125,52 @@ def read_gaia(path: Path) -> GaiaStars:
 
 
 @dataclass(frozen=True)
+class Targeting:
+    """The APOGEE targeting of each star: its H, its (J - K_s)_0, and the limits of the cohort it was targeted in.
+
+    (J - K_s)_0 = J - K_s - 1.5 A_Ks, with the A_Ks of the targeting (``AK_TARG``), as in the
+    target selection of Zasowski et al. (2013, AJ 146, 81). A cohort without a limit carries
+    -9999.99 or 9999.99.
+    """
+
+    h: FloatArray
+    jk0: FloatArray
+    min_h: FloatArray
+    max_h: FloatArray
+    min_jk: FloatArray
+    max_jk: FloatArray
+
+
+@dataclass(frozen=True)
+class TargetingBox:
+    """A range of H and of (J - K_s)_0 that holds the same selection in every field.
+
+    A star belongs to the box when it lies in it and its cohort was targeted with limits
+    that contain the box, so that the stars of the box are selected alike wherever they are.
+    """
+
+    h_lo: float
+    h_hi: float
+    jk_lo: float
+    jk_hi: float
+
+    def holds(self, targeting: Targeting) -> BoolArray:
+        """Return which stars of *targeting* belong to the box; False where a value is NaN."""
+        t = targeting
+        return np.asarray(
+            (t.min_h <= self.h_lo) & (t.max_h >= self.h_hi) & (t.min_jk <= self.jk_lo) & (t.max_jk >= self.jk_hi)
+            & (t.h >= self.h_lo) & (t.h <= self.h_hi) & (t.jk0 >= self.jk_lo) & (t.jk0 <= self.jk_hi),
+            dtype=np.bool_,
+        )  # fmt: skip
+
+
+@dataclass(frozen=True)
 class Apogee:  # pylint: disable=too-many-instance-attributes
-    """The astroNN columns of the analysis, as floats, with source_id, the rows to keep and the ASPCAP abundances.
+    """The astroNN columns of the analysis, as floats, with source_id, the rows to keep, abundances and targeting.
 
     ``m_h`` and ``alpha_m`` are the ASPCAP [M/H] and [alpha/M] of the row-matched allStar,
-    in which Imig et al. (2025) bin their populations. They stay out of ``num``, whose
-    columns the kinematic sample requires to be finite.
+    in which Imig et al. (2025) bin their populations, and ``targeting`` its targeting. They
+    stay out of ``num``, whose columns the kinematic sample requires to be finite.
     """
 
     num: dict[str, FloatArray]
@@ -136,6 +179,11 @@ class Apogee:  # pylint: disable=too-many-instance-attributes
     apogee_id: NDArray[np.str_]
     m_h: FloatArray
     alpha_m: FloatArray
+    targeting: Targeting
+
+    def within(self, box: TargetingBox) -> Apogee:
+        """Return the catalog with only the stars of *box* kept."""
+        return replace(self, main=self.main & box.holds(self.targeting))
 
 
 def read_apogee(astronn: Path, allstar: Path) -> Apogee:
@@ -144,17 +192,16 @@ def read_apogee(astronn: Path, allstar: Path) -> Apogee:
     _, first = np.unique(cols["APOGEE_ID"], return_index=True)
     main = np.zeros(cols["APOGEE_ID"].size, dtype=np.bool_)
     main[first] = True
-    aspcap = _columns(allstar, ("EXTRATARG", "M_H", "ALPHA_M"))
-    main &= aspcap["EXTRATARG"] == 0
+    star = {k: np.asarray(v, dtype=np.float64) for k, v in _columns(allstar, ALLSTAR_COLUMNS).items()}
+    main &= star["EXTRATARG"] == 0
     num = {k: np.asarray(v, dtype=np.float64) for k, v in cols.items() if k not in ("APOGEE_ID", "source_id")}
     ids = np.char.strip(np.asarray(cols["APOGEE_ID"]).astype(np.str_))
+    targeting = Targeting(
+        star["H"], star["J"] - star["K"] - 1.5 * star["AK_TARG"],
+        star["MIN_H"], star["MAX_H"], star["MIN_JK"], star["MAX_JK"],
+    )  # fmt: skip
     return Apogee(
-        num,
-        np.asarray(cols["source_id"], dtype=np.int64),
-        main,
-        ids,
-        np.asarray(aspcap["M_H"], dtype=np.float64),
-        np.asarray(aspcap["ALPHA_M"], dtype=np.float64),
+        num, np.asarray(cols["source_id"], dtype=np.int64), main, ids, star["M_H"], star["ALPHA_M"], targeting
     )
 
 

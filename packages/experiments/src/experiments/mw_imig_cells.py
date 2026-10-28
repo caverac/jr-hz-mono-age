@@ -15,6 +15,12 @@ errors come from ``N_DRAWS`` draws that resample the counts of each [M/H] bin, o
 all its age cells, and draw their h_Z from a split normal. The summary is the median ratio
 of the measured cells and the slope of ln(counts / Imig) against the center of the [M/H]
 bin.
+
+Our counts assume that the targeting does not depend on the population at a fixed position,
+whereas APOGEE targets by (J - K_s)_0 and H, with limits that change between cohorts, and
+the colors of giants change with metallicity. ``TARGETING_BOXES`` repeat the comparison with
+only the matches of a box of H and (J - K_s)_0 that every cohort they come from contains
+(:class:`experiments.mw_catalogs.TargetingBox`), so that one selection holds in every field.
 """
 
 from __future__ import annotations
@@ -25,7 +31,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from experiments.mw_analysis import SolarModel
-from experiments.mw_catalogs import Apogee, GaiaStars, apogee_age_tracers
+from experiments.mw_catalogs import Apogee, GaiaStars, TargetingBox, apogee_age_tracers
 from experiments.mw_counts import CountSample, apogee_count_sample, count_hz
 from experiments.mw_dynamics import R0_KPC
 from experiments.mw_imig import N_DRAWS, R_SUN_IMIG_KPC, ImigPopulations, split_normal
@@ -39,6 +45,11 @@ MIN_CELL_MATCHES = 100
 # Eq. (1) of Imig et al. (2025): the [alpha/M] that splits the two sequences at each [M/H],
 # as polynomial coefficients from the cubic term, with their offset of -0.05 from [Mg/Fe].
 ALPHA_SPLIT = (0.1754, 0.1119, -0.1253, 0.1353 - 0.05)
+JK_NO_RED_LIMIT = 99.0  # redder than any star: only cohorts without a red limit (9999.99) contain it
+# 7 < H < 11 holds the bright giants of the counts in every main cohort but a few; the first box
+# takes the main-survey limit (J - K_s)_0 > 0.5 with no red limit, the second adds the red limit
+# (J - K_s)_0 < 0.8 of some cohorts to every star.
+TARGETING_BOXES = (TargetingBox(7.0, 11.0, 0.5, JK_NO_RED_LIMIT), TargetingBox(7.0, 11.0, 0.5, 0.8))
 
 
 @dataclass(frozen=True)
@@ -67,8 +78,12 @@ class ImigCell:  # pylint: disable=too-many-instance-attributes
 
 @dataclass(frozen=True)
 class ImigCells:
-    """Every cell and, over the measured ones, the median ratio and the slope of its logarithm per dex of [M/H]."""
+    """Every cell and, over the measured ones, the median ratio and the slope of its logarithm per dex of [M/H].
 
+    ``n_matches`` is the number of matched stars that split the counts into populations.
+    """
+
+    n_matches: int
     min_matches: int
     cells: list[ImigCell]
     n_measured: int
@@ -191,9 +206,19 @@ def measure_cells(
         for c in cells
         if c.n_matched >= min_matches and np.isfinite(c.ratio.value) and np.isfinite(c.ratio.err) and c.ratio.err > 0.0
     ]
+    n_matches = int(metallicities[0].counts.tracer_age.size) if metallicities else 0
     if len(ok) < 3:
-        return ImigCells(min_matches, cells, len(ok), float("nan"), Trend(float("nan"), float("nan"), float("nan")))
+        nan = float("nan")
+        return ImigCells(n_matches, min_matches, cells, len(ok), nan, Trend(nan, nan, nan))
     ratio = np.array([c.ratio.value for c in ok])
     err = np.array([c.ratio.err for c in ok])
     m_h = np.array([0.5 * (c.m_h_lo + c.m_h_hi) for c in ok])
-    return ImigCells(min_matches, cells, len(ok), float(np.median(ratio)), fit_log_slope(m_h, ratio, err))
+    return ImigCells(n_matches, min_matches, cells, len(ok), float(np.median(ratio)), fit_log_slope(m_h, ratio, err))
+
+
+@dataclass(frozen=True)
+class TargetedCells:
+    """The cells measured with only the matches of one targeting box."""
+
+    box: TargetingBox
+    cells: ImigCells

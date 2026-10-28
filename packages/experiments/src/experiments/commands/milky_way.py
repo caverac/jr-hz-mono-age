@@ -85,9 +85,12 @@ def survey_lines(survey: MwSurvey) -> list[str]:
     return lines
 
 
-def cell_lines(cells: ImigCells) -> list[str]:
+def cell_lines(cells: ImigCells, title: str = "imig cells") -> list[str]:
     """Return the printed summary of the populations of Imig et al. one at a time, by [M/H] bin."""
-    lines = [f"imig cells with {cells.min_matches}+ matches:   [M/H]  cells  matches  median counts/Imig"]
+    lines = [
+        f"{title}, {cells.n_matches:,} matches, cells with {cells.min_matches}+:"
+        "   [M/H]  cells  matches  median counts/Imig"
+    ]
     for lo in sorted({c.m_h_lo for c in cells.cells}):
         measured = [
             c for c in cells.cells if c.m_h_lo == lo and c.n_matched >= cells.min_matches and np.isfinite(c.ratio.value)
@@ -121,6 +124,10 @@ def report_lines(result: MilkyWay) -> list[str]:
     trends = ", ".join(f"{k} {t.value:+.3f}+/-{t.err:.3f}" for k, t in result.imig.trends.items())
     lines.append(f"  trends of tracer/h: {trends}")
     lines.extend(cell_lines(result.imig_cells))
+    for targeted in result.imig_cells_targeting:
+        box = targeted.box
+        title = f"imig cells in {box.h_lo:g} < H < {box.h_hi:g}, {box.jk_lo:g} < (J-K)0 < {box.jk_hi:g}"
+        lines.extend(cell_lines(targeted.cells, title))
     return lines
 
 

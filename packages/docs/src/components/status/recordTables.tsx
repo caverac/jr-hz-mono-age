@@ -6,9 +6,13 @@ import {
 } from '@site/src/components/status/jrRelation'
 import { median, significance } from '@site/src/components/status/metrics'
 import {
+  boxText,
+  cellMedian,
   IMIG_HEIGHTS,
+  type ImigCells,
   type ImigHeight,
   isMeasured,
+  METALLICITY_RANGES,
   MILKY_WAY_PATH,
   type MilkyWayData,
   parseMilkyWay,
@@ -185,6 +189,41 @@ export const ImigCellTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Mi
           : `${fixed(Math.min(...ratios))} to ${fixed(Math.max(...ratios))}`
       ]
     })
+  }
+})
+
+/**
+ * The cells with all the matches and with those of each targeting box: the matches, the
+ * cells measured, the median of our counts over their h_Z in three ranges of [M/H], and the
+ * slope of its logarithm.
+ */
+export const TargetingTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const row = (selection: string, cells: ImigCells): readonly string[] => [
+    selection,
+    String(cells.nMatches),
+    String(cells.nMeasured),
+    ...METALLICITY_RANGES.map(([lo, hi]) => fixed(cellMedian(cells, lo, hi).median)),
+    `$${signed(cells.trend.value)} \\pm ${fixed(cells.trend.err)}$`
+  ]
+  return {
+    groups: [
+      ['', 3],
+      ['median counts over Imig et al.', 3],
+      ['', 1]
+    ],
+    head: [
+      'matches used',
+      'matches',
+      'cells',
+      '$[\\mathrm{M/H}] < -0.1$',
+      '$-0.1$ to $0.1$',
+      '$> 0.1$',
+      'slope per dex'
+    ],
+    rows: [
+      row('all', data.imigCells),
+      ...data.imigCellsTargeting.map((t) => row(boxText(t.box), t.cells))
+    ]
   }
 })
 

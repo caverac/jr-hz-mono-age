@@ -1400,6 +1400,7 @@
     }
   },
   "imig_cells": {
+    "n_matches": 15933,
     "min_matches": 100,
     "cells": [
       {
@@ -3430,5 +3431,4089 @@
       "err": 0.1382928653000104,
       "chi2_dof": 1.2210193424637155
     }
-  }
+  },
+  "imig_cells_targeting": [
+    {
+      "box": {
+        "h_lo": 7.0,
+        "h_hi": 11.0,
+        "jk_lo": 0.5,
+        "jk_hi": 99.0
+      },
+      "cells": {
+        "n_matches": 13028,
+        "min_matches": 100,
+        "cells": [
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 147,
+            "n_matched": 1,
+            "imig": {
+              "value": 0.4185551094994661,
+              "err": 0.05151226534837752
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 514,
+            "n_matched": 4,
+            "imig": {
+              "value": 0.3750780007202363,
+              "err": 0.0167981716488719
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 987,
+            "n_matched": 5,
+            "imig": {
+              "value": 0.42015928767500504,
+              "err": 0.015034937057844505
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 1183,
+            "n_matched": 18,
+            "imig": {
+              "value": 0.5467697768612579,
+              "err": 0.024042166829887246
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 1167,
+            "n_matched": 28,
+            "imig": {
+              "value": 0.609930070745342,
+              "err": 0.02400067962307212
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 953,
+            "n_matched": 23,
+            "imig": {
+              "value": 0.7241553697295025,
+              "err": 0.030391747697022298
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 557,
+            "n_matched": 24,
+            "imig": {
+              "value": 0.7589192166842406,
+              "err": 0.037818529241114174
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 429,
+            "n_matched": 34,
+            "imig": {
+              "value": 0.814470347132268,
+              "err": 0.05044830718001153
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 190,
+            "n_matched": 4,
+            "imig": {
+              "value": 0.38337313495470327,
+              "err": 0.034355942696719294
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 403,
+            "n_matched": 4,
+            "imig": {
+              "value": 0.32213969696068273,
+              "err": 0.020024945567805624
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 959,
+            "n_matched": 8,
+            "imig": {
+              "value": 0.3301880872659174,
+              "err": 0.012884199853174239
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 1932,
+            "n_matched": 22,
+            "imig": {
+              "value": 0.3359352275194755,
+              "err": 0.008329145776892394
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 2227,
+            "n_matched": 63,
+            "imig": {
+              "value": 0.3649158227845456,
+              "err": 0.01052751890939893
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 2277,
+            "n_matched": 108,
+            "imig": {
+              "value": 0.4384202684067849,
+              "err": 0.009168466987787366
+            },
+            "counts": {
+              "value": 0.38671525302319276,
+              "err": 0.19839743918113092
+            },
+            "ratio": {
+              "value": 0.882065180126166,
+              "err": 0.4522152895801337
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 2162,
+            "n_matched": 110,
+            "imig": {
+              "value": 0.5332050612296962,
+              "err": 0.01422461393458646
+            },
+            "counts": {
+              "value": 0.46535438240923066,
+              "err": 0.1882812630799029
+            },
+            "ratio": {
+              "value": 0.8727493721383928,
+              "err": 0.35763541698282697
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 1415,
+            "n_matched": 105,
+            "imig": {
+              "value": 0.6201808605689026,
+              "err": 0.017149996121992694
+            },
+            "counts": {
+              "value": null,
+              "err": 0.07179268614033955
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.11194559277099457
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 819,
+            "n_matched": 67,
+            "imig": {
+              "value": 0.6722957165862091,
+              "err": 0.024038210337957944
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 198,
+            "n_matched": 11,
+            "imig": {
+              "value": 0.3496205405496146,
+              "err": 0.03210532000505045
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 390,
+            "n_matched": 12,
+            "imig": {
+              "value": 0.2794447121588264,
+              "err": 0.027387376760572346
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 641,
+            "n_matched": 16,
+            "imig": {
+              "value": 0.28175745761604953,
+              "err": 0.014518459672092643
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 1478,
+            "n_matched": 25,
+            "imig": {
+              "value": 0.2581145170159457,
+              "err": 0.006573933926797032
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2525,
+            "n_matched": 49,
+            "imig": {
+              "value": 0.27479877495035854,
+              "err": 0.005164636268617684
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2747,
+            "n_matched": 106,
+            "imig": {
+              "value": 0.30155465183197816,
+              "err": 0.0052312031277642335
+            },
+            "counts": {
+              "value": 0.16181172292076826,
+              "err": 0.048688220398638585
+            },
+            "ratio": {
+              "value": 0.5365916988437883,
+              "err": 0.16019244485546213
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2758,
+            "n_matched": 167,
+            "imig": {
+              "value": 0.3401967223812892,
+              "err": 0.006785510900114644
+            },
+            "counts": {
+              "value": 0.45139211818944214,
+              "err": 0.08873493880710845
+            },
+            "ratio": {
+              "value": 1.326856164368116,
+              "err": 0.26286960781215063
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2362,
+            "n_matched": 188,
+            "imig": {
+              "value": 0.4048306836448863,
+              "err": 0.007261867439753378
+            },
+            "counts": {
+              "value": null,
+              "err": 0.21488146263156993
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.5218535778504636
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 1544,
+            "n_matched": 147,
+            "imig": {
+              "value": 0.5009433612991367,
+              "err": 0.012505885112540527
+            },
+            "counts": {
+              "value": 0.46458182896593514,
+              "err": 0.0916131885082091
+            },
+            "ratio": {
+              "value": 0.927413885196717,
+              "err": 0.1868672182346875
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 798,
+            "n_matched": 97,
+            "imig": {
+              "value": 0.6113419580851834,
+              "err": 0.021724227170260124
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 331,
+            "n_matched": 20,
+            "imig": {
+              "value": 0.2397624751769819,
+              "err": 0.01945782345543659
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 661,
+            "n_matched": 25,
+            "imig": {
+              "value": 0.2187157264240633,
+              "err": 0.010155538193859406
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 988,
+            "n_matched": 29,
+            "imig": {
+              "value": 0.2291761763414644,
+              "err": 0.008216453956048378
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 1872,
+            "n_matched": 45,
+            "imig": {
+              "value": 0.23991964434566262,
+              "err": 0.0046977986547029615
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 3023,
+            "n_matched": 108,
+            "imig": {
+              "value": 0.25466638159348765,
+              "err": 0.004590440176479443
+            },
+            "counts": {
+              "value": 0.22048142970424295,
+              "err": 0.0657326419899494
+            },
+            "ratio": {
+              "value": 0.8657657454613991,
+              "err": 0.26728935049962316
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 2993,
+            "n_matched": 171,
+            "imig": {
+              "value": 0.2711786537723447,
+              "err": 0.004961276932244518
+            },
+            "counts": {
+              "value": 0.27470724735031765,
+              "err": 0.07946842282487966
+            },
+            "ratio": {
+              "value": 1.0130120624499273,
+              "err": 0.2885257776965027
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 2723,
+            "n_matched": 250,
+            "imig": {
+              "value": 0.30944858856750823,
+              "err": 0.005518263452582106
+            },
+            "counts": {
+              "value": 0.4355397694998159,
+              "err": 0.06678219786376266
+            },
+            "ratio": {
+              "value": 1.4074705317481195,
+              "err": 0.21730668075088944
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 2424,
+            "n_matched": 221,
+            "imig": {
+              "value": 0.3583524764641678,
+              "err": 0.007005769239403187
+            },
+            "counts": {
+              "value": 0.5961073356421265,
+              "err": 0.060271023781158006
+            },
+            "ratio": {
+              "value": 1.6634664884246506,
+              "err": 0.16072947577249674
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 1808,
+            "n_matched": 153,
+            "imig": {
+              "value": 0.4226710753747423,
+              "err": 0.007694485798752565
+            },
+            "counts": {
+              "value": null,
+              "err": 0.07975902768949841
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.1873168625929229
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 902,
+            "n_matched": 106,
+            "imig": {
+              "value": 0.5172859271215894,
+              "err": 0.014186531162901861
+            },
+            "counts": {
+              "value": null,
+              "err": 0.0019624252766124173
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.006364103995624551
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 593,
+            "n_matched": 39,
+            "imig": {
+              "value": 0.20290209587638994,
+              "err": 0.010618661375612293
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 827,
+            "n_matched": 67,
+            "imig": {
+              "value": 0.19676311976724897,
+              "err": 0.006625940055299859
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 1285,
+            "n_matched": 54,
+            "imig": {
+              "value": 0.20837756413623282,
+              "err": 0.0061144758279493006
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2223,
+            "n_matched": 100,
+            "imig": {
+              "value": 0.2180922243917634,
+              "err": 0.004168705264526132
+            },
+            "counts": {
+              "value": 0.1569166115413182,
+              "err": 0.026786431278208636
+            },
+            "ratio": {
+              "value": 0.7194965890184409,
+              "err": 0.12197815686465158
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 3020,
+            "n_matched": 204,
+            "imig": {
+              "value": 0.2338201107313622,
+              "err": 0.003832377411913404
+            },
+            "counts": {
+              "value": 0.17825180137138263,
+              "err": 0.03790763218855869
+            },
+            "ratio": {
+              "value": 0.7623458940885438,
+              "err": 0.16421300828859092
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2762,
+            "n_matched": 224,
+            "imig": {
+              "value": 0.2581694235028443,
+              "err": 0.00441525625613759
+            },
+            "counts": {
+              "value": 0.23407947528696224,
+              "err": 0.07112524607140136
+            },
+            "ratio": {
+              "value": 0.9066893829291266,
+              "err": 0.2787678630284229
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2309,
+            "n_matched": 195,
+            "imig": {
+              "value": 0.28362167202711297,
+              "err": 0.004670085771067117
+            },
+            "counts": {
+              "value": 0.24550923682481557,
+              "err": 0.04315611426843316
+            },
+            "ratio": {
+              "value": 0.8656222744549154,
+              "err": 0.14932226934002857
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2479,
+            "n_matched": 230,
+            "imig": {
+              "value": 0.32410944771538513,
+              "err": 0.006114325108022817
+            },
+            "counts": {
+              "value": 0.5162153814019459,
+              "err": 0.10696188480094199
+            },
+            "ratio": {
+              "value": 1.592719326883854,
+              "err": 0.3340784287099722
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2235,
+            "n_matched": 206,
+            "imig": {
+              "value": 0.3818638802353091,
+              "err": 0.0067691615684585815
+            },
+            "counts": {
+              "value": 0.3868512346474601,
+              "err": 0.1317170397833844
+            },
+            "ratio": {
+              "value": 1.0130605555285241,
+              "err": 0.34623232583819297
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 1132,
+            "n_matched": 108,
+            "imig": {
+              "value": 0.44825161003927255,
+              "err": 0.011296434221652607
+            },
+            "counts": {
+              "value": null,
+              "err": 0.023701687523108042
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.052953526817095364
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 629,
+            "n_matched": 71,
+            "imig": {
+              "value": 0.15574210419235554,
+              "err": 0.004607400343119572
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 757,
+            "n_matched": 76,
+            "imig": {
+              "value": 0.17228838150180295,
+              "err": 0.004675733010575278
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 845,
+            "n_matched": 57,
+            "imig": {
+              "value": 0.18041992938331033,
+              "err": 0.004783651711413983
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 1608,
+            "n_matched": 104,
+            "imig": {
+              "value": 0.2019553172277371,
+              "err": 0.004158620087155548
+            },
+            "counts": {
+              "value": 0.30782938371217367,
+              "err": 0.04064868852442524
+            },
+            "ratio": {
+              "value": 1.524245005963604,
+              "err": 0.1967702375977104
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2158,
+            "n_matched": 202,
+            "imig": {
+              "value": 0.21891634434986582,
+              "err": 0.003743739575719607
+            },
+            "counts": {
+              "value": 0.30917201022134627,
+              "err": 0.04630133054034688
+            },
+            "ratio": {
+              "value": 1.4122838161742572,
+              "err": 0.21188385926933695
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2046,
+            "n_matched": 187,
+            "imig": {
+              "value": 0.24315692085374674,
+              "err": 0.003804397519076158
+            },
+            "counts": {
+              "value": 0.46951947310603825,
+              "err": 0.04602689153494763
+            },
+            "ratio": {
+              "value": 1.9309319737127424,
+              "err": 0.19082740102414308
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2019,
+            "n_matched": 198,
+            "imig": {
+              "value": 0.2751077688761387,
+              "err": 0.00522522634547079
+            },
+            "counts": {
+              "value": 0.44325062010591165,
+              "err": 0.048248392672257695
+            },
+            "ratio": {
+              "value": 1.611189032998467,
+              "err": 0.17758092359380584
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2543,
+            "n_matched": 350,
+            "imig": {
+              "value": 0.30939487201397203,
+              "err": 0.005019081480022586
+            },
+            "counts": {
+              "value": 0.3809802674928148,
+              "err": 0.061092371793038974
+            },
+            "ratio": {
+              "value": 1.231372275218608,
+              "err": 0.19979446748474106
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2711,
+            "n_matched": 256,
+            "imig": {
+              "value": 0.34702941056333597,
+              "err": 0.0060611508165442085
+            },
+            "counts": {
+              "value": 0.5324484004358581,
+              "err": 0.10664302561005035
+            },
+            "ratio": {
+              "value": 1.534303388210036,
+              "err": 0.3052698842088004
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 1497,
+            "n_matched": 136,
+            "imig": {
+              "value": 0.3671498817441031,
+              "err": 0.00839237736892906
+            },
+            "counts": {
+              "value": 0.5675917129960572,
+              "err": 0.06261388766815448
+            },
+            "ratio": {
+              "value": 1.5459400675816053,
+              "err": 0.15934117464294528
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 378,
+            "n_matched": 70,
+            "imig": {
+              "value": 0.15999074541105157,
+              "err": 0.00736360372920887
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 493,
+            "n_matched": 70,
+            "imig": {
+              "value": 0.17118927645347123,
+              "err": 0.005798908171709943
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 574,
+            "n_matched": 55,
+            "imig": {
+              "value": 0.180014458935648,
+              "err": 0.006133311587310605
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1185,
+            "n_matched": 94,
+            "imig": {
+              "value": 0.1816346717114226,
+              "err": 0.004218236452655483
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1777,
+            "n_matched": 182,
+            "imig": {
+              "value": 0.20547533251382194,
+              "err": 0.003914677223243582
+            },
+            "counts": {
+              "value": 0.25183430596981526,
+              "err": 0.040432175763506106
+            },
+            "ratio": {
+              "value": 1.2256181941103554,
+              "err": 0.1986902982152986
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1808,
+            "n_matched": 148,
+            "imig": {
+              "value": 0.22113524499889778,
+              "err": 0.0043602867628739495
+            },
+            "counts": {
+              "value": 0.2536325957726678,
+              "err": 0.034215583043766276
+            },
+            "ratio": {
+              "value": 1.1469569031111797,
+              "err": 0.15841064026200985
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 2088,
+            "n_matched": 224,
+            "imig": {
+              "value": 0.24669310586783708,
+              "err": 0.0041245728206784765
+            },
+            "counts": {
+              "value": 0.37653616386878574,
+              "err": 0.061788224982028545
+            },
+            "ratio": {
+              "value": 1.5263343600307604,
+              "err": 0.25293927311792985
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 2897,
+            "n_matched": 379,
+            "imig": {
+              "value": 0.2887411852025874,
+              "err": 0.004027610269976112
+            },
+            "counts": {
+              "value": 0.4554675227469581,
+              "err": 0.053161956525493326
+            },
+            "ratio": {
+              "value": 1.577424856891793,
+              "err": 0.184330063119855
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 3091,
+            "n_matched": 268,
+            "imig": {
+              "value": 0.3086683918936329,
+              "err": 0.005148244004751168
+            },
+            "counts": {
+              "value": 0.35324498951520433,
+              "err": 0.09247636212527424
+            },
+            "ratio": {
+              "value": 1.1444158157824353,
+              "err": 0.3018654647998591
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1537,
+            "n_matched": 134,
+            "imig": {
+              "value": 0.35311852140424266,
+              "err": 0.008893345572890038
+            },
+            "counts": {
+              "value": 0.5900388496383961,
+              "err": 0.04573451721397703
+            },
+            "ratio": {
+              "value": 1.6709371326431561,
+              "err": 0.1452437508661778
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 307,
+            "n_matched": 30,
+            "imig": {
+              "value": 0.1328389698282999,
+              "err": 0.006486285494268773
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 382,
+            "n_matched": 49,
+            "imig": {
+              "value": 0.15293626330382518,
+              "err": 0.005562954219651847
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 381,
+            "n_matched": 29,
+            "imig": {
+              "value": 0.15323004925948203,
+              "err": 0.006996477386750646
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 631,
+            "n_matched": 45,
+            "imig": {
+              "value": 0.17079650748997607,
+              "err": 0.004872018486537205
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1219,
+            "n_matched": 97,
+            "imig": {
+              "value": 0.17754060641526886,
+              "err": 0.0043462664016640645
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1446,
+            "n_matched": 104,
+            "imig": {
+              "value": 0.20098295425318183,
+              "err": 0.0041961600651720665
+            },
+            "counts": {
+              "value": 0.2817466681456227,
+              "err": 0.08309023377829432
+            },
+            "ratio": {
+              "value": 1.4018436000831265,
+              "err": 0.42328673243260717
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1823,
+            "n_matched": 125,
+            "imig": {
+              "value": 0.22645662626502078,
+              "err": 0.004672965971995388
+            },
+            "counts": {
+              "value": 0.3879363506792834,
+              "err": 0.07750397408924811
+            },
+            "ratio": {
+              "value": 1.713071315587312,
+              "err": 0.3277326242376385
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 2529,
+            "n_matched": 232,
+            "imig": {
+              "value": 0.2564140411729113,
+              "err": 0.00442492428458216
+            },
+            "counts": {
+              "value": 0.4018852457850282,
+              "err": 0.06732673707176864
+            },
+            "ratio": {
+              "value": 1.5673293238805877,
+              "err": 0.26099938037083237
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 2997,
+            "n_matched": 220,
+            "imig": {
+              "value": 0.2859538156833098,
+              "err": 0.006417367662529316
+            },
+            "counts": {
+              "value": 0.45044365007024667,
+              "err": 0.08729229368142971
+            },
+            "ratio": {
+              "value": 1.5752321716493802,
+              "err": 0.30149073776946733
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1531,
+            "n_matched": 103,
+            "imig": {
+              "value": 0.31835691541090494,
+              "err": 0.008240104685191041
+            },
+            "counts": {
+              "value": 0.5018430282207215,
+              "err": 0.21628405953410154
+            },
+            "ratio": {
+              "value": 1.5763534697306325,
+              "err": 0.6859815502326967
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 253,
+            "n_matched": 6,
+            "imig": {
+              "value": 0.13018971377401284,
+              "err": 0.006866468012426241
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 305,
+            "n_matched": 20,
+            "imig": {
+              "value": 0.13141880268300116,
+              "err": 0.00604240371770591
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 278,
+            "n_matched": 21,
+            "imig": {
+              "value": 0.16279281388089203,
+              "err": 0.00879354382516398
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 447,
+            "n_matched": 13,
+            "imig": {
+              "value": 0.16051646976414846,
+              "err": 0.0072955749627556105
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 816,
+            "n_matched": 29,
+            "imig": {
+              "value": 0.14590292887290635,
+              "err": 0.004301655629372306
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1139,
+            "n_matched": 49,
+            "imig": {
+              "value": 0.16466244165564511,
+              "err": 0.004003688568038205
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1481,
+            "n_matched": 67,
+            "imig": {
+              "value": 0.19511035224066886,
+              "err": 0.004698148943589123
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1960,
+            "n_matched": 124,
+            "imig": {
+              "value": 0.22712479790482917,
+              "err": 0.0046440346387765785
+            },
+            "counts": {
+              "value": 0.32706955334969323,
+              "err": 0.10109456134897485
+            },
+            "ratio": {
+              "value": 1.440043343425421,
+              "err": 0.4348521622682048
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 2610,
+            "n_matched": 172,
+            "imig": {
+              "value": 0.26077988176384936,
+              "err": 0.00546745413961211
+            },
+            "counts": {
+              "value": 0.44375897079126525,
+              "err": 0.08473260382594017
+            },
+            "ratio": {
+              "value": 1.7016610629232265,
+              "err": 0.32712228934425946
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1387,
+            "n_matched": 102,
+            "imig": {
+              "value": 0.30065085319982127,
+              "err": 0.0072670361250804505
+            },
+            "counts": {
+              "value": 0.5378389807430466,
+              "err": 0.09203833634872166
+            },
+            "ratio": {
+              "value": 1.7889155311512894,
+              "err": 0.3084914453241949
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 112,
+            "n_matched": 7,
+            "imig": {
+              "value": 0.1548214684503361,
+              "err": 0.014266492164866959
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 151,
+            "n_matched": 4,
+            "imig": {
+              "value": 0.16290479491458537,
+              "err": 0.010937657262088868
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 244,
+            "n_matched": 8,
+            "imig": {
+              "value": 0.15150137799956523,
+              "err": 0.010916383260205137
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 425,
+            "n_matched": 10,
+            "imig": {
+              "value": 0.14887194175362325,
+              "err": 0.007304302533836682
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 773,
+            "n_matched": 18,
+            "imig": {
+              "value": 0.16102388058684172,
+              "err": 0.00638010303540254
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 1279,
+            "n_matched": 25,
+            "imig": {
+              "value": 0.18075510793567756,
+              "err": 0.004244020235688678
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 1475,
+            "n_matched": 61,
+            "imig": {
+              "value": 0.2071995574854811,
+              "err": 0.005636934031883187
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 1676,
+            "n_matched": 99,
+            "imig": {
+              "value": 0.25580862826998263,
+              "err": 0.006810867886724359
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 653,
+            "n_matched": 36,
+            "imig": {
+              "value": 0.28885887352141865,
+              "err": 0.010212532061514151
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 130,
+            "n_matched": 2,
+            "imig": {
+              "value": 0.19812148148809472,
+              "err": 0.01931358581877131
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 245,
+            "n_matched": 0,
+            "imig": {
+              "value": 0.19065361119367494,
+              "err": 0.009979560903337348
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 467,
+            "n_matched": 1,
+            "imig": {
+              "value": 0.1870829505089696,
+              "err": 0.0072198088319420095
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 625,
+            "n_matched": 10,
+            "imig": {
+              "value": 0.19438459375683703,
+              "err": 0.006769164563532826
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 386,
+            "n_matched": 10,
+            "imig": {
+              "value": 0.2191855962645164,
+              "err": 0.010333989549350386
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          }
+        ],
+        "n_measured": 36,
+        "median_ratio": 1.4098771739611884,
+        "trend": {
+          "value": 0.7013355219452827,
+          "err": 0.2669871692709444,
+          "chi2_dof": 2.0974791150373675
+        }
+      }
+    },
+    {
+      "box": {
+        "h_lo": 7.0,
+        "h_hi": 11.0,
+        "jk_lo": 0.5,
+        "jk_hi": 0.8
+      },
+      "cells": {
+        "n_matches": 15558,
+        "min_matches": 100,
+        "cells": [
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 147,
+            "n_matched": 1,
+            "imig": {
+              "value": 0.4185551094994661,
+              "err": 0.05171994505809313
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 514,
+            "n_matched": 5,
+            "imig": {
+              "value": 0.3750780007202363,
+              "err": 0.018644677713404362
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 987,
+            "n_matched": 5,
+            "imig": {
+              "value": 0.42015928767500504,
+              "err": 0.015214400345961887
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 1183,
+            "n_matched": 20,
+            "imig": {
+              "value": 0.5467697768612579,
+              "err": 0.022323661897024505
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 1167,
+            "n_matched": 33,
+            "imig": {
+              "value": 0.609930070745342,
+              "err": 0.024916597015998243
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 953,
+            "n_matched": 29,
+            "imig": {
+              "value": 0.7241553697295025,
+              "err": 0.027422854708995414
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 557,
+            "n_matched": 28,
+            "imig": {
+              "value": 0.7589192166842406,
+              "err": 0.04444282111793624
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.6,
+            "m_h_hi": -0.5,
+            "n_stars": 429,
+            "n_matched": 39,
+            "imig": {
+              "value": 0.814470347132268,
+              "err": 0.05514684712943335
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 190,
+            "n_matched": 4,
+            "imig": {
+              "value": 0.38337313495470327,
+              "err": 0.03282208000551015
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 403,
+            "n_matched": 5,
+            "imig": {
+              "value": 0.32213969696068273,
+              "err": 0.01912653945036427
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 959,
+            "n_matched": 10,
+            "imig": {
+              "value": 0.3301880872659174,
+              "err": 0.01287319309923099
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 1932,
+            "n_matched": 27,
+            "imig": {
+              "value": 0.3359352275194755,
+              "err": 0.00813030032155801
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 2227,
+            "n_matched": 78,
+            "imig": {
+              "value": 0.3649158227845456,
+              "err": 0.011095166444872184
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 2277,
+            "n_matched": 128,
+            "imig": {
+              "value": 0.4384202684067849,
+              "err": 0.009151295852870528
+            },
+            "counts": {
+              "value": 0.45296141801584316,
+              "err": 0.18018721289157666
+            },
+            "ratio": {
+              "value": 1.0331671472714998,
+              "err": 0.40948473184978623
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 2162,
+            "n_matched": 132,
+            "imig": {
+              "value": 0.5332050612296962,
+              "err": 0.01266188957543024
+            },
+            "counts": {
+              "value": 0.5527762765509117,
+              "err": 0.06478453612809154
+            },
+            "ratio": {
+              "value": 1.036704856619477,
+              "err": 0.12639368772975595
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 1415,
+            "n_matched": 116,
+            "imig": {
+              "value": 0.6201808605689026,
+              "err": 0.017526678205362578
+            },
+            "counts": {
+              "value": null,
+              "err": 0.17612349146771178
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.28378162968677634
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.5,
+            "m_h_hi": -0.4,
+            "n_stars": 819,
+            "n_matched": 77,
+            "imig": {
+              "value": 0.6722957165862091,
+              "err": 0.020484958765312533
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 198,
+            "n_matched": 12,
+            "imig": {
+              "value": 0.3496205405496146,
+              "err": 0.033651111501954156
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 390,
+            "n_matched": 12,
+            "imig": {
+              "value": 0.2794447121588264,
+              "err": 0.025169058192306387
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 641,
+            "n_matched": 23,
+            "imig": {
+              "value": 0.28175745761604953,
+              "err": 0.013420943590513101
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 1478,
+            "n_matched": 28,
+            "imig": {
+              "value": 0.2581145170159457,
+              "err": 0.006606911466588428
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2525,
+            "n_matched": 71,
+            "imig": {
+              "value": 0.27479877495035854,
+              "err": 0.005223178988115751
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2747,
+            "n_matched": 139,
+            "imig": {
+              "value": 0.30155465183197816,
+              "err": 0.006152602701956111
+            },
+            "counts": {
+              "value": 0.21896519722117505,
+              "err": 0.11116313016959657
+            },
+            "ratio": {
+              "value": 0.7261211057131337,
+              "err": 0.3740023355814972
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2758,
+            "n_matched": 220,
+            "imig": {
+              "value": 0.3401967223812892,
+              "err": 0.006989685980693883
+            },
+            "counts": {
+              "value": 0.42936571821861136,
+              "err": 0.06562929403308332
+            },
+            "ratio": {
+              "value": 1.2621100968085825,
+              "err": 0.19726664909537428
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 2362,
+            "n_matched": 209,
+            "imig": {
+              "value": 0.4048306836448863,
+              "err": 0.00834514928061722
+            },
+            "counts": {
+              "value": null,
+              "err": 0.2172907394611765
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.531631245531338
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 1544,
+            "n_matched": 160,
+            "imig": {
+              "value": 0.5009433612991367,
+              "err": 0.012500721311613533
+            },
+            "counts": {
+              "value": 0.4681770798996352,
+              "err": 0.10638599303683369
+            },
+            "ratio": {
+              "value": 0.9345908461297379,
+              "err": 0.2191485479573298
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.4,
+            "m_h_hi": -0.3,
+            "n_stars": 798,
+            "n_matched": 101,
+            "imig": {
+              "value": 0.6113419580851834,
+              "err": 0.0204546035539947
+            },
+            "counts": {
+              "value": 0.5654389637119988,
+              "err": 0.18136380254892026
+            },
+            "ratio": {
+              "value": 0.9249143727727116,
+              "err": 0.29244045620745124
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 331,
+            "n_matched": 27,
+            "imig": {
+              "value": 0.2397624751769819,
+              "err": 0.02075594639903329
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 661,
+            "n_matched": 35,
+            "imig": {
+              "value": 0.2187157264240633,
+              "err": 0.011144930973430528
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 988,
+            "n_matched": 44,
+            "imig": {
+              "value": 0.2291761763414644,
+              "err": 0.008086071216790683
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 1872,
+            "n_matched": 65,
+            "imig": {
+              "value": 0.23991964434566262,
+              "err": 0.005576383671350105
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 3023,
+            "n_matched": 154,
+            "imig": {
+              "value": 0.25466638159348765,
+              "err": 0.004315767006390109
+            },
+            "counts": {
+              "value": 0.29839019915140713,
+              "err": 0.041275559857078314
+            },
+            "ratio": {
+              "value": 1.171690575270802,
+              "err": 0.16530749818402823
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 2993,
+            "n_matched": 238,
+            "imig": {
+              "value": 0.2711786537723447,
+              "err": 0.005222078759124005
+            },
+            "counts": {
+              "value": 0.2920347978196269,
+              "err": 0.044481002245459145
+            },
+            "ratio": {
+              "value": 1.0769092395627533,
+              "err": 0.1665325960204042
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 2723,
+            "n_matched": 306,
+            "imig": {
+              "value": 0.30944858856750823,
+              "err": 0.005066011342102383
+            },
+            "counts": {
+              "value": 0.4477543660872873,
+              "err": 0.05646761416229856
+            },
+            "ratio": {
+              "value": 1.4469426671487524,
+              "err": 0.1852734275246538
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 2424,
+            "n_matched": 255,
+            "imig": {
+              "value": 0.3583524764641678,
+              "err": 0.006165228234660647
+            },
+            "counts": {
+              "value": 0.43927343517098083,
+              "err": 0.0930614462908991
+            },
+            "ratio": {
+              "value": 1.2258138676904176,
+              "err": 0.25534026168955076
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 1808,
+            "n_matched": 176,
+            "imig": {
+              "value": 0.4226710753747423,
+              "err": 0.008579004765787657
+            },
+            "counts": {
+              "value": null,
+              "err": 0.10561672867705935
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.25394888464116677
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.3,
+            "m_h_hi": -0.2,
+            "n_stars": 902,
+            "n_matched": 117,
+            "imig": {
+              "value": 0.5172859271215894,
+              "err": 0.01542040910915038
+            },
+            "counts": {
+              "value": null,
+              "err": 0.10269984096718557
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.1993536604617209
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 593,
+            "n_matched": 56,
+            "imig": {
+              "value": 0.20290209587638994,
+              "err": 0.01015397027001079
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 827,
+            "n_matched": 89,
+            "imig": {
+              "value": 0.19676311976724897,
+              "err": 0.006683564053953081
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 1285,
+            "n_matched": 84,
+            "imig": {
+              "value": 0.20837756413623282,
+              "err": 0.005923583303607816
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2223,
+            "n_matched": 159,
+            "imig": {
+              "value": 0.2180922243917634,
+              "err": 0.004437230019227009
+            },
+            "counts": {
+              "value": 0.2091109706948415,
+              "err": 0.044246425809172596
+            },
+            "ratio": {
+              "value": 0.9588190100680128,
+              "err": 0.19805607636217798
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 3020,
+            "n_matched": 285,
+            "imig": {
+              "value": 0.2338201107313622,
+              "err": 0.003799041749979276
+            },
+            "counts": {
+              "value": 0.24660388293821384,
+              "err": 0.03752674373357533
+            },
+            "ratio": {
+              "value": 1.0546735358514094,
+              "err": 0.15482954205088462
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2762,
+            "n_matched": 296,
+            "imig": {
+              "value": 0.2581694235028443,
+              "err": 0.004109899271825479
+            },
+            "counts": {
+              "value": 0.22644290304646003,
+              "err": 0.038403017314115884
+            },
+            "ratio": {
+              "value": 0.8771096901177582,
+              "err": 0.1504871176158491
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2309,
+            "n_matched": 241,
+            "imig": {
+              "value": 0.28362167202711297,
+              "err": 0.004535394698229861
+            },
+            "counts": {
+              "value": 0.2590459804533005,
+              "err": 0.04705431727728629
+            },
+            "ratio": {
+              "value": 0.9133504453373961,
+              "err": 0.16372947090799678
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2479,
+            "n_matched": 267,
+            "imig": {
+              "value": 0.32410944771538513,
+              "err": 0.005719284012944081
+            },
+            "counts": {
+              "value": 0.586095201126005,
+              "err": 0.07003152335019036
+            },
+            "ratio": {
+              "value": 1.8083249508995527,
+              "err": 0.21203750161773482
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 2235,
+            "n_matched": 226,
+            "imig": {
+              "value": 0.3818638802353091,
+              "err": 0.0070436317378292645
+            },
+            "counts": {
+              "value": 0.4827044951521955,
+              "err": 0.11947213682217375
+            },
+            "ratio": {
+              "value": 1.2640747662615988,
+              "err": 0.3040732216908443
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.2,
+            "m_h_hi": -0.1,
+            "n_stars": 1132,
+            "n_matched": 120,
+            "imig": {
+              "value": 0.44825161003927255,
+              "err": 0.011568278564744072
+            },
+            "counts": {
+              "value": null,
+              "err": 0.11169626782996717
+            },
+            "ratio": {
+              "value": null,
+              "err": 0.2485078569869581
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 629,
+            "n_matched": 95,
+            "imig": {
+              "value": 0.15574210419235554,
+              "err": 0.005334591020940041
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 757,
+            "n_matched": 115,
+            "imig": {
+              "value": 0.17228838150180295,
+              "err": 0.005396960550786242
+            },
+            "counts": {
+              "value": 0.2270104041045724,
+              "err": 0.044358070402162275
+            },
+            "ratio": {
+              "value": 1.317618762947151,
+              "err": 0.26495393841519455
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 845,
+            "n_matched": 95,
+            "imig": {
+              "value": 0.18041992938331033,
+              "err": 0.004934809004916524
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 1608,
+            "n_matched": 165,
+            "imig": {
+              "value": 0.2019553172277371,
+              "err": 0.0042044172416007
+            },
+            "counts": {
+              "value": 0.30217202379106256,
+              "err": 0.03581037193945921
+            },
+            "ratio": {
+              "value": 1.4962320771694018,
+              "err": 0.17928478283000515
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2158,
+            "n_matched": 268,
+            "imig": {
+              "value": 0.21891634434986582,
+              "err": 0.003558782828042409
+            },
+            "counts": {
+              "value": 0.25299406508114886,
+              "err": 0.04987717782814918
+            },
+            "ratio": {
+              "value": 1.155665493284599,
+              "err": 0.23533133794785854
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2046,
+            "n_matched": 248,
+            "imig": {
+              "value": 0.24315692085374674,
+              "err": 0.004320528504565643
+            },
+            "counts": {
+              "value": 0.37422844311051817,
+              "err": 0.04348316506576641
+            },
+            "ratio": {
+              "value": 1.5390408868337657,
+              "err": 0.18347756019280326
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2019,
+            "n_matched": 238,
+            "imig": {
+              "value": 0.2751077688761387,
+              "err": 0.00528207774520148
+            },
+            "counts": {
+              "value": 0.4404599621682924,
+              "err": 0.0470646176529351
+            },
+            "ratio": {
+              "value": 1.6010451612022631,
+              "err": 0.17651417122184498
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2543,
+            "n_matched": 380,
+            "imig": {
+              "value": 0.30939487201397203,
+              "err": 0.005303965752996687
+            },
+            "counts": {
+              "value": 0.39576151592195685,
+              "err": 0.059055217667007665
+            },
+            "ratio": {
+              "value": 1.2791469792171752,
+              "err": 0.19050876869680167
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 2711,
+            "n_matched": 297,
+            "imig": {
+              "value": 0.34702941056333597,
+              "err": 0.004891850359258126
+            },
+            "counts": {
+              "value": 0.5988375042207719,
+              "err": 0.063351291752372
+            },
+            "ratio": {
+              "value": 1.725610239341598,
+              "err": 0.18802409589190794
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.1,
+            "m_h_hi": -0.0,
+            "n_stars": 1497,
+            "n_matched": 157,
+            "imig": {
+              "value": 0.3671498817441031,
+              "err": 0.008383880659847243
+            },
+            "counts": {
+              "value": 0.5997235354451459,
+              "err": 0.06108644575518046
+            },
+            "ratio": {
+              "value": 1.6334569756531814,
+              "err": 0.16905214686001857
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 378,
+            "n_matched": 100,
+            "imig": {
+              "value": 0.15999074541105157,
+              "err": 0.00618987967596403
+            },
+            "counts": {
+              "value": 0.17351194813215098,
+              "err": 0.02784257158627057
+            },
+            "ratio": {
+              "value": 1.0845124053041972,
+              "err": 0.18615196812290047
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 493,
+            "n_matched": 104,
+            "imig": {
+              "value": 0.17118927645347123,
+              "err": 0.005859016012167068
+            },
+            "counts": {
+              "value": 0.20645671637412166,
+              "err": 0.034431386749327136
+            },
+            "ratio": {
+              "value": 1.206014305634594,
+              "err": 0.20519539282450727
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 574,
+            "n_matched": 86,
+            "imig": {
+              "value": 0.180014458935648,
+              "err": 0.006301295570834059
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1185,
+            "n_matched": 148,
+            "imig": {
+              "value": 0.1816346717114226,
+              "err": 0.00421391241011683
+            },
+            "counts": {
+              "value": 0.27972424119784417,
+              "err": 0.04284588452395158
+            },
+            "ratio": {
+              "value": 1.540037695238408,
+              "err": 0.24085854920525673
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1777,
+            "n_matched": 260,
+            "imig": {
+              "value": 0.20547533251382194,
+              "err": 0.00383214997757729
+            },
+            "counts": {
+              "value": 0.2657026670970018,
+              "err": 0.03130300169913232
+            },
+            "ratio": {
+              "value": 1.2931122380791304,
+              "err": 0.14657581177442347
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1808,
+            "n_matched": 186,
+            "imig": {
+              "value": 0.22113524499889778,
+              "err": 0.0037272271651536404
+            },
+            "counts": {
+              "value": 0.19562229113109328,
+              "err": 0.03491249315019811
+            },
+            "ratio": {
+              "value": 0.8846273742210037,
+              "err": 0.16337502979192575
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 2088,
+            "n_matched": 278,
+            "imig": {
+              "value": 0.24669310586783708,
+              "err": 0.0041119651123262685
+            },
+            "counts": {
+              "value": 0.3232977685048769,
+              "err": 0.057996949238462575
+            },
+            "ratio": {
+              "value": 1.310526159081559,
+              "err": 0.24075441967584366
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 2897,
+            "n_matched": 436,
+            "imig": {
+              "value": 0.2887411852025874,
+              "err": 0.004109784485051449
+            },
+            "counts": {
+              "value": 0.4146368940687776,
+              "err": 0.058022142512051095
+            },
+            "ratio": {
+              "value": 1.436015765391622,
+              "err": 0.20223330164255449
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 3091,
+            "n_matched": 299,
+            "imig": {
+              "value": 0.3086683918936329,
+              "err": 0.00459205147149791
+            },
+            "counts": {
+              "value": 0.39830096352406275,
+              "err": 0.07052736014729674
+            },
+            "ratio": {
+              "value": 1.2903846781348356,
+              "err": 0.23202583201813165
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": -0.0,
+            "m_h_hi": 0.1,
+            "n_stars": 1537,
+            "n_matched": 145,
+            "imig": {
+              "value": 0.35311852140424266,
+              "err": 0.008533336506675093
+            },
+            "counts": {
+              "value": 0.5807164851769642,
+              "err": 0.05992405616409749
+            },
+            "ratio": {
+              "value": 1.6445370321206465,
+              "err": 0.16932393459363382
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 307,
+            "n_matched": 39,
+            "imig": {
+              "value": 0.1328389698282999,
+              "err": 0.005381814063878776
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 382,
+            "n_matched": 69,
+            "imig": {
+              "value": 0.15293626330382518,
+              "err": 0.005768370555548158
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 381,
+            "n_matched": 43,
+            "imig": {
+              "value": 0.15323004925948203,
+              "err": 0.007178809341232759
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 631,
+            "n_matched": 66,
+            "imig": {
+              "value": 0.17079650748997607,
+              "err": 0.005016359555942873
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1219,
+            "n_matched": 136,
+            "imig": {
+              "value": 0.17754060641526886,
+              "err": 0.004151991890381679
+            },
+            "counts": {
+              "value": 0.33497236279764714,
+              "err": 0.04902358949538568
+            },
+            "ratio": {
+              "value": 1.8867366151388723,
+              "err": 0.28067683598739857
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1446,
+            "n_matched": 134,
+            "imig": {
+              "value": 0.20098295425318183,
+              "err": 0.004085120793078656
+            },
+            "counts": {
+              "value": 0.33122640725052294,
+              "err": 0.07498124253502399
+            },
+            "ratio": {
+              "value": 1.6480323342907532,
+              "err": 0.36979520471896243
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1823,
+            "n_matched": 170,
+            "imig": {
+              "value": 0.22645662626502078,
+              "err": 0.004002988784145303
+            },
+            "counts": {
+              "value": 0.39889031344835923,
+              "err": 0.0553470842569144
+            },
+            "ratio": {
+              "value": 1.7614424449719586,
+              "err": 0.2528962178335801
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 2529,
+            "n_matched": 265,
+            "imig": {
+              "value": 0.2564140411729113,
+              "err": 0.003859111563856349
+            },
+            "counts": {
+              "value": 0.4231144451266793,
+              "err": 0.0716641788594101
+            },
+            "ratio": {
+              "value": 1.6501219792458814,
+              "err": 0.2823510292081546
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 2997,
+            "n_matched": 243,
+            "imig": {
+              "value": 0.2859538156833098,
+              "err": 0.005436935477725419
+            },
+            "counts": {
+              "value": 0.48657857308298447,
+              "err": 0.07692939937617341
+            },
+            "ratio": {
+              "value": 1.7015984623959837,
+              "err": 0.27365830205632913
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": 0.1,
+            "m_h_hi": 0.2,
+            "n_stars": 1531,
+            "n_matched": 108,
+            "imig": {
+              "value": 0.31835691541090494,
+              "err": 0.008461399148409987
+            },
+            "counts": {
+              "value": 0.3948290349856897,
+              "err": 0.2084930136482408
+            },
+            "ratio": {
+              "value": 1.2402087590152764,
+              "err": 0.6510500377259372
+            }
+          },
+          {
+            "age_lo": 1.0,
+            "age_hi": 1.26,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 253,
+            "n_matched": 7,
+            "imig": {
+              "value": 0.13018971377401284,
+              "err": 0.006536730099526489
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 305,
+            "n_matched": 24,
+            "imig": {
+              "value": 0.13141880268300116,
+              "err": 0.006143406755122878
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 278,
+            "n_matched": 24,
+            "imig": {
+              "value": 0.16279281388089203,
+              "err": 0.008539196294019849
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 447,
+            "n_matched": 18,
+            "imig": {
+              "value": 0.16051646976414846,
+              "err": 0.00624633334504264
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 816,
+            "n_matched": 50,
+            "imig": {
+              "value": 0.14590292887290635,
+              "err": 0.0038270801423863354
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1139,
+            "n_matched": 69,
+            "imig": {
+              "value": 0.16466244165564511,
+              "err": 0.003956613286490898
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1481,
+            "n_matched": 76,
+            "imig": {
+              "value": 0.19511035224066886,
+              "err": 0.0044315610424271595
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1960,
+            "n_matched": 148,
+            "imig": {
+              "value": 0.22712479790482917,
+              "err": 0.004368071389616965
+            },
+            "counts": {
+              "value": 0.32350223599437733,
+              "err": 0.09133945071453081
+            },
+            "ratio": {
+              "value": 1.4243369239229116,
+              "err": 0.39965691521777436
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 2610,
+            "n_matched": 192,
+            "imig": {
+              "value": 0.26077988176384936,
+              "err": 0.00547241181025096
+            },
+            "counts": {
+              "value": 0.44613009027564265,
+              "err": 0.056475207498714486
+            },
+            "ratio": {
+              "value": 1.7107534801309487,
+              "err": 0.22998899311607535
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": 0.2,
+            "m_h_hi": 0.3,
+            "n_stars": 1387,
+            "n_matched": 112,
+            "imig": {
+              "value": 0.30065085319982127,
+              "err": 0.00719960836511771
+            },
+            "counts": {
+              "value": 0.5555578558803277,
+              "err": 0.05950312217798848
+            },
+            "ratio": {
+              "value": 1.8478505880410319,
+              "err": 0.19760144820162295
+            }
+          },
+          {
+            "age_lo": 1.26,
+            "age_hi": 1.58,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 112,
+            "n_matched": 9,
+            "imig": {
+              "value": 0.1548214684503361,
+              "err": 0.013387626195775396
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 1.58,
+            "age_hi": 2.0,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 151,
+            "n_matched": 5,
+            "imig": {
+              "value": 0.16290479491458537,
+              "err": 0.012551693565741096
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.0,
+            "age_hi": 2.51,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 244,
+            "n_matched": 10,
+            "imig": {
+              "value": 0.15150137799956523,
+              "err": 0.012581592288822122
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 425,
+            "n_matched": 15,
+            "imig": {
+              "value": 0.14887194175362325,
+              "err": 0.0077210709178495845
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 773,
+            "n_matched": 22,
+            "imig": {
+              "value": 0.16102388058684172,
+              "err": 0.006195914585957432
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 1279,
+            "n_matched": 35,
+            "imig": {
+              "value": 0.18075510793567756,
+              "err": 0.004179308365315923
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 1475,
+            "n_matched": 70,
+            "imig": {
+              "value": 0.2071995574854811,
+              "err": 0.005463502106336893
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 1676,
+            "n_matched": 117,
+            "imig": {
+              "value": 0.25580862826998263,
+              "err": 0.006759281539426648
+            },
+            "counts": {
+              "value": 0.520378219824259,
+              "err": 0.059994012516713296
+            },
+            "ratio": {
+              "value": 2.034248114864395,
+              "err": 0.2462418350143164
+            }
+          },
+          {
+            "age_lo": 7.94,
+            "age_hi": 10.0,
+            "m_h_lo": 0.3,
+            "m_h_hi": 0.4,
+            "n_stars": 653,
+            "n_matched": 40,
+            "imig": {
+              "value": 0.28885887352141865,
+              "err": 0.009729121019569853
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 2.51,
+            "age_hi": 3.16,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 130,
+            "n_matched": 2,
+            "imig": {
+              "value": 0.19812148148809472,
+              "err": 0.018946515784031268
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.16,
+            "age_hi": 3.98,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 245,
+            "n_matched": 0,
+            "imig": {
+              "value": 0.19065361119367494,
+              "err": 0.01105253710464342
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 3.98,
+            "age_hi": 5.01,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 467,
+            "n_matched": 1,
+            "imig": {
+              "value": 0.1870829505089696,
+              "err": 0.007383205288097466
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 5.01,
+            "age_hi": 6.31,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 625,
+            "n_matched": 11,
+            "imig": {
+              "value": 0.19438459375683703,
+              "err": 0.005846990571479305
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          },
+          {
+            "age_lo": 6.31,
+            "age_hi": 7.94,
+            "m_h_lo": 0.4,
+            "m_h_hi": 0.5,
+            "n_stars": 386,
+            "n_matched": 12,
+            "imig": {
+              "value": 0.2191855962645164,
+              "err": 0.01040324144997122
+            },
+            "counts": {
+              "value": null,
+              "err": null
+            },
+            "ratio": {
+              "value": null,
+              "err": null
+            }
+          }
+        ],
+        "n_measured": 43,
+        "median_ratio": 1.2931122380791304,
+        "trend": {
+          "value": 0.7648223369484517,
+          "err": 0.1475087806290932,
+          "chi2_dof": 1.3769986359728126
+        }
+      }
+    }
+  ]
 }

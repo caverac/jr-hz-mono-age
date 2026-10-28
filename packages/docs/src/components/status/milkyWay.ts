@@ -6,6 +6,7 @@
  * the star counts and the tracer.
  */
 
+import { median } from '@site/src/components/status/metrics'
 import {
   type Estimate,
   estimate,
@@ -115,11 +116,30 @@ export interface ImigCell {
 
 /** Every cell and, over the measured ones, the median ratio and the slope of its logarithm per dex of [M/H]. */
 export interface ImigCells {
+  /** The matched stars that split the counts into populations. */
+  readonly nMatches: number
   readonly minMatches: number
   readonly cells: readonly ImigCell[]
   readonly nMeasured: number
   readonly medianRatio: number
   readonly trend: Trend
+}
+
+/** The value of `jkHi` with which the package marks a targeting box without a red limit. */
+export const JK_NO_RED_LIMIT = 99
+
+/** A range of H and (J - K_s)_0 inside the targeting limits of every star kept. */
+export interface TargetingBox {
+  readonly hLo: number
+  readonly hHi: number
+  readonly jkLo: number
+  readonly jkHi: number
+}
+
+/** The cells measured with only the matches of one targeting box. */
+export interface TargetedCells {
+  readonly box: TargetingBox
+  readonly cells: ImigCells
 }
 
 export interface MilkyWayData {
@@ -133,6 +153,7 @@ export interface MilkyWayData {
     readonly trends: Readonly<Record<ImigHeight, Trend>>
   }
   readonly imigCells: ImigCells
+  readonly imigCellsTargeting: readonly TargetedCells[]
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -218,6 +239,7 @@ function parseImigCell(cell: unknown): ImigCell {
 
 function parseImigCells(cells: unknown): ImigCells {
   return {
+    nMatches: num(cells, 'n_matches'),
     minMatches: num(cells, 'min_matches'),
     cells: list(cells, 'cells').map(parseImigCell),
     nMeasured: num(cells, 'n_measured'),
@@ -225,6 +247,32 @@ function parseImigCells(cells: unknown): ImigCells {
     trend: trend(cells, 'trend')
   }
 }
+
+/** The selection of `box`, as the pages print it. */
+export function boxText(box: TargetingBox): string {
+  const red = box.jkHi >= JK_NO_RED_LIMIT ? '' : ` < ${box.jkHi}`
+  return `$${box.hLo} < H < ${box.hHi}$, $${box.jkLo} < (J-K_s)_0${red}$`
+}
+
+/** The median ratio of the measured cells whose [M/H] center lies in [lo, hi), and their number. */
+export function cellMedian(
+  cells: ImigCells,
+  lo: number,
+  hi: number
+): { median: number; n: number } {
+  const ratios = cells.cells
+    .filter((c) => isMeasured(cells, c))
+    .filter((c) => 0.5 * (c.mhLo + c.mhHi) >= lo && 0.5 * (c.mhLo + c.mhHi) < hi)
+    .map((c) => c.ratio.value)
+  return { median: median(ratios), n: ratios.length }
+}
+
+/** The ranges of [M/H] that the pages summarize the cells over: metal-poor, near solar, metal-rich. */
+export const METALLICITY_RANGES: readonly (readonly [number, number])[] = [
+  [Number.NEGATIVE_INFINITY, -0.1],
+  [-0.1, 0.1],
+  [0.1, Number.POSITIVE_INFINITY]
+]
 
 /** Whether `cell` has enough matches for our h_Z, and a finite ratio. */
 export function isMeasured(cells: ImigCells, cell: ImigCell): boolean {
@@ -250,6 +298,18 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
       bins: list(imig, 'bins').map(parseImigBin),
       trends: byHeight(field(imig, 'trends'), trend)
     },
-    imigCells: parseImigCells(field(record, 'imig_cells'))
+    imigCells: parseImigCells(field(record, 'imig_cells')),
+    imigCellsTargeting: list(record, 'imig_cells_targeting').map((targeted) => {
+      const box = field(targeted, 'box')
+      return {
+        box: {
+          hLo: num(box, 'h_lo'),
+          hHi: num(box, 'h_hi'),
+          jkLo: num(box, 'jk_lo'),
+          jkHi: num(box, 'jk_hi')
+        },
+        cells: parseImigCells(field(targeted, 'cells'))
+      }
+    })
   }
 }

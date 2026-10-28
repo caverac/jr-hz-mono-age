@@ -14,7 +14,7 @@ from mw_fixtures import write_world
 from experiments.commands.milky_way import cell_lines
 from experiments.heights import Z_GRID
 from experiments.mw_analysis import SolarModel
-from experiments.mw_catalogs import read_apogee, read_gaia, with_distmass_ages
+from experiments.mw_catalogs import Targeting, TargetingBox, read_apogee, read_gaia, with_distmass_ages
 from experiments.mw_imig import ImigPopulations, read_imig
 from experiments.mw_imig_cells import (
     CellSettings,
@@ -95,7 +95,24 @@ def test_the_report_summarizes_each_metallicity_bin() -> None:
         h = Estimate(0.3, 0.01)
         return ImigCell(1.0, 1.26, m_h_lo, m_h_lo + 0.1, 500, n_matched, h, h, Estimate(ratio, 0.1))
 
-    cells = ImigCells(100, [cell(0.0, 150, 1.2), cell(0.0, 300, 1.4), cell(0.1, 50, 2.0)], 2, 1.3, Trend(0.5, 0.2, 1.0))
-    lines = cell_lines(cells)
+    cells = ImigCells(
+        1000, 100, [cell(0.0, 150, 1.2), cell(0.0, 300, 1.4), cell(0.1, 50, 2.0)], 2, 1.3, Trend(0.5, 0.2, 1.0)
+    )
+    lines = cell_lines(cells, "box")
+    assert lines[0].startswith("box, 1,000 matches")
     assert lines[1].split()[-1] == "1.30" and lines[2].split()[-1] == "none"
     assert "2 cells: median 1.30" in lines[-1]
+
+
+def test_a_targeting_box_keeps_the_stars_selected_alike_everywhere() -> None:
+    """A star belongs to the box if it lies in it and its cohort's limits contain the box."""
+    targeting = Targeting(
+        h=np.array([9.0, 9.0, 9.0, 12.0, 9.0, np.nan]),
+        jk0=np.array([0.6, 0.9, 0.6, 0.6, 0.6, 0.6]),
+        min_h=np.full(6, 7.0),
+        max_h=np.array([12.2, 12.2, 12.2, 12.2, 11.0, 12.2]),
+        min_jk=np.array([0.5, 0.5, 0.3, 0.5, 0.5, 0.5]),
+        max_jk=np.array([9999.99, 9999.99, 0.8, 9999.99, 9999.99, 9999.99]),
+    )
+    assert TargetingBox(7.0, 12.0, 0.5, 99.0).holds(targeting).tolist() == [True, True, False, True, False, False]
+    assert TargetingBox(7.0, 11.0, 0.5, 0.8).holds(targeting).tolist() == [True, False, True, False, True, False]
