@@ -6,9 +6,12 @@ import {
 } from '@site/src/components/status/jrRelation'
 import { significance } from '@site/src/components/status/metrics'
 import {
+  IMIG_HEIGHTS,
+  type ImigHeight,
   MILKY_WAY_PATH,
   type MilkyWayData,
-  parseMilkyWay
+  parseMilkyWay,
+  surveyName
 } from '@site/src/components/status/milkyWay'
 import { fixed, signed, Table, type TableProps } from '@site/src/components/status/tables'
 import useRecord from '@site/src/components/status/useRecord'
@@ -26,13 +29,19 @@ function fromRecord<T>(
   }
 }
 
-const NAMES: Record<string, string> = { lamost: 'LAMOST', apogee: 'APOGEE' }
-
 function estimateCell(value: number, err: number, digits: number): string {
-  return `$${fixed(value, digits)} \\pm ${fixed(err, digits)}$`
+  return Number.isFinite(value) ? `$${fixed(value, digits)} \\pm ${fixed(err, digits)}$` : 'none'
 }
 
-/** Every age bin of both surveys of the Milky Way. */
+/** The bins of Imig et al. that enter the trend of the tracer over `height`: those with a finite ratio and error. */
+function imigTrendBins(data: MilkyWayData, height: ImigHeight) {
+  return data.imig.bins.filter((b) => {
+    const ratio = b.ratios[height]
+    return Number.isFinite(ratio.value) && Number.isFinite(ratio.err) && ratio.err > 0
+  })
+}
+
+/** Every age bin of the three surveys of the Milky Way. */
 export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({
   head: [
     'survey',
@@ -47,7 +56,7 @@ export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
   ],
   rows: data.surveys.flatMap((survey) =>
     survey.bins.map((b) => [
-      NAMES[survey.name] ?? survey.name,
+      surveyName(survey.name),
       `${b.ageLo}-${b.ageHi}`,
       fixed(b.ageMedian),
       String(b.nMatched),
@@ -60,7 +69,7 @@ export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
   )
 }))
 
-/** The trends of h_pred / h_Z in both surveys of the Milky Way and against Imig et al. */
+/** The trends of h_pred / h_Z in the three surveys of the Milky Way and against the four heights of the Imig et al. bins. */
 export const MwTrendTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({
   groups: [
     ['', 3],
@@ -80,7 +89,7 @@ export const MwTrendTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Mil
   rows: [
     ...data.surveys.flatMap((survey) =>
       survey.ranges.map((r) => [
-        `${NAMES[survey.name] ?? survey.name} counts`,
+        `${surveyName(survey.name)} counts`,
         `${r.lo}-${r.hi}`,
         String(r.nBins),
         `$${signed(r.tracer.value, 3)} \\pm ${fixed(r.tracer.err, 3)}$`,
@@ -90,46 +99,77 @@ export const MwTrendTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Mil
         `$${signed(significance(r.sheet), 1)}$`
       ])
     ),
-    [
-      'Imig et al.',
-      `${fixed(data.imig.bins[0]?.ageLo ?? Number.NaN)}-${fixed(data.imig.bins.at(-1)?.ageHi ?? Number.NaN)}`,
-      String(data.imig.bins.length),
-      `$${signed(data.imig.trend.value, 3)} \\pm ${fixed(data.imig.trend.err, 3)}$`,
-      `$${signed(significance(data.imig.trend), 1)}$`,
-      fixed(data.imig.trend.chi2Dof, 1),
-      '',
-      ''
-    ]
+    ...IMIG_HEIGHTS.map(({ height, name }) => {
+      const bins = imigTrendBins(data, height)
+      const trend = data.imig.trends[height]
+      return [
+        `${name}, Imig bins`,
+        `${fixed(bins[0]?.ageLo ?? Number.NaN)}-${fixed(bins.at(-1)?.ageHi ?? Number.NaN)}`,
+        String(bins.length),
+        `$${signed(trend.value, 3)} \\pm ${fixed(trend.err, 3)}$`,
+        `$${signed(significance(trend), 1)}$`,
+        fixed(trend.chi2Dof, 1),
+        '',
+        ''
+      ]
+    })
   ]
 }))
 
-/** Every age bin of Imig et al.: their pooled h_Z, the APOGEE sigma_z, and the tracer over h_Z. */
+/** The column heads of the four heights of an Imig et al. bin, under the groups of `imigGroups`. */
+const IMIG_HEADS = ['by mass', 'by counts', 'astroNN ages', 'distmass ages']
+
+/** The groups of the four heights of an Imig et al. bin, after `leading` columns. */
+function imigGroups(leading: number, prefix: string): readonly (readonly [string, number])[] {
+  return [
+    ['', leading],
+    [`${prefix}Imig et al.`, 2],
+    [`${prefix}star counts`, 2]
+  ]
+}
+
+/** Every age bin of Imig et al.: their populations pooled by mass and by counts, and our counts on both age scales. */
 export const ImigTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({
-  head: [
-    '$\\tau$ (Gyr)',
-    'populations',
-    '$h_Z$ (kpc)',
-    'stars',
-    '$\\sigma_z$ (km s$^{-1}$)',
-    'tracer'
-  ],
+  groups: imigGroups(2, '$h_Z$ (kpc), '),
+  head: ['$\\tau$ (Gyr)', 'populations', ...IMIG_HEADS],
   rows: data.imig.bins.map((b) => [
     `${fixed(b.ageLo)}-${fixed(b.ageHi)}`,
     String(b.nPopulations),
-    estimateCell(b.measured.value, b.measured.err, 3),
+    ...IMIG_HEIGHTS.map(({ height }) =>
+      estimateCell(b.heights[height].value, b.heights[height].err, 3)
+    )
+  ])
+}))
+
+/** Every age bin of Imig et al.: the APOGEE sigma_z of its ages, the tracer, and the tracer over each height. */
+export const ImigRatioTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({
+  groups: imigGroups(4, 'tracer over '),
+  head: ['$\\tau$ (Gyr)', 'stars', '$\\sigma_z$ (km s$^{-1}$)', 'tracer (kpc)', ...IMIG_HEADS],
+  rows: data.imig.bins.map((b) => [
+    `${fixed(b.ageLo)}-${fixed(b.ageHi)}`,
     String(b.nKin),
     estimateCell(b.sigmaZ.value, b.sigmaZ.err, 1),
-    estimateCell(b.ratio.value, b.ratio.err, 2)
+    fixed(b.tracer, 3),
+    ...IMIG_HEIGHTS.map(({ height }) =>
+      estimateCell(b.ratios[height].value, b.ratios[height].err, 2)
+    )
   ])
 }))
 
 /** The proxy J_R,w and the whole-disk heights of every halo. */
 export const JrTable = fromRecord(JR_RELATION_PATH, parseJrRelation, (data: JrRelationData) => ({
-  head: [
-    'halo',
-    '$J_{R,w}$ (kpc km s$^{-1}$)',
-    '$h_Z$, Palicio (kpc)',
-    '$h_Z$, self-consistent (kpc)'
+  groups: [
+    ['', 2],
+    ['$h_Z$, Palicio (kpc)', 2],
+    ['$h_Z$, self-consistent (kpc)', 2]
   ],
-  rows: data.points.map((p) => [p.halo, fixed(p.jrW, 1), fixed(p.hzPalicio), fixed(p.hzScaled)])
+  head: ['halo', '$J_{R,w}$ (kpc km s$^{-1}$)', 'measured', 'predicted', 'measured', 'predicted'],
+  rows: data.points.map((p) => [
+    p.halo,
+    fixed(p.jrW, 1),
+    fixed(p.hzPalicio),
+    fixed(p.hzPalicioMixture),
+    fixed(p.hzScaled),
+    fixed(p.hzScaledMixture)
+  ])
 }))

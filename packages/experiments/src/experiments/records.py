@@ -19,6 +19,7 @@ from typing import TypeVar, cast, get_args, get_origin, get_type_hints
 from experiments.analysis import HaloAnalysis
 from experiments.jr_map import JrMapRecord
 from experiments.mock import MockCheck
+from experiments.tracer_sum import TracerSumRecord
 
 T = TypeVar("T")
 
@@ -89,3 +90,8 @@ def load_mock_check(path: Path) -> MockCheck:
 def load_jr_map(path: Path) -> JrMapRecord:
     """Return the record of the proxy J_R,w of one halo written by ``experiments auriga jr-map``."""
     return from_dict(JrMapRecord, json.loads(path.read_text()))
+
+
+def load_tracer_sum(path: Path) -> TracerSumRecord:
+    """Return the record of the predicted whole-disk h_Z of one halo written by ``experiments auriga tracer-sum``."""
+    return from_dict(TracerSumRecord, json.loads(path.read_text()))

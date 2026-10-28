@@ -15,9 +15,9 @@ from pathlib import Path
 import click
 
 from experiments._paths import AURIGA_DATA_DIR
-from experiments.analysis import analyze_halo, prepare_halo
+from experiments.analysis import analyze_halo
 from experiments.auriga import HaloSnapshot
-from experiments.commands._auriga import snapshot_options, snapshots
+from experiments.commands._auriga import local_halo, snapshot_options, snapshots
 from experiments.commands._report import report_lines, write_json
 from experiments.palicio import PALICIO_WINDOWS, PalicioWindow
 from experiments.populations import K_MAIN, N_BOOTSTRAP, Method
@@ -69,10 +69,7 @@ def auriga_analyze(  # pylint: disable=too-many-arguments,too-many-positional-ar
     """Measure the mono-age populations and the whole disk of each of HALOS."""
     for snap in snapshots(halos, level, suite, snapshot):
         method = Method(palicio_window(snap.halo, z_lim, l_kpc), k, n_bootstrap)
-        try:
-            prepared = prepare_halo(snap, root)
-        except FileNotFoundError as err:
-            raise click.ClickException(f"{err}; download Au{snap.halo} with `experiments auriga download`") from err
+        prepared = local_halo(snap, root)
         analysis = analyze_halo(prepared, method)
         for line in report_lines(analysis):
             click.echo(line)

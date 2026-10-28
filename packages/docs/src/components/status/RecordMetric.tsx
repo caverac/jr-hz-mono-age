@@ -1,14 +1,16 @@
 import MathLabel from '@site/src/components/MathLabel'
-import type { Trend } from '@site/src/components/status/data'
-import { between, count, fixed, plusMinus, signed } from '@site/src/components/status/format'
+import { between, count, fixed, percent, plusMinus } from '@site/src/components/status/format'
 import {
   JR_RELATION_PATH,
   type JrRelationData,
   type Line,
   parseJrRelation
 } from '@site/src/components/status/jrRelation'
-import { extent, median, significance } from '@site/src/components/status/metrics'
+import { extent, trendText } from '@site/src/components/status/metrics'
 import {
+  type ImigBin,
+  type ImigHeight,
+  imigAge,
   MILKY_WAY_PATH,
   type MilkyWayData,
   type MwRange,
@@ -17,10 +19,6 @@ import {
 } from '@site/src/components/status/milkyWay'
 import useRecord from '@site/src/components/status/useRecord'
 import React, { type ReactNode } from 'react'
-
-function trendText(trend: Trend): string {
-  return `${plusMinus(trend.value, trend.err)} (${signed(significance(trend), 1)} standard errors)`
-}
 
 function lineText(line: Line): string {
   return `${plusMinus(line.slope, line.slopeErr, 0, false)} km/s`
@@ -80,6 +78,50 @@ function countHeight(data: MilkyWayData, name: string, ageLo: number): string {
     : `${plusMinus(bin.measured.value, bin.measured.err, 3, false)} kpc`
 }
 
+/** The Imig et al. bins whose mean age lies in [lo, hi) Gyr. */
+function imigBins(data: MilkyWayData, lo = 0, hi = Number.POSITIVE_INFINITY): readonly ImigBin[] {
+  return data.imig.bins.filter((b) => imigAge(b) >= lo && imigAge(b) < hi)
+}
+
+/** The range of the height `top` over the height `bottom` in the Imig et al. bins of mean age in [lo, hi) Gyr. */
+function heightRatios(
+  data: MilkyWayData,
+  top: ImigHeight,
+  bottom: ImigHeight,
+  lo?: number,
+  hi?: number
+): string {
+  return between(
+    extent(imigBins(data, lo, hi).map((b) => b.heights[top].value / b.heights[bottom].value))
+  )
+}
+
+/** The range of the tracer over the height `height` in the Imig et al. bins. */
+function imigRatios(data: MilkyWayData, height: ImigHeight): string {
+  return between(extent(data.imig.bins.map((b) => b.ratios[height].value)))
+}
+
+/** The Imig et al. bin that holds `age` Gyr, if any. */
+function imigBinAt(data: MilkyWayData, age: number): ImigBin | undefined {
+  return data.imig.bins.find((b) => b.ageLo <= age && age < b.ageHi)
+}
+
+/** The height `height` of the Imig et al. bin that holds `age` Gyr. */
+function imigHeight(data: MilkyWayData, height: ImigHeight, age: number): string {
+  const bin = imigBinAt(data, age)
+  return bin === undefined
+    ? 'none'
+    : `${plusMinus(bin.heights[height].value, bin.heights[height].err, 3, false)} kpc`
+}
+
+/** The ages of the Imig et al. bins without the height `height`. */
+function imigMissing(data: MilkyWayData, height: ImigHeight): string {
+  const missing = data.imig.bins.filter((b) => !Number.isFinite(b.heights[height].value))
+  return missing.length === 0
+    ? 'none'
+    : missing.map((b) => `${fixed(b.ageLo)}-${fixed(b.ageHi)} Gyr`).join(', ')
+}
+
 const MW_METRICS = {
   r0: (d: MilkyWayData) => fixed(d.r0, 3),
   sigmaSurf: (d: MilkyWayData) => fixed(d.sigmaSurf, 1),
@@ -88,34 +130,60 @@ const MW_METRICS = {
   lamostMatched: (d: MilkyWayData) => count(survey(d, 'lamost').nMatched),
   apogeeGaia: (d: MilkyWayData) => count(survey(d, 'apogee').nGaia),
   apogeeMatched: (d: MilkyWayData) => count(survey(d, 'apogee').nMatched),
+  distmassMatched: (d: MilkyWayData) => count(survey(d, 'apogee_distmass').nMatched),
   lamostTracer: (d: MilkyWayData) => ratioRange(d, 'lamost', 'ratioTracer'),
   apogeeTracer: (d: MilkyWayData) => ratioRange(d, 'apogee', 'ratioTracer'),
   lamostSheet: (d: MilkyWayData) => ratioRange(d, 'lamost', 'ratioSheet'),
   apogeeSheet: (d: MilkyWayData) => ratioRange(d, 'apogee', 'ratioSheet'),
+  distmassTracer: (d: MilkyWayData) => ratioRange(d, 'apogee_distmass', 'ratioTracer'),
+  distmassSheet: (d: MilkyWayData) => ratioRange(d, 'apogee_distmass', 'ratioSheet'),
   lamostTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'lamost', 0).tracer),
   apogeeTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee', 0).tracer),
   lamostTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'lamost', 2).tracer),
   apogeeTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee', 2).tracer),
+  distmassTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 0).tracer),
+  distmassTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 2).tracer),
   lamostSheetTrend0: (d: MilkyWayData) => trendText(range(d, 'lamost', 0).sheet),
   apogeeSheetTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee', 0).sheet),
+  distmassSheetTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 0).sheet),
   lamostEta: (d: MilkyWayData) => fixed(range(d, 'lamost', 0).eta),
   apogeeEta: (d: MilkyWayData) => fixed(range(d, 'apogee', 0).eta),
-  imigRatio: (d: MilkyWayData) => between(extent(d.imig.bins.map((b) => b.ratio.value))),
-  imigRatioMedian: (d: MilkyWayData) => fixed(median(d.imig.bins.map((b) => b.ratio.value))),
-  imigTrend: (d: MilkyWayData) => trendText(d.imig.trend),
-  imigBins: (d: MilkyWayData) => String(d.imig.bins.length),
+  distmassEta: (d: MilkyWayData) => fixed(range(d, 'apogee_distmass', 0).eta),
   lamostWithin10: (d: MilkyWayData) => within10(d, 'lamost'),
   apogeeWithin10: (d: MilkyWayData) => within10(d, 'apogee'),
+  distmassWithin10: (d: MilkyWayData) => within10(d, 'apogee_distmass'),
   lamostSheetTrend2: (d: MilkyWayData) => trendText(range(d, 'lamost', 2).sheet),
   apogeeSheetTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee', 2).sheet),
+  distmassSheetTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 2).sheet),
   lamostHz68: (d: MilkyWayData) => countHeight(d, 'lamost', 6),
   apogeeHz68: (d: MilkyWayData) => countHeight(d, 'apogee', 6),
-  imigHz7: (d: MilkyWayData) => {
-    const bin = d.imig.bins.find((b) => b.ageLo <= 7 && 7 < b.ageHi)
-    return bin === undefined
-      ? 'none'
-      : `${plusMinus(bin.measured.value, bin.measured.err, 3, false)} kpc at ${fixed(bin.ageLo)}-${fixed(bin.ageHi)} Gyr`
-  }
+  apogeeHz24: (d: MilkyWayData) => countHeight(d, 'apogee', 2),
+  distmassFailed810: (d: MilkyWayData) => {
+    const bin = survey(d, 'apogee_distmass').bins.find((b) => b.ageLo === 8)
+    return bin === undefined ? 'none' : percent(bin.failed, 0)
+  },
+  distmassHz24: (d: MilkyWayData) => countHeight(d, 'apogee_distmass', 2),
+  imigAges7: (d: MilkyWayData) => {
+    const bin = imigBinAt(d, 7)
+    return bin === undefined ? 'none' : `${fixed(bin.ageLo)}-${fixed(bin.ageHi)} Gyr`
+  },
+  imigHz7: (d: MilkyWayData) => imigHeight(d, 'imigMass', 7),
+  imigCountsHz7: (d: MilkyWayData) => imigHeight(d, 'imigCounts', 7),
+  countsDistmassHz7: (d: MilkyWayData) => imigHeight(d, 'countsDistmass', 7),
+  imigWeighting: (d: MilkyWayData) => heightRatios(d, 'imigCounts', 'imigMass'),
+  imigAgeScale: (d: MilkyWayData) => heightRatios(d, 'countsAstronn', 'countsDistmass'),
+  imigGap: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts'),
+  imigGapYoung: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts', 0, 4),
+  imigGapOld: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts', 4),
+  imigMassRatio: (d: MilkyWayData) => imigRatios(d, 'imigMass'),
+  imigCountsRatio: (d: MilkyWayData) => imigRatios(d, 'imigCounts'),
+  countsAstronnRatio: (d: MilkyWayData) => imigRatios(d, 'countsAstronn'),
+  countsDistmassRatio: (d: MilkyWayData) => imigRatios(d, 'countsDistmass'),
+  imigMassTrend: (d: MilkyWayData) => trendText(d.imig.trends.imigMass),
+  imigCountsTrend: (d: MilkyWayData) => trendText(d.imig.trends.imigCounts),
+  countsAstronnTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsAstronn),
+  countsDistmassTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsDistmass),
+  countsDistmassMissing: (d: MilkyWayData) => imigMissing(d, 'countsDistmass')
 } satisfies Record<string, (d: MilkyWayData) => string>
 
 const JR_METRICS = {
@@ -135,7 +203,13 @@ const JR_METRICS = {
   scaledDeviation: (d: JrRelationData) =>
     fixed(Math.abs(d.lineScaled.slope - d.palicioSlope) / d.lineScaled.slopeErr, 1),
   palicioDeviation: (d: JrRelationData) =>
-    fixed(Math.abs(d.linePalicio.slope - d.palicioSlope) / d.linePalicio.slopeErr, 1)
+    fixed(Math.abs(d.linePalicio.slope - d.palicioSlope) / d.linePalicio.slopeErr, 1),
+  slopePalicioMixture: (d: JrRelationData) => lineText(d.linePalicioMixture),
+  slopeScaledMixture: (d: JrRelationData) => lineText(d.lineScaledMixture),
+  scaledMixtureShift: (d: JrRelationData) =>
+    fixed(Math.abs(d.lineScaledMixture.slope - d.lineScaled.slope) / d.lineScaled.slopeErr, 1),
+  scaledMixtureDeviation: (d: JrRelationData) =>
+    fixed(Math.abs(d.lineScaledMixture.slope - d.palicioSlope) / d.lineScaledMixture.slopeErr, 1)
 } satisfies Record<string, (d: JrRelationData) => string>
 
 /** A number of the Milky Way page, computed from its record. */

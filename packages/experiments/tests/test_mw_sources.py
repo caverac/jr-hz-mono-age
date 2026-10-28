@@ -104,7 +104,7 @@ def test_check_file(tmp_path: Path) -> None:
 def test_the_sources_pin_their_files() -> None:
     """Every file has a URL, a size and an MD5 checksum; the two APOGEE files come in byte ranges."""
     names = {s.name: s for s in FILE_SOURCES}
-    assert set(names) == {"astronn", "allstar", "lamost", "imig"}
+    assert set(names) == {"astronn", "allstar", "lamost", "distmass", "imig"}
     assert all(len(s.md5) == 32 and s.size > 0 and s.url.startswith("https://") for s in FILE_SOURCES)
     assert names["astronn"].parts > 1 and names["lamost"].user_agent is not None
 

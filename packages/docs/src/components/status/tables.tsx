@@ -1,6 +1,6 @@
 import MathLabel from '@site/src/components/MathLabel'
 import { Pending } from '@site/src/components/status/controls'
-import type { StatusData } from '@site/src/components/status/data'
+import type { Estimate, StatusData } from '@site/src/components/status/data'
 import { FAMILIES } from '@site/src/components/status/families'
 import {
   AGE_RANGES,
@@ -250,4 +250,71 @@ export const JeansTrendTable = fromRecords((data) => ({
       ]
     })
   )
+}))
+
+/** The whole-disk h_Z of every halo and its predictions as a sum of tracers, over the measured h_Z. */
+export const TracerSumTable = fromRecords((data) => ({
+  groups: [
+    ['', 3],
+    ["Palicio's window", 3],
+    ['self-consistent window', 3]
+  ],
+  head: [
+    'halo',
+    '$R$ (kpc)',
+    'unmodeled (%)',
+    '$h_Z$ (kpc)',
+    'one per ring',
+    'per ring and age',
+    '$h_Z$ (kpc)',
+    'one per ring',
+    'per ring and age'
+  ],
+  rows: data.halos.map((halo) => {
+    const whole = halo.tracerSum.whole
+    const ratioCell = (e: Estimate) => `$${fixed(e.value, 3)} \\pm ${fixed(e.err, 3)}$`
+    return [
+      halo.label,
+      `${fixed(whole.rLo, 0)}-${fixed(whole.rHi, 0)}`,
+      fixed(100 * whole.unmodeledMixture, 1),
+      fixed(whole.measured.palicio.value),
+      ratioCell(whole.ratioSingle.palicio),
+      ratioCell(whole.ratioMixture.palicio),
+      fixed(whole.measured.scaled.value),
+      ratioCell(whole.ratioSingle.scaled),
+      ratioCell(whole.ratioMixture.scaled)
+    ]
+  })
+}))
+
+/** The range of the mean motions of the populations of every halo older than 5 Gyr. */
+export const MotionTable = fromRecords((data) => ({
+  groups: [
+    ['', 1],
+    ['populations older than 5 Gyr', 4]
+  ],
+  head: ['halo', 'thickening (Gyr$^{-1}$)', 'bending (km s$^{-1}$)', 'asymmetry', 'warp (kpc)'],
+  rows: data.halos.map((halo) => {
+    const old = halo.motions.filter((bin) => bin.ageLo >= 5)
+    const span = (values: readonly number[], digits: number) => {
+      const [lo, hi] = extent(values)
+      return `$${signed(lo, digits)}$ to $${signed(hi, digits)}$`
+    }
+    return [
+      halo.label,
+      span(
+        old.map((b) => b.thickening.value),
+        2
+      ),
+      span(
+        old.map((b) => b.bending.value),
+        2
+      ),
+      span(
+        old.map((b) => b.asymmetry.value),
+        3
+      ),
+      `${fixed(Math.min(...old.map((b) => b.warp.value)), 3)} to ${fixed(Math.max(...old.map((b) => b.warp.value)), 3)}`
+    ]
+  })
 }))

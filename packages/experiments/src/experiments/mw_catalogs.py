@@ -128,6 +128,7 @@ class Apogee:
     num: dict[str, FloatArray]
     source_id: NDArray[np.int64]
     main: BoolArray  # main survey and the first row of its APOGEE_ID
+    apogee_id: NDArray[np.str_]
 
 
 def read_apogee(astronn: Path, allstar: Path) -> Apogee:
@@ -138,7 +139,26 @@ def read_apogee(astronn: Path, allstar: Path) -> Apogee:
     main[first] = True
     main &= _columns(allstar, ("EXTRATARG",))["EXTRATARG"] == 0
     num = {k: np.asarray(v, dtype=np.float64) for k, v in cols.items() if k not in ("APOGEE_ID", "source_id")}
-    return Apogee(num, np.asarray(cols["source_id"], dtype=np.int64), main)
+    ids = np.char.strip(np.asarray(cols["APOGEE_ID"]).astype(np.str_))
+    return Apogee(num, np.asarray(cols["source_id"], dtype=np.int64), main, ids)
+
+
+def with_distmass_ages(apogee: Apogee, distmass: Path) -> Apogee:
+    """Return *apogee* with the ages of the distmass catalog at *distmass* in place of the astroNN ages.
+
+    The distmass catalog of Stone-Martinez et al. (2024, AJ 167, 73) is row-matched to
+    allStar, as the astroNN catalog is; a row whose APOGEE_ID differs between the two gets
+    no age. The age is ``AGE_UNCOR_SS``, the one Imig et al. (2025) adopt, and its error the
+    mean of the upper and lower offsets of ``AGE_ERR`` (dex), converted to Gyr, so that the
+    cut on the relative age error applies to both age scales alike.
+    """
+    cols = _columns(distmass, ("APOGEE_ID", "AGE_UNCOR_SS", "AGE_ERR"))
+    same = np.char.strip(np.asarray(cols["APOGEE_ID"]).astype(np.str_)) == apogee.apogee_id
+    age = np.where(same, np.asarray(cols["AGE_UNCOR_SS"], dtype=np.float64) / 1.0e9, np.nan)
+    err = np.asarray(cols["AGE_ERR"], dtype=np.float64)
+    fraction = 0.5 * (10.0 ** err[:, 0] - 10.0 ** err[:, 1])
+    num = {**apogee.num, "age_lowess_correct": age, "age_total_error": age * fraction}
+    return Apogee(num, apogee.source_id, apogee.main, apogee.apogee_id)
 
 
 def apogee_kinematics(apogee: Apogee) -> KinematicStars:

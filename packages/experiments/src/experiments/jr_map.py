@@ -150,33 +150,48 @@ def fit_line(x: FloatArray, y: FloatArray) -> Line:
 
 @dataclass(frozen=True)
 class JrPoint:
-    """One galaxy of the relation: its proxy J_R,w (kpc km/s) and its whole-disk h_Z (kpc) in both windows."""
+    """One galaxy of the relation: its proxy J_R,w (kpc km/s), and its whole-disk h_Z (kpc) in both windows.
+
+    ``hz_palicio`` and ``hz_scaled`` are measured from the star particles; the ``_mixture``
+    heights are predicted by the sum of isothermal tracers of :mod:`experiments.tracer_sum`.
+    """
 
     halo: int
     jr_w: float
     hz_palicio: float
     hz_scaled: float
+    hz_palicio_mixture: float
+    hz_scaled_mixture: float
 
 
 @dataclass(frozen=True)
 class JrRelation:
     """J_R,w against h_Z across the galaxies, with h_Z in Palicio's windows and in the self-consistent one.
 
+    The lines use the measured h_Z, and the ``_mixture`` lines the predicted one.
     ``palicio_slope`` is the slope of Palicio et al. (2025) in km/s.
     """
 
     points: list[JrPoint]
     line_palicio: Line
     line_scaled: Line
+    line_palicio_mixture: Line
+    line_scaled_mixture: Line
     palicio_slope: float
 
 
 def jr_relation(points: list[JrPoint]) -> JrRelation:
-    """Return the lines of J_R,w against h_Z through *points*, in both windows."""
+    """Return the lines of J_R,w against the measured and the predicted h_Z through *points*, in both windows."""
     jr = np.array([p.jr_w for p in points])
+
+    def line(height: str) -> Line:
+        return fit_line(np.array([getattr(p, height) for p in points]), jr)
+
     return JrRelation(
         points=points,
-        line_palicio=fit_line(np.array([p.hz_palicio for p in points]), jr),
-        line_scaled=fit_line(np.array([p.hz_scaled for p in points]), jr),
+        line_palicio=line("hz_palicio"),
+        line_scaled=line("hz_scaled"),
+        line_palicio_mixture=line("hz_palicio_mixture"),
+        line_scaled_mixture=line("hz_scaled_mixture"),
         palicio_slope=PALICIO_SLOPE_LSUN_PER_KPC * L_SUN_KPC_KMS,
     )

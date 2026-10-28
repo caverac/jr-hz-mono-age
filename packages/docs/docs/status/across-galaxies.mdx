@@ -3,8 +3,10 @@ title: Across galaxies
 ---
 
 import JrRelationChart from '@site/src/components/status/JrRelationChart'
+import Metric from '@site/src/components/status/Metric'
 import { JrMetric } from '@site/src/components/status/RecordMetric'
 import { JrTable } from '@site/src/components/status/recordTables'
+import { TracerSumTable } from '@site/src/components/status/tables'
 
 # Across galaxies
 
@@ -12,10 +14,12 @@ Palicio et al. (2025, Sect. 3.4) relate the radial action of each galaxy to the 
 height of its whole disk, across 23 simulated galaxies, whereas the populations of this
 analysis relate $J_{R,\mathrm{med}}$ to $h_Z$ within one annulus of one galaxy. This page
 measures their relation in the seven Auriga halos with a reproducible stand-in for their
-radial action, and asks how much of it the window of their scale heights sets.
+radial action, asks how much of it the window of their scale heights sets, and tests
+whether the tracers of the populations of each disk predict its whole-disk $h_Z$.
 
 ```bash
 OMP_NUM_THREADS=4 uv run experiments auriga jr-map 2 3 16 19 23 24 27
+OMP_NUM_THREADS=4 uv run experiments auriga tracer-sum 2 3 16 19 23 24 27
 uv run experiments auriga jr-relation 2 3 16 19 23 24 27
 ```
 
@@ -71,15 +75,62 @@ to the self-consistent $h_Z$ of <JrMetric name="largestShifts" />.
 
 Because seven halos leave both slopes uncertain by a large fraction of their value, and
 because the proxy is not their $J_{R,w}$, these numbers neither confirm nor refute their
-relation. The two
-slopes do differ by more than the error of either, which suggests that a relation across
-galaxies measured with fixed windows depends on how far each disk extends beyond its
-window. Whether the relation within a galaxy, population by population, predicts the one
-across galaxies is still untested. The two compare different quantities: the
-$J_{R,\mathrm{med}}$ of one population of one annulus, and a statistic of the map of $J_R$
-of the whole disk.
+relation. The two slopes do differ by more than the error of either, which suggests that a
+relation across galaxies measured with fixed windows depends on how far each disk extends
+beyond its window.
+
+## The whole disk as a sum of tracers
+
+The relation across galaxies uses the $h_Z$ of all the stars of a disk, whereas the tracer
+predicts the profile of one mono-age population. If every population of a disk is an
+isothermal tracer, the profile of the whole disk is their sum, and its $h_Z$ follows from
+the kinematics of its populations and the potential alone (`experiments.tracer_sum`). We
+split the radial range of Palicio et al. of each halo into rings of 1 kpc, and each ring
+into age bins of 1 Gyr from 0 to 14 Gyr. Each cell enters as the tracer
+$\exp(-\Delta\Phi/\sigma_z^2)$ of its clipped $\sigma_z$ within 0.3 kpc of the plane, in
+the fitted potential at the center of its ring, with the current mass of its stars, which
+is how Palicio et al. weight their histograms. A cell with fewer than 30 stars within
+0.3 kpc of the plane has no $\sigma_z$ and is left out, which removes at most
+<Metric name="sumUnmodeledMax" /> of the mass of a disk. For comparison, the same sum with
+one tracer per ring, from the $\sigma_z$ of all its stars, keeps the change of the
+potential and of $\sigma_z$ with radius but not the mixture of ages. Both sums are fitted
+like the star particles, in the window of Palicio et al. and in the self-consistent one,
+with errors from 50 bootstrap draws of the stars.
+
+<TracerSumTable />
+
+In the self-consistent window, one tracer per ring predicts
+<Metric name="sumSingleScaled" /> of the measured whole-disk $h_Z$, with a median of
+<Metric name="sumSingleMedian" />, and the sum over ring and age predicts
+<Metric name="sumMixtureScaled" />, with a median of <Metric name="sumMixtureMedian" />.
+Summing by age removes the excess of one tracer per ring, which is the failure expected of
+one isothermal component for populations of different $\sigma_z$ (the whole-disk tracer of
+the [overview](./overview) fails the same way). It brings the prediction closer to the
+measured $h_Z$ in <Metric name="sumMixtureCloser" /> halos, and leaves it below the
+measured $h_Z$ in <Metric name="sumMixtureShort" />. In the windows of Palicio et al., the
+predictions are <Metric name="sumSinglePalicio" /> and <Metric name="sumMixturePalicio" />
+of the measured $h_Z$. A window much narrower than $h_Z$, such as the
+<Metric name="au19ZLim" /> kpc of Au19 against its whole-disk $h_Z$ of
+<Metric name="au19WholePalicio" /> kpc, measures the curvature of the profile near the
+plane, which a fit with a fixed window turns into large changes of $h_Z$
+([Window bias](./window-bias)).
+
+With the predicted $h_Z$ in the self-consistent window, the slope of $J_{R,w}$ against
+$h_Z$ is <JrMetric name="slopeScaledMixture" />, which lies
+<JrMetric name="scaledMixtureShift" /> standard errors from the slope with the measured
+$h_Z$ and <JrMetric name="scaledMixtureDeviation" /> from that of Palicio et al. With the
+predicted $h_Z$ in their windows, it is <JrMetric name="slopePalicioMixture" />. The heights
+of the relation across galaxies therefore follow from the tracers of the populations of
+each disk, in the window in which the tracer was tested. The relation also needs the
+radial action of each disk, which the tracer does not predict: its link to $h_Z$ is the
+ratio of radial to vertical heating, which this analysis measures population by
+population, as the slope $a = J_{R,\mathrm{med}}/h_Z$, but does not explain.
 
 ## Limitations
+
+The sum of tracers inherits the assumptions of the tracer: each cell takes its $\sigma_z$
+from the plane and its $\Delta\Phi$ from the axisymmetric fit at a single radius. Its
+errors come from resampling the stars, not from the fitted potential.
 
 The proxy differs from their $J_{R,w}$ in three ways that we cannot remove: their value is
 read from each map rather than computed, their maps are smoothed with a kernel of 0.5 kpc,

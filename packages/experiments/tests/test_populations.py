@@ -16,6 +16,7 @@ import pytest
 
 from experiments.cosmology import Cosmology
 from experiments.heights import Z_GRID, sheet_hz
+from experiments.jeans import TILT_R_MAX_KPC, TILT_R_MIN_KPC
 from experiments.palicio import PalicioWindow
 from experiments.populations import (
     AGE_BINS,
@@ -76,11 +77,28 @@ def synthetic_sample(height: Callable[[float], float] = scale_height) -> Annulus
     return AnnulusSample(**{key: np.concatenate(value) for key, value in parts.items()})
 
 
-def measure(sample: AnnulusSample) -> MonoAge:
-    """Return the mono-age measurement of *sample* in the linear potential, with a snapshot's 5 percent deeper."""
+def synthetic_outer(height: Callable[[float], float] = scale_height) -> AnnulusSample:
+    """Return the populations of :func:`synthetic_sample` in the rings of the tilt term outside the annulus."""
+    sample = synthetic_sample(height)
+    rng = np.random.default_rng(22)
+    inner = rng.uniform(size=sample.r.size) < 0.5
+    r = np.where(
+        inner,
+        rng.uniform(TILT_R_MIN_KPC, R_MIN_KPC, sample.r.size),
+        rng.uniform(R_MAX_KPC, TILT_R_MAX_KPC, sample.r.size),
+    )
+    return AnnulusSample(**{**sample.__dict__, "r": r, "jr": np.full(r.size, np.nan)})
+
+
+def measure(sample: AnnulusSample, outer: AnnulusSample | None = None) -> MonoAge:
+    """Return the mono-age measurement of *sample* in the linear potential, with a snapshot's 5 percent deeper.
+
+    Without *outer*, no star lies outside the annulus.
+    """
     phi = G_LINEAR * Z_GRID
     model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC)
-    return measure_mono_age(sample, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
+    outside = sample.select(np.zeros(sample.z.size, dtype=bool)) if outer is None else outer
+    return measure_mono_age(sample, outside, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
 
 
 @pytest.fixture(name="measured", scope="module")
@@ -176,6 +194,18 @@ def test_jeans_heights_follow_the_tracer_of_an_isothermal_untilted_population() 
         assert b.ratios.jeans.value == pytest.approx(b.ratios.tracer.value, abs=tolerance)
         assert len(b.jeans.z) == len(b.jeans.sigma2) == len(b.jeans.tilt) > 0
     assert set(exact.ranges[0].trends) >= {"jeans_sigma", "jeans"}
+
+
+def test_stars_outside_the_annulus_change_only_the_tilt_term() -> None:
+    """The stars of the rings around the annulus enter only the tilt term, with resamplings of their own."""
+    alone = measure(synthetic_sample(tracer_height))
+    joined = measure(synthetic_sample(tracer_height), synthetic_outer(tracer_height))
+    for a, b in zip(alone.bins, joined.bins, strict=True):
+        assert (a.heights, a.kinematics, a.ratios.tracer, a.ratios.jeans_sigma) == (
+            b.heights, b.kinematics, b.ratios.tracer, b.ratios.jeans_sigma
+        )  # fmt: skip
+        assert np.all(np.isnan(a.jeans.tilt)) and np.isfinite(b.jeans.tilt[0])
+        assert b.ratios.jeans.value == pytest.approx(b.ratios.tracer.value, abs=4.0 * b.ratios.jeans.err)
 
 
 def test_fit_trend_is_the_difference_of_the_exponents_with_one_set_of_weights() -> None:

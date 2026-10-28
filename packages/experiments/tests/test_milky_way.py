@@ -23,6 +23,7 @@ from experiments.mw_catalogs import (
     read_apogee,
     read_gaia,
     read_lamost,
+    with_distmass_ages,
 )
 from experiments.mw_counts import (
     APOGEE_BOX,
@@ -36,7 +37,7 @@ from experiments.mw_counts import (
     slice_fraction,
 )
 from experiments.mw_dynamics import R0_KPC, V_SUN_KMS, Phase, Sky, cylindrical_actions, galactocentric, mcmillan17
-from experiments.mw_imig import pooled_hz, read_imig, split_normal
+from experiments.mw_imig import R_SUN_IMIG_KPC, count_pooled_hz, mass_pooled_hz, pooled_hz, read_imig, split_normal
 from experiments.mw_pipeline import MilkyWay, analyze_milky_way, source_path
 from experiments.mw_sources import GAIA_PATH, FileSource
 from experiments.potential import circular_velocity
@@ -90,6 +91,11 @@ def test_catalogs_select_the_disk_of_the_solar_annulus(world_root: Path) -> None
     assert np.all(lamost_kin.v_z_err > 0.0)
     assert lamost_kin.select(np.arange(3)).age.size == 3
     assert lamost_age_tracers(lamost).in_disk.all()
+    distmass = with_distmass_ages(apogee, source_path(world_root, "distmass"))
+    ages = distmass.num["age_lowess_correct"]
+    assert np.isnan(ages[0])
+    np.testing.assert_allclose(ages[1:], 1.1 * apogee.num["age_lowess_correct"][1:])
+    assert np.nanmax(distmass.num["age_total_error"] / ages) < 0.4
 
 
 def test_luminosity_function_finds_the_red_clump(world_root: Path) -> None:
@@ -144,26 +150,33 @@ def test_count_hz_recovers_the_scale_of_a_population() -> None:
 
 
 def test_imig_pooling_and_draws(world_root: Path) -> None:
-    """Pooled exponentials of one scale give that scale; split normal draws stay positive; HIGH rows are left out."""
+    """Pooled exponentials of one scale give that scale, by mass or by counts moved by the flare; HIGH rows are out."""
     populations = read_imig(source_path(world_root, "imig"))
     assert [p.h.size for p in populations] == [2, 2, 2, 2]
-    assert pooled_hz(np.array([0.3, 0.3]), np.array([1.0, 2.0]), 2.0) == pytest.approx(
-        scaled_profile_hz(np.exp(-Z_GRID / 0.3), 2.0)[0]
-    )
+    single = scaled_profile_hz(np.exp(-Z_GRID / 0.3), 2.0)[0]
+    assert pooled_hz(np.array([0.3, 0.3]), np.array([1.0, 2.0]), 2.0) == pytest.approx(single)
+    assert mass_pooled_hz(np.array([0.3, 0.3]), np.array([1.0, 2.0]), 2.0) == pytest.approx(single)
+    flared = count_pooled_hz(np.array([0.3]), np.array([1.0]), np.array([0.1]), 2.0)
+    moved = scaled_profile_hz(np.exp(-Z_GRID / (0.3 + 0.1 * (R0_KPC - R_SUN_IMIG_KPC))), 2.0)[0]
+    assert flared == pytest.approx(moved)
     draws = split_normal(np.random.default_rng(2), np.full(1000, 1.0), np.tile([0.1, 0.3], (1000, 1)))
     assert np.all(draws > 0.0) and np.mean(draws > 1.0) == pytest.approx(0.5, abs=0.06)
 
 
 def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
-    """Both surveys measure every age bin and both ranges, and the Imig check measures its four bins."""
-    assert [s.name for s in result.surveys] == ["lamost", "apogee"]
+    """Every survey measures every age bin and both ranges, and the Imig check measures four heights in four bins."""
+    assert [s.name for s in result.surveys] == ["lamost", "apogee", "apogee_distmass"]
     for survey in result.surveys:
         assert len(survey.bins) == 5 and len(survey.ranges) == 2
         young = survey.bins[0]
         assert young.heights.measured.value == pytest.approx(scale_height(np.array(1.0))[()], rel=0.3)
         assert np.isfinite(young.ratios.tracer.value) and young.kinematics.n_kin > 0
         assert set(survey.ranges[0].trends) == {"sheet", "tracer"}
-    assert len(result.imig.bins) == 4 and np.isfinite(result.imig.trend.value)
+    assert len(result.imig.bins) == 4
+    assert set(result.imig.trends) == {"imig_mass", "imig_counts", "counts_astronn", "counts_distmass"}
+    first = result.imig.bins[0]
+    assert np.isfinite(first.heights.imig_counts.value) and first.kinematics.n_kin > 0
+    assert first.ratios.imig_mass.value == pytest.approx(first.kinematics.tracer / first.heights.imig_mass.value)
     assert len(result.rc_peak) == 12 and result.r0_kpc == R0_KPC
 
 
@@ -185,7 +198,7 @@ def test_milky_way_commands(world_root: Path, tmp_path: Path, monkeypatch: pytes
     output = invoke("milky-way", "analyze", "--root", str(world_root), "--n-bootstrap", "2", "--out-dir", str(tmp_path))
     assert output.startswith("Milky Way at R_0")
     record = json.loads((tmp_path / "milky-way.json").read_text())
-    assert [s["name"] for s in record["surveys"]] == ["lamost", "apogee"]
+    assert [s["name"] for s in record["surveys"]] == ["lamost", "apogee", "apogee_distmass"]
     missing = run("milky-way", "analyze", "--root", str(tmp_path / "nothing"))
     assert missing.exit_code == 1 and "experiments milky-way fetch" in missing.output
 
@@ -205,4 +218,4 @@ def test_milky_way_commands(world_root: Path, tmp_path: Path, monkeypatch: pytes
     invoke("milky-way", "fetch", "--root", str(tmp_path), "--only", "lamost", "--only", "gaia")
     assert fetched == ["lamost", "gaia from the archive"]
     invoke("milky-way", "fetch", "--root", str(tmp_path))
-    assert fetched[2:] == ["astronn", "allstar", "lamost", "imig", "gaia from the archive"]
+    assert fetched[2:] == ["astronn", "allstar", "lamost", "distmass", "imig", "gaia from the archive"]

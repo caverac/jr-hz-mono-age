@@ -1,6 +1,7 @@
 /**
  * The records that the status pages read, as written by the Python package:
- * `experiments auriga analyze` (one record per halo, under `assets/data/auriga/`),
+ * `experiments auriga analyze`, `experiments auriga tracer-sum` and
+ * `experiments auriga equilibrium` (one record each per halo, under `assets/data/auriga/`),
  * `experiments auriga mock-check` (`assets/data/auriga/mock-check.json`) and
  * `experiments window-injection` (`assets/data/window-injection.json`). Every number on
  * the status pages is computed from these records, so that the pages cannot claim more
@@ -9,24 +10,32 @@
  */
 
 import { HALOS } from '@site/src/components/render/halos'
+import { type MotionBin, parseEquilibrium } from '@site/src/components/status/equilibrium'
+import {
+  type Estimate,
+  estimate,
+  fetchJson,
+  field,
+  list,
+  num,
+  numbers,
+  RecordError,
+  str,
+  type Trend,
+  trend
+} from '@site/src/components/status/record'
+import { parseTracerSum, type TracerSum } from '@site/src/components/status/tracerSum'
 
-export interface Estimate {
-  readonly value: number
-  readonly err: number
-}
+export type { Estimate, Trend } from '@site/src/components/status/record'
 
 /** The predictions of h_Z that a population carries. */
 export type Predictor = 'tracer' | 'tracerSnapshot' | 'jeansSigma' | 'jeans' | 'sheet'
 
-/**
- * The age exponent of a ratio h_pred / h_Z, d ln(h_pred / h_Z) / d ln age, which is 0 for a
- * prediction that reproduces the age dependence of h_Z. Its error is that of the weighted
- * fit times sqrt(max(1, chi2Dof)).
- */
-export interface Trend {
-  readonly value: number
-  readonly err: number
-  readonly chi2Dof: number
+/** sigma_z^2 ((km/s)^2) and the tilt term t ((km/s)^2/kpc) at the median |z| (kpc) of each slice. */
+export interface JeansProfile {
+  readonly z: readonly number[]
+  readonly sigma2: readonly number[]
+  readonly tilt: readonly number[]
 }
 
 /** One mono-age population of the annulus. */
@@ -45,6 +54,8 @@ export interface AgeBin {
   readonly tracerSnapshot: number
   /** Each predicted h_Z over the measured h_Z, with the error of one bootstrap of both. */
   readonly ratios: Readonly<Record<Predictor, Estimate>>
+  /** The slices of the vertical Jeans equation. */
+  readonly jeans: JeansProfile
 }
 
 /** Age exponents over one range of ages, and the trends of h_pred / h_Z. */
@@ -80,6 +91,10 @@ export interface HaloRecord {
   readonly ranges: readonly AgeRange[]
   readonly whole: Ring
   readonly residual: Residual
+  /** The whole-disk h_Z predicted as a sum of isothermal tracers. */
+  readonly tracerSum: TracerSum
+  /** The mean vertical motions of every population of the annulus. */
+  readonly motions: readonly MotionBin[]
 }
 
 /** One age bin of the mock: h_Z and J_R,med from the analysis and from the truth. */
@@ -131,62 +146,6 @@ export interface StatusData {
   readonly injection: Injection
 }
 
-/** A record that does not have the expected structure. */
-export class RecordError extends Error {}
-
-export function field(value: unknown, key: string): unknown {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new RecordError(`expected an object holding "${key}"`)
-  }
-  return (value as Record<string, unknown>)[key]
-}
-
-/** A number, or NaN where the record holds null. */
-export function num(value: unknown, key: string): number {
-  const item = field(value, key)
-  if (item === null) {
-    return Number.NaN
-  }
-  if (typeof item !== 'number') {
-    throw new RecordError(`"${key}" is not a number`)
-  }
-  return item
-}
-
-export function str(value: unknown, key: string): string {
-  const item = field(value, key)
-  if (typeof item !== 'string') {
-    throw new RecordError(`"${key}" is not a string`)
-  }
-  return item
-}
-
-export function list(value: unknown, key: string): readonly unknown[] {
-  const item = field(value, key)
-  if (!Array.isArray(item)) {
-    throw new RecordError(`"${key}" is not a list`)
-  }
-  return item as unknown[]
-}
-
-/** A list of numbers, with NaN where the record holds null. */
-function numbers(value: unknown, key: string): readonly number[] {
-  return list(value, key).map((item) => {
-    if (item === null) {
-      return Number.NaN
-    }
-    if (typeof item !== 'number') {
-      throw new RecordError(`"${key}" holds an item that is not a number`)
-    }
-    return item
-  })
-}
-
-export function estimate(value: unknown, key: string): Estimate {
-  const item = field(value, key)
-  return { value: num(item, 'value'), err: num(item, 'err') }
-}
-
 /** The value of every prediction in `value`, under the keys that the records use. */
 function byPredictor<T>(
   value: unknown,
@@ -199,11 +158,6 @@ function byPredictor<T>(
     jeans: read(value, 'jeans'),
     sheet: read(value, 'sheet')
   }
-}
-
-export function trend(value: unknown, key: string): Trend {
-  const item = field(value, key)
-  return { value: num(item, 'value'), err: num(item, 'err'), chi2Dof: num(item, 'chi2_dof') }
 }
 
 function parseBin(bin: unknown): AgeBin {
@@ -221,7 +175,12 @@ function parseBin(bin: unknown): AgeBin {
     sheet: num(predictions, 'sheet'),
     tracer: num(predictions, 'tracer'),
     tracerSnapshot: num(predictions, 'tracer_snapshot'),
-    ratios: byPredictor(field(bin, 'ratios'), estimate)
+    ratios: byPredictor(field(bin, 'ratios'), estimate),
+    jeans: {
+      z: numbers(field(bin, 'jeans'), 'z'),
+      sigma2: numbers(field(bin, 'jeans'), 'sigma2'),
+      tilt: numbers(field(bin, 'jeans'), 'tilt')
+    }
   }
 }
 
@@ -259,8 +218,16 @@ function parseRing(ring: unknown): Ring {
   }
 }
 
-/** Check and read the record that `experiments auriga analyze` wrote for one halo. */
-export function parseHaloRecord(label: string, record: unknown): HaloRecord {
+/** The records that the data commands wrote for one halo, as JSON. */
+export interface HaloRecords {
+  readonly analysis: unknown
+  readonly tracerSum: unknown
+  readonly equilibrium: unknown
+}
+
+/** Check and read the records that `analyze`, `tracer-sum` and `equilibrium` wrote for one halo. */
+export function parseHaloRecord(label: string, records: HaloRecords): HaloRecord {
+  const record = records.analysis
   const monoAge = field(record, 'mono_age')
   const window = field(field(monoAge, 'method'), 'window')
   return {
@@ -273,7 +240,9 @@ export function parseHaloRecord(label: string, record: unknown): HaloRecord {
     residual: {
       z: numbers(field(record, 'residual'), 'z'),
       residual: numbers(field(record, 'residual'), 'residual')
-    }
+    },
+    tracerSum: parseTracerSum(records.tracerSum),
+    motions: parseEquilibrium(records.equilibrium)
   }
 }
 
@@ -317,23 +286,25 @@ export function parseInjection(record: unknown): Injection {
   }
 }
 
-export async function fetchJson(url: string, signal: AbortSignal): Promise<unknown> {
-  const response = await fetch(url, { signal })
-  if (!response.ok) {
-    throw new RecordError(`cannot load ${url}: HTTP ${response.status}`)
-  }
-  return (await response.json()) as unknown
-}
-
 /** Fetch and check the records of the seven halos, the mock and the injection test, under the site's `root`. */
 export async function loadStatusData(root: string, signal: AbortSignal): Promise<StatusData> {
-  const [records, mock, injection] = await Promise.all([
-    Promise.all(HALOS.map((halo) => fetchJson(`${root}data/auriga/${halo.stem}.json`, signal))),
+  const perHalo = (suffix: string) =>
+    Promise.all(HALOS.map((h) => fetchJson(`${root}data/auriga/${h.stem}${suffix}.json`, signal)))
+  const [analyses, sums, motions, mock, injection] = await Promise.all([
+    perHalo(''),
+    perHalo('-tracer-sum'),
+    perHalo('-equilibrium'),
     fetchJson(`${root}data/auriga/mock-check.json`, signal),
     fetchJson(`${root}data/window-injection.json`, signal)
   ])
   return {
-    halos: records.map((record, i) => parseHaloRecord(HALOS[i].label, record)),
+    halos: HALOS.map((h, i) =>
+      parseHaloRecord(h.label, {
+        analysis: analyses[i],
+        tracerSum: sums[i],
+        equilibrium: motions[i]
+      })
+    ),
     mock: parseMockCheck(mock),
     injection: parseInjection(injection)
   }

@@ -2,9 +2,13 @@ import MathLabel from '@site/src/components/MathLabel'
 import { Chips, Pending, toggled } from '@site/src/components/status/controls'
 import type { Estimate } from '@site/src/components/status/data'
 import {
+  IMIG_HEIGHTS,
+  imigAge,
+  type ImigHeight,
   MILKY_WAY_PATH,
   type MilkyWayData,
-  parseMilkyWay
+  parseMilkyWay,
+  surveyName
 } from '@site/src/components/status/milkyWay'
 import useRecord from '@site/src/components/status/useRecord'
 import Chart, { Axis, linePath, ticksWithin } from '@site/src/components/viz/Chart'
@@ -25,10 +29,11 @@ const AGE_DOMAIN: readonly [number, number] = [0, 10]
 const RATIO_TICKS = [0.3, 0.5, 0.7, 1, 1.5, 2]
 const TOLERANCE = 0.1
 
-/** One series of the chart: a survey and a prediction, with its points (median age, ratio). */
+/** One series of the chart: a set of heights and a prediction, with its points (median age, ratio). */
 interface Series {
   readonly key: string
   readonly label: string
+  readonly prediction: string
   readonly marker: MarkerShape
   readonly open: boolean
   readonly dash: Dash
@@ -39,44 +44,59 @@ interface Series {
   }[]
 }
 
-const SHAPES: Record<string, MarkerShape> = { lamost: 'circle', apogee: 'square' }
-const NAMES: Record<string, string> = { lamost: 'LAMOST', apogee: 'APOGEE' }
+const SHAPES: Record<string, MarkerShape> = {
+  lamost: 'circle',
+  apogee: 'square',
+  apogee_distmass: 'triangle'
+}
+
+/** The markers of the heights of Imig et al. that the chart compares with the tracer. */
+const IMIG_MARKERS: Readonly<Partial<Record<ImigHeight, MarkerShape>>> = {
+  imigMass: 'diamond',
+  imigCounts: 'cross'
+}
 
 function seriesOf(data: MilkyWayData): readonly Series[] {
   const surveys = data.surveys.flatMap((survey) =>
     (['tracer', 'sheet'] as const).map((prediction) => ({
       key: `${survey.name}-${prediction}`,
-      label: `${NAMES[survey.name] ?? survey.name}, ${prediction}`,
+      label: `${surveyName(survey.name)}, ${prediction}`,
+      prediction,
       marker: SHAPES[survey.name] ?? 'circle',
       open: prediction === 'sheet',
       dash: (prediction === 'sheet' ? 'dashed' : 'solid') as Dash,
       points: survey.bins
-        .filter((bin) => Number.isFinite(bin.ageMedian))
         .map((bin) => ({
           age: bin.ageMedian,
           ratio: prediction === 'tracer' ? bin.ratioTracer : bin.ratioSheet,
-          label: `${NAMES[survey.name] ?? survey.name}, ${bin.ageLo}-${bin.ageHi} Gyr`
+          label: `${surveyName(survey.name)}, ${bin.ageLo}-${bin.ageHi} Gyr`
         }))
+        .filter((p) => Number.isFinite(p.age) && Number.isFinite(p.ratio.value))
     }))
   )
-  const imig: Series = {
-    key: 'imig-tracer',
-    label: 'Imig et al., tracer',
-    marker: 'diamond',
-    open: false,
-    dash: 'dotted',
-    points: data.imig.bins.map((bin) => ({
-      age: Math.sqrt(bin.ageLo * bin.ageHi),
-      ratio: bin.ratio,
-      label: `Imig et al., ${bin.ageLo.toFixed(2)}-${bin.ageHi.toFixed(2)} Gyr`
-    }))
-  }
-  return [...surveys, imig]
+  const imig = IMIG_HEIGHTS.filter((s) => IMIG_MARKERS[s.height] !== undefined).map(
+    (s): Series => ({
+      key: `${s.height}-tracer`,
+      label: `${s.name}, tracer`,
+      prediction: 'tracer',
+      marker: IMIG_MARKERS[s.height] ?? 'diamond',
+      open: false,
+      dash: 'dotted',
+      points: data.imig.bins
+        .map((bin) => ({
+          age: imigAge(bin),
+          ratio: bin.ratios[s.height],
+          label: `${s.name}, ${bin.ageLo.toFixed(2)}-${bin.ageHi.toFixed(2)} Gyr`
+        }))
+        .filter((p) => Number.isFinite(p.ratio.value))
+    })
+  )
+  return [...surveys, ...imig]
 }
 
 interface Hovered {
   readonly label: string
-  readonly series: string
+  readonly prediction: string
   readonly ratio: Estimate
 }
 
@@ -144,7 +164,7 @@ function Plot({
                       x={x(p.age)}
                       y={y(p.ratio.value)}
                       onMouseEnter={() =>
-                        onHover({ label: p.label, series: s.label, ratio: p.ratio })
+                        onHover({ label: p.label, prediction: s.prediction, ratio: p.ratio })
                       }
                       onMouseLeave={() => onHover(null)}
                     />
@@ -161,8 +181,9 @@ function Plot({
 
 /**
  * The scale height that the isothermal tracer and the sheet predict for every mono-age
- * population of the Milky Way, over the star-count h_Z of LAMOST and of APOGEE, and the
- * tracer over the pooled heights of Imig et al. (2025), against the median age.
+ * population of the Milky Way, over the star-count h_Z of LAMOST and of APOGEE on both age
+ * scales, and the tracer over the heights of Imig et al. (2025) pooled by mass and by counts,
+ * against the median age.
  */
 export default function MilkyWayChart(): ReactNode {
   const [ref, width] = useElementWidth<HTMLDivElement>()
@@ -199,7 +220,7 @@ export default function MilkyWayChart(): ReactNode {
           'Point at a population to read its ratio.'
         ) : (
           <MathLabel
-            label={`${hovered.label}, ${hovered.series.split(', ')[1]}: $${hovered.ratio.value.toFixed(2)} \\pm ${hovered.ratio.err.toFixed(2)}$.`}
+            label={`${hovered.label}, ${hovered.prediction}: $${hovered.ratio.value.toFixed(2)} \\pm ${hovered.ratio.err.toFixed(2)}$.`}
           />
         )}
       </p>

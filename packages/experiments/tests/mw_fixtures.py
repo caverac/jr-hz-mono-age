@@ -1,11 +1,11 @@
-"""A small synthetic Milky Way: the five inputs of the analysis, written as FITS files under one root.
+"""A small synthetic Milky Way: the six inputs of the analysis, written as FITS files under one root.
 
 The Gaia cylinder holds red giants whose |z| is exponential with a scale that depends on
 age, and whose Wesenheit magnitudes follow a red clump at M_W = -1.75 above a flat
 background. LAMOST and APOGEE observe a random subset of them, with ages, abundances of the
 low-[alpha/Fe] disk, and the phase-space coordinates of stars of the solar annulus. The
-heights and dispersions are not tied to each other: the files only exercise the reading,
-matching and measuring code.
+distmass ages are 10 percent older than the astroNN ones. The heights and dispersions are
+not tied to each other: the files only exercise the reading, matching and measuring code.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def _path(root: Path, name: str) -> Path:
 
 
 def write_world(root: Path) -> dict[str, np.ndarray]:
-    """Write the five inputs under *root* and return the truth of the Gaia stars."""
+    """Write the six inputs under *root* and return the truth of the Gaia stars."""
     rng = np.random.default_rng(SEED)
     age = rng.uniform(0.5, 10.0, N_GAIA)
     z = rng.exponential(scale_height(age)) * rng.choice([-1.0, 1.0], N_GAIA)
@@ -91,6 +91,14 @@ def write_world(root: Path) -> dict[str, np.ndarray]:
         }
     )  # fmt: skip
     astronn.write(_path(root, "astronn"), overwrite=True)
+    ids = astronn["APOGEE_ID"].copy()
+    ids[0] = "2MXXXXXXXX"  # a row whose APOGEE_ID differs from astroNN's gets no age
+    Table(
+        {
+            "APOGEE_ID": ids, "AGE_UNCOR_SS": 1.1e9 * age[ap],
+            "AGE_ERR": np.tile([0.15, -0.13], (n_ap, 1)),
+        }
+    ).write(_path(root, "distmass"), overwrite=True)  # fmt: skip
     Table({"EXTRATARG": np.zeros(n_ap, dtype=np.int16)}).write(_path(root, "allstar"), overwrite=True)
 
     ages = [(1.0, 1.26), (1.26, 1.58), (1.58, 2.0), (2.0, 2.51)]
@@ -105,6 +113,9 @@ def write_world(root: Path) -> dict[str, np.ndarray]:
         fits.Column(name="H_Z_ERR", format="2D", array=np.full((n_imig, 2), 0.01)),
         fits.Column(name="SMD_0", format="D", array=np.full(n_imig, 1.0)),
         fits.Column(name="SMD_0_ERRS", format="2D", array=np.full((n_imig, 2), 0.05)),
+        fits.Column(name="NU_0", format="D", array=np.full(n_imig, 2.0)),
+        fits.Column(name="NU_0_ERRS", format="2D", array=np.full((n_imig, 2), 0.1)),
+        fits.Column(name="A_FLARE", format="D", array=np.full(n_imig, 0.05)),
     ]
     fits.BinTableHDU.from_columns(columns).writeto(_path(root, "imig"), overwrite=True)
     return {"absz": np.abs(z), "age": age, "m_w": m_w}

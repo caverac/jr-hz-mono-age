@@ -9,6 +9,7 @@ from typing import TypeVar
 import click
 
 from experiments._paths import AURIGA_DATA_DIR, AURIGA_ROOT, FIGURES_DIR
+from experiments.analysis import PreparedHalo, prepare_halo
 from experiments.auriga import HaloSnapshot
 
 CLIENT_ID_ENV = "JR_HZ_GLOBUS_CLIENT_ID"
@@ -46,6 +47,14 @@ def snapshot_options(command: F) -> F:
 def snapshots(halos: tuple[int, ...], level: int, suite: str, snapshot: int) -> list[HaloSnapshot]:
     """Return the selected snapshot of each halo in *halos*."""
     return [HaloSnapshot(halo, level, suite, snapshot) for halo in halos]
+
+
+def local_halo(snapshot: HaloSnapshot, root: Path) -> PreparedHalo:
+    """Return *snapshot* under *root* in its disk frame with its fitted potential, or say how to download it."""
+    try:
+        return prepare_halo(snapshot, root)
+    except FileNotFoundError as err:
+        raise click.ClickException(f"{err}; download Au{snapshot.halo} with `experiments auriga download`") from err
 
 
 def figure_options(command: F) -> F:

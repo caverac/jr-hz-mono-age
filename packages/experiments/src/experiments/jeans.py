@@ -7,8 +7,8 @@ equation of an axisymmetric population in a steady state,
 
 under two assumptions: sigma_z does not change with height, and the tilt term, the
 first one, vanishes. This module measures both from the star particles of one
-population in an annulus, in slices of |z| (``JEANS_EDGES_KPC``), and integrates the
-equation with them. Writing the tilt term as nu t(z),
+population, in slices of |z| (``JEANS_EDGES_KPC``), and integrates the equation with
+them. Writing the tilt term as nu t(z),
 
     d ln(nu sigma_z^2) / dz = -(dPhi / dz + t) / sigma_z^2,
 
@@ -17,24 +17,37 @@ With t = 0 and a constant sigma_z this is the isothermal tracer. The profile is 
 diagnostic of the tracer's two assumptions, because it uses kinematics measured at every
 height rather than predicting them from the midplane.
 
-t(z) comes from ``JEANS_RADIAL_BINS`` equal radial bins of the annulus: the density nu
-(initial mass per volume) and sigma_Rz = <v_R v_z sign(z)> of each, the slope of
-R nu sigma_Rz against R by least squares, divided by R nu at the median radius. The
-sign of z folds the two sides of the plane, on which sigma_Rz has opposite signs.
+The slices reach |z| = 12 kpc, the height of the samples, because the self-consistent
+window of the thickest populations reaches 8 kpc and the equation holds sigma_z^2 and t
+constant beyond the last slice. sigma_z^2 comes from the stars of the annulus. t(z) comes
+from a wider range of radii, ``TILT_R_MIN_KPC`` <= R < ``TILT_R_MAX_KPC``, centered on the
+annulus, in rings of ``TILT_RING_KPC``: straight lines of ln nu and of
+sigma_Rz = <v_R v_z sign(z)> against the mean R of the rings, with nu (initial mass per
+area) and sigma_Rz weighted by initial mass, give
+
+    t = (1 / (R nu)) d(R nu sigma_Rz) / dR = sigma_Rz (1 / R + d ln nu / dR) + d sigma_Rz / dR
+
+at R_mid. The sign of z folds the two sides of the plane, on which sigma_Rz has opposite
+signs. A slice needs ``TILT_MIN_PER_RING`` stars in every ring, so that the lines sample
+R_mid symmetrically; otherwise its tilt is NaN, which the equation counts as 0.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 import numpy as np
 from numpy.typing import NDArray
 
 FloatArray = NDArray[np.float64]
+BoolArray = NDArray[np.bool_]
+IndexArray = NDArray[np.int64]
 
-JEANS_EDGES_KPC = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0)
-JEANS_MIN_PER_SLICE = 100  # stars in a |z| slice, and in each of its radial bins for the tilt
-JEANS_RADIAL_BINS = 3
+JEANS_EDGES_KPC = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.3, 1.6, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0)
+JEANS_MIN_PER_SLICE = 100  # stars of the annulus in a |z| slice
+TILT_R_MIN_KPC, TILT_R_MAX_KPC = 6.0, 10.5
+TILT_RING_KPC = 0.5
+TILT_MIN_PER_RING = 50
 
 
 @dataclass(frozen=True)
@@ -56,6 +69,10 @@ class JeansStars:
     v_z: FloatArray
     weight: FloatArray
 
+    def select(self, keep: BoolArray | IndexArray) -> JeansStars:
+        """Return the stars where the mask *keep* is true, or at the indices *keep*."""
+        return JeansStars(**{f.name: getattr(self, f.name)[keep] for f in fields(self)})
+
 
 def _variance(values: FloatArray, weight: FloatArray) -> float:
     """Return the variance of *values* about their mean, both weighted by *weight*."""
@@ -63,47 +80,63 @@ def _variance(values: FloatArray, weight: FloatArray) -> float:
     return float(np.average((values - mean) ** 2, weights=weight))
 
 
-def _ring(stars: JeansStars, ring: NDArray[np.bool_], volume: float) -> tuple[float, float, float]:
-    """Return the mean R, the density nu and R nu sigma_Rz of the stars *ring* of one radial bin of a slice."""
-    radius = float(np.mean(stars.r[ring]))
-    nu = float(np.sum(stars.weight[ring])) / volume
-    sigma_rz = float(np.mean(stars.v_r[ring] * stars.v_z[ring] * np.sign(stars.z[ring])))
-    return radius, nu, radius * nu * sigma_rz
+def slice_tilt(radius: FloatArray, nu: FloatArray, sigma_rz: FloatArray, r_mid: float) -> float:
+    """Return t at *r_mid* from straight lines of ln *nu* and of *sigma_rz* against the ring radii *radius*."""
+    dln_nu = float(np.polyfit(radius, np.log(nu), 1)[0])
+    slope, intercept = np.polyfit(radius, sigma_rz, 1)
+    return float((intercept + slope * r_mid) * (1.0 / r_mid + dln_nu) + slope)
 
 
-def _tilt(stars: JeansStars, inside: NDArray[np.bool_], r_edges: FloatArray, r_mid: float, dz: float) -> float:
-    """Return t = (1 / (R nu)) d(R nu sigma_Rz) / dR at *r_mid* for the stars *inside* one slice; NaN if sparse."""
-    rings = []
-    for lo, hi in zip(r_edges[:-1], r_edges[1:], strict=True):
-        ring = inside & (stars.r >= lo) & (stars.r < hi)
-        if np.count_nonzero(ring) < JEANS_MIN_PER_SLICE:
-            return float("nan")
-        rings.append(_ring(stars, ring, np.pi * (hi**2 - lo**2) * 2.0 * dz))
-    radius, density, flux = (np.array(column) for column in zip(*rings, strict=True))
-    nu_mid = float(np.polyval(np.polyfit(radius, density, 1), r_mid))
-    return float(np.polyfit(radius, flux, 1)[0]) / (r_mid * nu_mid)
+def cell_sums(stars: JeansStars, z_edges: FloatArray, r_edges: FloatArray) -> FloatArray:
+    """Return the count, mass, mass R and mass v_R v_z sign(z) of the stars in each cell, shape (4, slices, rings)."""
+    n_z, n_r = z_edges.size - 1, r_edges.size - 1
+    in_z = np.searchsorted(z_edges, np.abs(stars.z), side="right") - 1
+    in_r = np.searchsorted(r_edges, stars.r, side="right") - 1
+    inside = (in_z >= 0) & (in_z < n_z) & (in_r >= 0) & (in_r < n_r)
+    cell = (in_z * n_r + in_r)[inside]
+    weight = stars.weight[inside]
+    moments = (
+        np.ones(cell.size),
+        weight,
+        weight * stars.r[inside],
+        weight * (stars.v_r * stars.v_z * np.sign(stars.z))[inside],
+    )
+    return np.stack([np.bincount(cell, weights=m, minlength=n_z * n_r).reshape(n_z, n_r) for m in moments])
+
+
+def tilt_profile(stars: JeansStars, r_mid: float) -> FloatArray:
+    """Return t ((km/s)^2/kpc) in each slice of ``JEANS_EDGES_KPC``, NaN where a ring holds too few stars."""
+    r_edges = np.arange(TILT_R_MIN_KPC, TILT_R_MAX_KPC + 0.5 * TILT_RING_KPC, TILT_RING_KPC)
+    count, mass, moment_r, moment_rz = cell_sums(stars, np.array(JEANS_EDGES_KPC), r_edges)
+    area = np.pi * np.diff(r_edges**2)
+    tilt = np.full(count.shape[0], np.nan)
+    for j in range(count.shape[0]):
+        if np.all(count[j] >= TILT_MIN_PER_RING):
+            tilt[j] = slice_tilt(moment_r[j] / mass[j], mass[j] / area, moment_rz[j] / mass[j], r_mid)
+    return tilt
 
 
 def jeans_profile(stars: JeansStars, r_lo: float, r_hi: float, r_mid: float) -> JeansProfile:
     """Return sigma_z^2 and t of *stars* in the slices of ``JEANS_EDGES_KPC`` up to the first sparse one.
 
-    sigma_z^2 is the variance of v_z in the slice, weighted by initial mass as the density
-    is, and not clipped: the Jeans equation needs the second moment <v_z^2> of all the
-    stars of the population, and clipping lowers it for the heavy tails of a population
-    that mixes several dispersions. t uses the radial bins of the
-    annulus [*r_lo*, *r_hi*) and is NaN where a radial bin is sparse.
+    *stars* cover the range of radii of the tilt term. sigma_z^2 is the variance of v_z of
+    those in the annulus [*r_lo*, *r_hi*), weighted by initial mass as the density is, and
+    not clipped: the Jeans equation needs the second moment <v_z^2> of all the stars of
+    the population, and clipping lowers it for the heavy tails of a population that mixes
+    several dispersions. A slice is sparse if it holds fewer than
+    ``JEANS_MIN_PER_SLICE`` stars of the annulus.
     """
-    absz = np.abs(stars.z)
-    r_edges = np.linspace(r_lo, r_hi, JEANS_RADIAL_BINS + 1)
-    z_mid, sigma2, tilt = [], [], []
+    annulus = stars.select((stars.r >= r_lo) & (stars.r < r_hi))
+    absz = np.abs(annulus.z)
+    tilt = tilt_profile(stars, r_mid)
+    z_mid, sigma2 = [], []
     for lo, hi in zip(JEANS_EDGES_KPC[:-1], JEANS_EDGES_KPC[1:], strict=True):
         inside = (absz >= lo) & (absz < hi)
         if np.count_nonzero(inside) < JEANS_MIN_PER_SLICE:
             break
         z_mid.append(float(np.median(absz[inside])))
-        sigma2.append(_variance(stars.v_z[inside], stars.weight[inside]))
-        tilt.append(_tilt(stars, inside, r_edges, r_mid, hi - lo))
-    return JeansProfile(tuple(z_mid), tuple(sigma2), tuple(tilt))
+        sigma2.append(_variance(annulus.v_z[inside], annulus.weight[inside]))
+    return JeansProfile(tuple(z_mid), tuple(sigma2), tuple(tilt[: len(z_mid)].tolist()))
 
 
 def jeans_density(phi_z: FloatArray, profile: JeansProfile, z_grid: FloatArray, with_tilt: bool) -> FloatArray:

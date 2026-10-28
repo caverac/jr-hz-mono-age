@@ -1,8 +1,9 @@
 /**
  * The record that `experiments milky-way analyze` writes (`assets/data/milky-way/milky-way.json`):
  * the star-count h_Z of the mono-age populations of the Milky Way, with LAMOST and with
- * APOGEE, against the isothermal tracer and the sheet in McMillan (2017), and the check
- * against the pooled heights of Imig et al. (2025).
+ * APOGEE on the astroNN and distmass age scales, against the isothermal tracer and the
+ * sheet in McMillan (2017), and the comparison of the heights of Imig et al. (2025) with
+ * the star counts and the tracer.
  */
 
 import {
@@ -14,9 +15,21 @@ import {
   str,
   type Trend,
   trend
-} from '@site/src/components/status/data'
+} from '@site/src/components/status/record'
 
 export const MILKY_WAY_PATH = '/data/milky-way/milky-way.json'
+
+/** The name of every survey of the record, as the pages print it. */
+export const SURVEY_NAMES: Readonly<Record<string, string>> = {
+  lamost: 'LAMOST',
+  apogee: 'APOGEE (astroNN)',
+  apogee_distmass: 'APOGEE (distmass)'
+}
+
+/** The name that the pages print for the survey `name` of the record. */
+export function surveyName(name: string): string {
+  return SURVEY_NAMES[name] ?? name
+}
 
 /** One mono-age population of the Milky Way. */
 export interface MwBin {
@@ -55,16 +68,32 @@ export interface MwSurvey {
   readonly ranges: readonly MwRange[]
 }
 
-/** One age bin of Imig et al.: their pooled h_Z, the APOGEE sigma_z of the same ages, the tracer. */
+/**
+ * The four h_Z of an age bin of Imig et al.: their populations pooled by mass and by counts
+ * of giants at R_0, and our APOGEE star counts of the same ages on the astroNN and the
+ * distmass scales.
+ */
+export type ImigHeight = 'imigMass' | 'imigCounts' | 'countsAstronn' | 'countsDistmass'
+
+/** The heights of an Imig et al. bin in the order the pages list them, with their names. */
+export const IMIG_HEIGHTS: readonly { readonly height: ImigHeight; readonly name: string }[] = [
+  { height: 'imigMass', name: 'Imig et al., by mass' },
+  { height: 'imigCounts', name: 'Imig et al., by counts' },
+  { height: 'countsAstronn', name: 'APOGEE (astroNN) counts' },
+  { height: 'countsDistmass', name: 'APOGEE (distmass) counts' }
+]
+
+/** One age bin of Imig et al.: its four h_Z (kpc), the sigma_z and tracer of its ages, the tracer over each h_Z. */
 export interface ImigBin {
   readonly ageLo: number
   readonly ageHi: number
   readonly nPopulations: number
-  readonly measured: Estimate
+  readonly heights: Readonly<Record<ImigHeight, Estimate>>
+  /** The APOGEE kinematic stars of the same ages on the distmass scale. */
   readonly nKin: number
   readonly sigmaZ: Estimate
   readonly tracer: number
-  readonly ratio: Estimate
+  readonly ratios: Readonly<Record<ImigHeight, Estimate>>
 }
 
 export interface MilkyWayData {
@@ -73,7 +102,28 @@ export interface MilkyWayData {
   readonly k: number
   readonly nBootstrap: number
   readonly surveys: readonly MwSurvey[]
-  readonly imig: { readonly bins: readonly ImigBin[]; readonly trend: Trend }
+  readonly imig: {
+    readonly bins: readonly ImigBin[]
+    readonly trends: Readonly<Record<ImigHeight, Trend>>
+  }
+}
+
+/** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
+export function imigAge(bin: ImigBin): number {
+  return Math.sqrt(bin.ageLo * bin.ageHi)
+}
+
+/** The value of every height in `value`, under the keys that the record uses. */
+function byHeight<T>(
+  value: unknown,
+  read: (item: unknown, key: string) => T
+): Readonly<Record<ImigHeight, T>> {
+  return {
+    imigMass: read(value, 'imig_mass'),
+    imigCounts: read(value, 'imig_counts'),
+    countsAstronn: read(value, 'counts_astronn'),
+    countsDistmass: read(value, 'counts_distmass')
+  }
 }
 
 function parseBin(bin: unknown): MwBin {
@@ -112,15 +162,16 @@ function parseRange(range: unknown): MwRange {
 }
 
 function parseImigBin(bin: unknown): ImigBin {
+  const kinematics = field(bin, 'kinematics')
   return {
     ageLo: num(bin, 'age_lo'),
     ageHi: num(bin, 'age_hi'),
     nPopulations: num(bin, 'n_populations'),
-    measured: estimate(bin, 'measured'),
-    nKin: num(bin, 'n_kin'),
-    sigmaZ: estimate(bin, 'sigma_z'),
-    tracer: num(bin, 'tracer'),
-    ratio: estimate(bin, 'ratio')
+    heights: byHeight(field(bin, 'heights'), estimate),
+    nKin: num(kinematics, 'n_kin'),
+    sigmaZ: estimate(kinematics, 'sigma_z'),
+    tracer: num(kinematics, 'tracer'),
+    ratios: byHeight(field(bin, 'ratios'), estimate)
   }
 }
 
@@ -139,6 +190,9 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
       bins: list(survey, 'bins').map(parseBin),
       ranges: list(survey, 'ranges').map(parseRange)
     })),
-    imig: { bins: list(imig, 'bins').map(parseImigBin), trend: trend(imig, 'trend') }
+    imig: {
+      bins: list(imig, 'bins').map(parseImigBin),
+      trends: byHeight(field(imig, 'trends'), trend)
+    }
   }
 }

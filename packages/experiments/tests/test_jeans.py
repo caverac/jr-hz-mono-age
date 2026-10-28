@@ -8,10 +8,14 @@ import pytest
 from experiments.heights import Z_GRID, scaled_profile_hz, tracer_profile
 from experiments.jeans import (
     JEANS_EDGES_KPC,
+    TILT_R_MAX_KPC,
+    TILT_R_MIN_KPC,
     JeansProfile,
     JeansStars,
     jeans_density,
     jeans_profile,
+    slice_tilt,
+    tilt_profile,
 )
 
 PHI = 900.0 * Z_GRID + 2000.0 * Z_GRID**2  # (km/s)^2, harmonic near the plane and steeper above
@@ -55,9 +59,12 @@ def test_no_slices_give_no_density() -> None:
 
 
 def sample(n: int, alpha: float, rng: np.random.Generator) -> JeansStars:
-    """Return stars with nu ~ exp(-R / 3) exp(-|z| / 0.5), sigma_z = 20 + 10 |z| and sigma_Rz = alpha z."""
-    r = np.sqrt(rng.uniform(7.5**2, 9.0**2, 4 * n))
-    r = r[rng.uniform(size=r.size) < np.exp(-(r - 7.5) / 3.0)][:n]
+    """Return stars of the range of the tilt term with nu ~ exp(-R / 3) exp(-|z| / 0.5), sigma_z = 20 + 10 |z|.
+
+    Their sigma_Rz = alpha z does not depend on R, so that t(z) = alpha z (1 / R - 1 / 3).
+    """
+    r = np.sqrt(rng.uniform(TILT_R_MIN_KPC**2, TILT_R_MAX_KPC**2, 4 * n))
+    r = r[rng.uniform(size=r.size) < np.exp(-(r - TILT_R_MIN_KPC) / 3.0)][:n]
     z = rng.exponential(0.5, r.size) * rng.choice([-1.0, 1.0], r.size)
     sigma_z = 20.0 + 10.0 * np.abs(z)
     v_z = rng.normal(0.0, 1.0, r.size) * sigma_z
@@ -65,16 +72,31 @@ def sample(n: int, alpha: float, rng: np.random.Generator) -> JeansStars:
     return JeansStars(r, z, v_r, v_z, np.ones(r.size))
 
 
+def test_slice_tilt_is_exact_for_an_exponential_density_and_a_linear_sigma_rz() -> None:
+    """With nu ~ exp(-R / 3) and sigma_Rz = 40 + 10 R, t = sigma_Rz (1 / R - 1 / 3) + 10 at any R_mid."""
+    radius = np.linspace(6.25, 10.25, 9)
+    r_mid = 8.2
+    tilt = slice_tilt(radius, 5.0 * np.exp(-radius / 3.0), 40.0 + 10.0 * radius, r_mid)
+    assert tilt == pytest.approx((40.0 + 10.0 * r_mid) * (1.0 / r_mid - 1.0 / 3.0) + 10.0)
+
+
 def test_profile_recovers_sigma_z_and_the_tilt_term() -> None:
-    """sigma_z^2 follows (20 + 10 |z|)^2, and t(z) rises as alpha z (1 / R - 1 / R_d) at R_mid within 20 percent."""
+    """sigma_z^2 follows (20 + 10 |z|)^2 in the annulus, and t(z) = alpha z (1 / R_mid - 1 / 3) near the plane."""
     alpha, r_mid = 300.0, 8.25
     profile = jeans_profile(sample(2_000_000, alpha, np.random.default_rng(3)), 7.5, 9.0, r_mid)
     z, tilt = np.array(profile.z), np.array(profile.tilt)
-    assert z.size >= 6
+    assert z.size >= 10
     np.testing.assert_allclose(np.sqrt(profile.sigma2), 20.0 + 10.0 * z, rtol=0.05)
-    inner = z < 1.5
-    slope = float(np.sum(tilt[inner] * z[inner]) / np.sum(z[inner] ** 2))
-    assert slope == pytest.approx(alpha * (1.0 / r_mid - 1.0 / 3.0), rel=0.2)
+    near = z < 1.0
+    np.testing.assert_allclose(tilt[near], alpha * z[near] * (1.0 / r_mid - 1.0 / 3.0), rtol=0.1, atol=15.0)
+
+
+def test_stars_of_the_annulus_alone_leave_no_tilt() -> None:
+    """Without the stars of the rings outside the annulus, no slice has a tilt term."""
+    stars = sample(400_000, 300.0, np.random.default_rng(4))
+    annulus = stars.select((stars.r >= 7.5) & (stars.r < 9.0))
+    profile = jeans_profile(annulus, 7.5, 9.0, 8.25)
+    assert profile.z and np.all(np.isnan(profile.tilt))
 
 
 def test_profile_uses_the_full_second_moment() -> None:
@@ -90,8 +112,10 @@ def test_profile_uses_the_full_second_moment() -> None:
 
 
 def test_sparse_slices_end_the_profile_and_sparse_rings_leave_no_tilt() -> None:
-    """The profile stops at the first slice of too few stars; a slice whose radial bin is sparse has a NaN tilt."""
-    stars = sample(3_000, 0.0, np.random.default_rng(5))
+    """The profile stops at the first slice of too few stars; a slice with a sparse ring has a NaN tilt."""
+    stars = sample(20_000, 0.0, np.random.default_rng(5))
     profile = jeans_profile(stars, 7.5, 9.0, 8.25)
-    assert 0 < len(profile.z) < len(JEANS_EDGES_KPC) - 1
-    assert np.isnan(profile.tilt).any()
+    n_slices = len(profile.z)
+    assert 0 < n_slices < len(JEANS_EDGES_KPC) - 1
+    assert np.isfinite(profile.tilt[0]) and np.isnan(profile.tilt[-1])
+    assert np.all(np.isnan(tilt_profile(stars, 8.25)[n_slices:]))

@@ -1,5 +1,6 @@
 import MathLabel from '@site/src/components/MathLabel'
 import type { Predictor, StatusData, Trend } from '@site/src/components/status/data'
+import type { MotionBin } from '@site/src/components/status/equilibrium'
 import {
   between,
   count,
@@ -28,6 +29,7 @@ import {
   significance,
   signTest,
   snapshotRatios,
+  trendText,
   wholeDiskRatios,
   windowComparison,
   within,
@@ -47,6 +49,42 @@ function trendsOf(d: StatusData, predictor: Predictor, lo: number): readonly Tre
     const range = ageRange(h, lo, 10)
     return range === undefined ? [] : [range.trends[predictor]]
   })
+}
+
+/** The slices with lo <= |z| < hi of the Au19 populations older than 5 Gyr: sigma_z (km/s) and the tilt term. */
+function oldSlices(
+  d: StatusData,
+  lo: number,
+  hi: number
+): readonly { sigmaZ: number; tilt: number }[] {
+  return haloRecord(d, 'Au19')
+    .bins.filter((bin) => bin.ageLo >= 5)
+    .flatMap((bin) =>
+      bin.jeans.z.flatMap((z, i) =>
+        z >= lo && z < hi
+          ? [{ sigmaZ: Math.sqrt(bin.jeans.sigma2[i]), tilt: bin.jeans.tilt[i] }]
+          : []
+      )
+    )
+}
+
+/** The mean motions of the populations of the halo `label` with ages in [lo, hi) Gyr. */
+function motionsOf(d: StatusData, label: string, lo: number, hi: number): readonly MotionBin[] {
+  return haloRecord(d, label).motions.filter((bin) => bin.ageLo >= lo && bin.ageHi <= hi)
+}
+
+/** The mean motions of the populations of every halo with ages in [lo, hi) Gyr. */
+function allMotions(d: StatusData, lo: number, hi: number): readonly MotionBin[] {
+  return d.halos.flatMap((h) => motionsOf(d, h.label, lo, hi))
+}
+
+/** The trend of the prediction `predictor` of Au19 over 0-10 Gyr. */
+function au19Trend(d: StatusData, predictor: Predictor): string {
+  const range = ageRange(haloRecord(d, 'Au19'), 0, 10)
+  if (range === undefined) {
+    throw new Error('Au19 has no range of ages over 0-10 Gyr')
+  }
+  return trendText(range.trends[predictor])
 }
 
 /** The comparison of the halos with the injected curves over the range of h_Z / Z_lim that starts at `lo`. */
@@ -112,6 +150,8 @@ const METRICS = {
         (t) => Math.abs(significance(t)) <= 2
       ).length
     ),
+  jeansSignTest2: (d: StatusData) =>
+    fixed(signTest(trendsOf(d, 'jeans', 2).map((t) => t.value)), 3),
   jeansSigmaSignTest2: (d: StatusData) =>
     fixed(signTest(trendsOf(d, 'jeansSigma', 2).map((t) => t.value)), 2),
   residualRange: (d: StatusData) => between(extent(d.halos.map((h) => residualAt(h, 1))), 0),
@@ -174,6 +214,76 @@ const METRICS = {
           .map((bin) => ratio(bin, 'jeansSigma'))
       )
     ),
+  au19JeansTiltOld: (d: StatusData) =>
+    between(
+      extent(
+        haloRecord(d, 'Au19')
+          .bins.filter((bin) => bin.ageLo >= 5)
+          .map((bin) => ratio(bin, 'jeans'))
+      )
+    ),
+  au19TiltNegative: (d: StatusData) => {
+    const tilts = oldSlices(d, 1, 5).map((s) => s.tilt)
+    return `${tilts.filter((t) => t < 0).length} of the ${tilts.filter((t) => !Number.isNaN(t)).length}`
+  },
+  au19SigmaPlane: (d: StatusData) => between(extent(oldSlices(d, 0, 0.2).map((s) => s.sigmaZ)), 0),
+  au19SigmaHigh: (d: StatusData) => between(extent(oldSlices(d, 6, 12).map((s) => s.sigmaZ)), 0),
+  au19HzOld: (d: StatusData) =>
+    between(
+      extent(
+        haloRecord(d, 'Au19')
+          .bins.filter((bin) => bin.ageLo >= 5)
+          .map((bin) => bin.measured.value)
+      )
+    ),
+  jeansPositive2: (d: StatusData) => {
+    const values = trendsOf(d, 'jeans', 2).map((t) => t.value)
+    return `${values.filter((v) => v > 0).length} of the ${values.length}`
+  },
+  au19JeansSigmaTrend0: (d: StatusData) => au19Trend(d, 'jeansSigma'),
+  au19JeansTrend0: (d: StatusData) => au19Trend(d, 'jeans'),
+  sumSingleScaled: (d: StatusData) =>
+    between(extent(d.halos.map((h) => h.tracerSum.whole.ratioSingle.scaled.value))),
+  sumMixtureScaled: (d: StatusData) =>
+    between(extent(d.halos.map((h) => h.tracerSum.whole.ratioMixture.scaled.value))),
+  sumSinglePalicio: (d: StatusData) =>
+    between(extent(d.halos.map((h) => h.tracerSum.whole.ratioSingle.palicio.value))),
+  sumMixturePalicio: (d: StatusData) =>
+    between(extent(d.halos.map((h) => h.tracerSum.whole.ratioMixture.palicio.value))),
+  au19ThickeningOld: (d: StatusData) =>
+    between(extent(motionsOf(d, 'Au19', 5, 10).map((b) => b.thickening.value)), 2),
+  au19AsymmetryOld: (d: StatusData) =>
+    between(extent(motionsOf(d, 'Au19', 5, 10).map((b) => b.asymmetry.value)), 3),
+  oldThickeningMax: (d: StatusData) =>
+    fixed(Math.max(...allMotions(d, 5, 10).map((b) => Math.abs(b.thickening.value))), 1),
+  youngThickeningMax: (d: StatusData) =>
+    fixed(Math.max(...allMotions(d, 0, 5).map((b) => Math.abs(b.thickening.value))), 1),
+  youngBendingMax: (d: StatusData) =>
+    fixed(Math.max(...allMotions(d, 0, 5).map((b) => Math.abs(b.bending.value))), 1),
+  youngAsymmetryMax: (d: StatusData) =>
+    fixed(Math.max(...allMotions(d, 0, 5).map((b) => Math.abs(b.asymmetry.value))), 2),
+  sumSingleMedian: (d: StatusData) =>
+    fixed(median(d.halos.map((h) => h.tracerSum.whole.ratioSingle.scaled.value)), 3),
+  sumMixtureMedian: (d: StatusData) =>
+    fixed(median(d.halos.map((h) => h.tracerSum.whole.ratioMixture.scaled.value)), 3),
+  sumMixtureCloser: (d: StatusData) => {
+    const closer = d.halos.filter((h) => {
+      const whole = h.tracerSum.whole
+      return (
+        Math.abs(whole.ratioMixture.scaled.value - 1) < Math.abs(whole.ratioSingle.scaled.value - 1)
+      )
+    })
+    return `${closer.length} of the ${d.halos.length}`
+  },
+  sumMixtureShort: (d: StatusData) => {
+    const short = d.halos.filter((h) => h.tracerSum.whole.ratioMixture.scaled.value < 1)
+    return `${short.length} of the ${d.halos.length}`
+  },
+  au19ZLim: (d: StatusData) => fixed(haloRecord(d, 'Au19').zLim, 1),
+  au19WholePalicio: (d: StatusData) =>
+    fixed(haloRecord(d, 'Au19').tracerSum.whole.measured.palicio.value, 1),
+  sumUnmodeledMax: (d: StatusData) =>
+    percent(Math.max(...d.halos.map((h) => h.tracerSum.whole.unmodeledMixture)), 1),
   au19Old: (d: StatusData) =>
     between(
       extent(

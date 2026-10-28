@@ -9,6 +9,7 @@ import {
   ExponentTable,
   HaloTable,
   JeansTrendTable,
+  MotionTable,
   ToleranceTable,
   TrendTable
 } from '@site/src/components/status/tables'
@@ -163,11 +164,27 @@ $$
 under two assumptions: $\sigma_z$ does not change with height, and the first term, the tilt
 term, vanishes. A population of 1 Gyr of ages mixes stars of several dispersions, so its
 $\sigma_z$ can grow with height and its velocities can have heavier tails than one
-Gaussian. We
-measure, in slices of $|z|$, the variance of $v_z$ of each population weighted by initial
-mass, without clipping, because the equation needs the second moment of all its stars, and
-the tilt term from three radial bins of the annulus. Writing the tilt term as $\nu t(z)$,
-the equation integrates to
+Gaussian. We measure, in slices of $|z|$ up to 12 kpc, the variance of $v_z$ of each
+population weighted by initial mass, without clipping, because the equation needs the
+second moment of all its stars. The slices reach that high because the self-consistent
+windows of the oldest populations of Au19 reach 8 kpc, and the equation holds $\sigma_z^2$
+and the tilt term constant above the last slice.
+
+The tilt term needs the radial derivative of $\nu\sigma_{Rz}$, which the 1.5 kpc of the
+annulus measure poorly. We take it from the stars of each population over
+$6 < R < 10.5$ kpc, a range centered on the annulus, in rings of 0.5 kpc. In each slice,
+straight lines of $\ln\nu$ and of $\sigma_{Rz} = \langle v_R v_z\,\mathrm{sign}(z)\rangle$
+against $R$ give
+
+$$
+t = \frac{1}{R\nu}\frac{\partial (R\nu\sigma_{Rz})}{\partial R}
+= \sigma_{Rz}\left(\frac{1}{R} + \frac{\partial \ln\nu}{\partial R}\right) + \frac{\partial \sigma_{Rz}}{\partial R}
+$$
+
+at $R_\mathrm{mid}$, where the sign of $z$ folds the two sides of the plane, on which
+$\sigma_{Rz}$ has opposite signs. A slice needs 50 stars in every ring, so that the lines
+sample $R_\mathrm{mid}$ symmetrically; otherwise its tilt term counts as 0. With the tilt
+term written as $\nu t(z)$, the equation integrates to
 
 $$
 \nu(z) = \frac{\sigma_z^2(0)}{\sigma_z^2(z)}
@@ -185,20 +202,66 @@ Without the tilt term, the Jeans heights match the measured ones within 10 perce
 <Metric name="jeansSigmaWithin10" /> of the <Metric name="populations" /> populations, with a
 median ratio of <Metric name="jeansSigmaMedian" />. Their trends with age lie within 2
 standard errors of 0 in <Metric name="jeansSigmaWithin2" /> of the 14 cases, and
-<Metric name="jeansSigmaNegative2" /> of their trends over 2-10 Gyr are negative, so the
-pattern of signs of the tracer is gone. The difference between the tracer and the Jeans
+<Metric name="jeansSigmaNegative2" /> trends over 2-10 Gyr are negative, so the pattern of
+signs of the tracer is gone. The difference between the tracer and these Jeans
 heights has two parts, the change of the dispersion with height and the full rather than
 the clipped second moment, which the records do not separate. Both are departures from a
 population of one isothermal component, which is what the tracer assumes.
 
-The old populations of Au19 remain short: those older than 5 Gyr reach
-<Metric name="au19JeansOld" /> of their measured $h_Z$ in the Jeans heights, as in the
-tracer. With the tilt term, the Jeans heights reach a median ratio of
-<Metric name="jeansMedian" />, but they lie within 10 percent in only
-<Metric name="jeansWithin10" /> populations, because three radial bins of one annulus measure
-the radial derivative of $\nu\sigma_{Rz}$ poorly. Whether the tilt term or a departure from
-equilibrium holds up the old populations of Au19 is open issue 1 of the
-[overview](./overview).
+The exception is Au19. Without the tilt term, its populations older than 5 Gyr reach
+<Metric name="au19JeansOld" /> of their measured $h_Z$, as short as in the tracer
+(<Metric name="au19Old" />), and its trend over 0-10 Gyr is
+<Metric name="au19JeansSigmaTrend0" />. These populations are hot and thick. Their $h_Z$
+is <Metric name="au19HzOld" /> kpc, and their $\sigma_z$ rises from
+<Metric name="au19SigmaPlane" /> km/s in the slice nearest the plane to
+<Metric name="au19SigmaHigh" /> km/s above 6 kpc. Their tilt term is negative in
+<Metric name="au19TiltNegative" /> slices between 1 and 5 kpc, so it opposes the vertical
+force of the potential. With it, their Jeans heights reach
+<Metric name="au19JeansTiltOld" /> of the measured ones, and the trend of Au19 over
+0-10 Gyr becomes <Metric name="au19JeansTrend0" />.
+
+With the tilt term, the Jeans heights lie within 10 percent in
+<Metric name="jeansWithin10" /> of the <Metric name="populations" /> populations, with a
+median ratio of <Metric name="jeansMedian" />, and
+<Metric name="jeansWithin2" /> of their 14 trends lie within 2 standard errors of 0.
+However, <Metric name="jeansPositive2" /> trends over 2-10 Gyr are positive, a split that
+a symmetric scatter about 0 would produce with a probability of
+<Metric name="jeansSignTest2" />. The Jeans heights with the tilt term may therefore grow
+slightly faster with age than the measured ones, by an amount below the error of each
+halo.
+
+## The steady state
+
+The Jeans equation, and the tracer with it, assume a steady disk that is symmetric about
+its plane. A disk that a satellite or a bar has disturbed departs from both, and its
+populations can be thicker or thinner than their kinematics imply. We measure four
+departures in the stars of each population inside its self-consistent window
+(`experiments.equilibrium`): the thickening rate
+$\langle \mathrm{sign}(z)\,v_z\rangle/\langle|z|\rangle$, which is
+$d\ln\langle|z|\rangle/dt$ for stars that stay in the annulus, the bending velocity
+$\langle v_z\rangle$, the north-south asymmetry of mass $(M_+ - M_-)/(M_+ + M_-)$, and the
+amplitude of the $m = 1$ term of the mean $z$ over eight sectors of azimuth, a warp. All
+four vanish in a steady disk that is axisymmetric and symmetric about its plane. Their
+errors come from 300 bootstrap draws of the stars. The warp, a modulus, is positive even
+without one, so its noise floor is about its error.
+
+```bash
+uv run experiments auriga equilibrium 2 3 16 19 23 24 27
+```
+
+<MotionTable />
+
+No halo is steady in this strict sense: populations younger than 5 Gyr bend by up to
+<Metric name="youngBendingMax" /> km/s, their asymmetries reach
+<Metric name="youngAsymmetryMax" />, and their thickening rates reach
+<Metric name="youngThickeningMax" /> per Gyr. The populations older than 5 Gyr change their
+thickness more slowly, at most <Metric name="oldThickeningMax" /> per Gyr in any halo.
+Those of Au19 are no more disturbed than the others: their thickening rates are
+<Metric name="au19ThickeningOld" /> per Gyr, and their asymmetries
+<Metric name="au19AsymmetryOld" />. A single snapshot gives rates rather than amplitudes,
+so it cannot exclude an oscillation caught at a turning point. Nothing in Au19 calls for
+one, because the tilt term accounts for the thickness of its old populations.
+
 
 ## Limitations
 
@@ -208,7 +271,9 @@ measure. That $\sigma_z$ is clipped at 4 standard deviations, which removes the 
 population that mixes several dispersions, so it is smaller than the second moment of the
 population; how much this moves each tracer height on its own has not been measured. The tracer also takes
 $\Delta\Phi$ at a single radius, which neglects the radial terms of the vertical Jeans
-equation. Its potential is an axisymmetric fit, which cannot
+equation, the tilt term that the Jeans heights above measure. That tilt term comes from
+straight lines over 4.5 kpc of radius, which cannot follow a curvature of $\nu\sigma_{Rz}$
+with radius, and its bootstrap errors do not include that. Its potential is an axisymmetric fit, which cannot
 follow a bar, although averaged over azimuth the snapshot's potential agrees with it
 ([overview](./overview)). The bootstrap errors of the predictions carry those of
 $\sigma_z$, but not those of the fitted potential, whose accuracy we know only on the mock

@@ -1,6 +1,6 @@
 """``experiments milky-way``: fetch and check the Milky Way catalogs, and measure the test of the tracer.
 
-``fetch`` downloads the five inputs of :mod:`experiments.mw_sources` into the root, which
+``fetch`` downloads the six inputs of :mod:`experiments.mw_sources` into the root, which
 git ignores, skipping those already there; ``check`` compares the local copies with their
 pinned sizes and checksums; ``analyze`` measures the test (:mod:`experiments.mw_pipeline`)
 and writes its record to ``<out-dir>/milky-way.json``::
@@ -88,14 +88,19 @@ def report_lines(result: MilkyWay) -> list[str]:
     lines = [f"Milky Way at R_0 = {result.r0_kpc} kpc, Sigma = {result.sigma_surf:.1f} Msun/pc^2, k = {result.k}"]
     for survey in result.surveys:
         lines.extend(survey_lines(survey))
-    lines.append("imig: ages   h_Z(pooled)    sigma_z    tracer/h_Z")
+    lines.append("imig:  ages      h_Z by mass  h_Z by counts  counts astroNN  counts distmass   sigma_z  tracer/h")
     for b in result.imig.bins:
+        h, r = b.heights, b.ratios
         lines.append(
-            f"  {b.age_lo:5.2f}-{b.age_hi:<5.2f} {b.measured.value:6.3f}+/-{b.measured.err:.3f} "
-            f"{b.sigma_z.value:5.1f}+/-{b.sigma_z.err:.1f} {b.ratio.value:5.2f}+/-{b.ratio.err:.2f}"
+            f"  {b.age_lo:5.2f}-{b.age_hi:<5.2f} "
+            + " ".join(
+                f"{e.value:6.3f}+/-{e.err:.3f}"
+                for e in (h.imig_mass, h.imig_counts, h.counts_astronn, h.counts_distmass)
+            )
+            + f" {b.kinematics.sigma_z.value:5.1f} {r.imig_counts.value:5.2f}+/-{r.imig_counts.err:.2f}"
         )
-    trend = result.imig.trend
-    lines.append(f"  trend of tracer/h_Z {trend.value:+.3f}+/-{trend.err:.3f}")
+    trends = ", ".join(f"{k} {t.value:+.3f}+/-{t.err:.3f}" for k, t in result.imig.trends.items())
+    lines.append(f"  trends of tracer/h: {trends}")
     return lines
 
 

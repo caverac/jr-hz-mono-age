@@ -13,6 +13,7 @@ from experiments.auriga import HaloSnapshot
 from experiments.commands._report import write_json
 from experiments.commands.auriga_analyze import result_name
 from experiments.commands.auriga_jr_map import jr_map_name
+from experiments.commands.auriga_tracer_sum import tracer_sum_name
 from experiments.jr_map import (
     CELL_KPC,
     L_SUN_KPC_KMS,
@@ -29,7 +30,9 @@ from experiments.jr_map import (
     weighted_median,
 )
 from experiments.palicio import PalicioWindow
+from experiments.populations import Estimate
 from experiments.records import load_jr_map
+from experiments.tracer_sum import SumHeights, SumRange, TracerSum, TracerSumRecord, Unmodeled
 
 
 def test_weighted_median() -> None:
@@ -111,16 +114,20 @@ def test_fit_line_recovers_a_line_and_its_scatter() -> None:
 
 def test_jr_relation_fits_both_windows() -> None:
     """The lines run through J_R,w against each h_Z, and the slope of Palicio et al. is in km/s."""
-    points = [JrPoint(h, 10.0 + 50.0 * hz, hz, 0.8 * hz) for h, hz in ((2, 0.5), (3, 1.0), (16, 1.5))]
+    points = [
+        JrPoint(h, 10.0 + 50.0 * hz, hz, 0.8 * hz, 0.9 * hz, 0.7 * hz) for h, hz in ((2, 0.5), (3, 1.0), (16, 1.5))
+    ]
     relation = jr_relation(points)
     assert relation.line_palicio.slope == pytest.approx(50.0)
     assert relation.line_scaled.slope == pytest.approx(50.0 / 0.8)
+    assert relation.line_palicio_mixture.slope == pytest.approx(50.0 / 0.9)
+    assert relation.line_scaled_mixture.slope == pytest.approx(50.0 / 0.7)
     assert relation.palicio_slope == pytest.approx(PALICIO_SLOPE_LSUN_PER_KPC * L_SUN_KPC_KMS)
     assert 70.0 < relation.palicio_slope < 71.0
 
 
 def test_jr_relation_command(mock_run: MockRun, tmp_path: Path) -> None:
-    """``jr-relation`` reads the J_R maps and the analyses of the halos and writes the lines."""
+    """``jr-relation`` reads the J_R maps, the analyses and the tracer sums of the halos and writes the lines."""
     for halo, jr_w in ((5, 20.0), (6, 30.0), (7, 45.0)):
         snap = HaloSnapshot(halo)
         path = write_json(mock_run.analysis, tmp_path / result_name(snap))
@@ -129,10 +136,25 @@ def test_jr_relation_command(mock_run: MockRun, tmp_path: Path) -> None:
         path.write_text(json.dumps(record))
         proxy = JrMap(PalicioWindow(20.0, 1.0), 100, 10, jr_w, 0.5 * jr_w, 2.0 * jr_w)
         write_json(JrMapRecord(snap, proxy), tmp_path / jr_map_name(snap))
+        write_json(TracerSumRecord(snap, predicted(jr_w / 45.0, jr_w / 60.0)), tmp_path / tracer_sum_name(snap))
     assert load_jr_map(tmp_path / jr_map_name(HaloSnapshot(6))).jr_map.jr_w == 30.0
     output = invoke("auriga", "jr-relation", "5", "6", "7", "--data-dir", str(tmp_path))
     assert "Palicio et al.: slope 70.5 km/s" in output
     record = json.loads((tmp_path / "jr-relation.json").read_text())
     assert [p["halo"] for p in record["points"]] == [5, 6, 7]
+    assert record["line_scaled_mixture"]["slope"] == pytest.approx(60.0)
     missing = run("auriga", "jr-relation", "8", "--data-dir", str(tmp_path))
     assert missing.exit_code == 1 and "experiments auriga jr-map" in missing.output
+    (tmp_path / tracer_sum_name(HaloSnapshot(7))).unlink()
+    unsummed = run("auriga", "jr-relation", "7", "--data-dir", str(tmp_path))
+    assert unsummed.exit_code == 1 and "experiments auriga tracer-sum" in unsummed.output
+
+
+def predicted(hz_palicio: float, hz_scaled: float) -> TracerSum:
+    """Return a tracer sum whose whole range has the mixture heights *hz_palicio* and *hz_scaled*."""
+    one = Estimate(1.0, 0.0)
+    heights = SumHeights(Estimate(hz_palicio, 0.0), Estimate(hz_scaled, 0.0))
+    whole = SumRange(
+        4.0, 20.0, Unmodeled(0.0, 0.0), heights, heights, heights, SumHeights(one, one), SumHeights(one, one)
+    )
+    return TracerSum(PalicioWindow(20.0, 1.0), [], whole)

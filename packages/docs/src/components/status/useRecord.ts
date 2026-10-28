@@ -1,6 +1,6 @@
 import useBaseUrl from '@docusaurus/useBaseUrl'
 import type { Loaded } from '@site/src/components/render/useSampleMeta'
-import { fetchJson } from '@site/src/components/status/data'
+import { fetchJson } from '@site/src/components/status/record'
 import { useEffect, useState } from 'react'
 
 /** One load of each record per page, shared by every chart, table and number that reads it. */

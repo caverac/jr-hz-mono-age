@@ -1,6 +1,6 @@
 """The Milky Way inputs: where each one comes from, where it lives, and how to fetch and check it.
 
-Five inputs, none of them committed, live under ``staging/milky-way/``:
+Six inputs, none of them committed, live under ``staging/milky-way/``:
 
 - ``astronn``: the astroNN value-added catalog of APOGEE DR17, with the abundances of
   Leung & Bovy (2019), the distances, Galactocentric coordinates and actions, and the
@@ -9,6 +9,8 @@ Five inputs, none of them committed, live under ``staging/milky-way/``:
   ``EXTRATARG`` that separates the main survey from the special programs;
 - ``lamost``: the 137,448 primary red-clump stars of LAMOST of Huang et al. (2020, ApJS
   249, 29), from Zenodo record 3875974;
+- ``distmass``: the distances, masses and ages of APOGEE DR17 of Stone-Martinez et al.
+  (2024, AJ 167, 73), row-matched to allStar, whose ages Imig et al. (2025) adopt;
 - ``imig``: the density fits of mono-age, mono-abundance populations of Imig et al.
   (2025, ApJ 990, 203), at a fixed commit of their repository;
 - ``gaia``: the Gaia DR3 sources of a cylinder of radius 1.55 kpc and half-height 1.3 kpc
@@ -78,6 +80,14 @@ FILE_SOURCES = (
         23_653_440,
         "c2b3afc4d9fbbd6ea383ab723a475f40",
         user_agent=BROWSER_AGENT,
+    ),
+    FileSource(
+        "distmass",
+        "distmass/APOGEE_DistMass-DR17_v1.6.1.fits",
+        "https://data.sdss.org/sas/dr17/env/APOGEE_DISTMASS/APOGEE_DistMass-DR17_v1.6.1.fits",
+        247_337_280,
+        "d77e0795a677ddfe15cb3a48cad95aff",
+        parts=8,
     ),
     FileSource(
         "imig",
