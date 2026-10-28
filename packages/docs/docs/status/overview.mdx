@@ -81,9 +81,12 @@ are thicker than their heights by factors of <MwMetric name="imigGap" /> on the 
 scale and with the same weighting. Population by population, the counts exceed their
 heights by a median factor of <MwMetric name="cellsMedian" />, which grows with metallicity
 from <MwMetric name="cellsMetalPoor" /> below $[\mathrm{M/H}] = -0.1$ to
-<MwMetric name="cellsMetalRich" /> above $0.1$. The tracer agrees with the counts, so in the
-Milky Way the claim depends on which of the two measurements of the vertical profile is
-right (open issue below).
+<MwMetric name="cellsMetalRich" /> above $0.1$. At fixed age, the slope of $\ln h_Z$ per dex
+of $[\mathrm{M/H}]$ is <MwMetric name="slopeCountsApogee" /> for the APOGEE counts and
+<MwMetric name="slopeCountsLamost" /> for the LAMOST counts, whereas it is
+<MwMetric name="slopeImigApogee" /> for their heights in the APOGEE cells. The tracer
+agrees with the counts, so in the Milky Way the claim depends on which of the two
+measurements of the vertical profile is right (open issue below).
 
 ## Status board
 
@@ -366,10 +369,17 @@ exponential in $|z|$ and a linear flare, into which each population enters with 
 radial profile, whereas ours is fit to a cylinder of radius 1.5 kpc around the Sun within
 $|z| < 1.2$ kpc. Our counts, in turn, assume that the targeting does not depend on the
 population at a fixed position. With only the APOGEE matches of one box of $H$ and
-$(J-K_s)_0$ inside the limits of every cohort they come from, the slope with metallicity is
-<MwMetric name="boxTrendB" /> per dex, so the targeting limits do not cause it. The sampling
-of each cohort evenly in apparent $H$ remains untested, as does their global fit. Because
-the tracer agrees with the counts, the claim holds in the Milky Way only if the counts
-measure the profile correctly. See [Milky Way](./milky-way#the-targeting-of-apogee).
+$(J-K_s)_0$ inside the limits of every cohort they come from, the slope of the logarithm of
+the ratio is <MwMetric name="boxTrendB" /> per dex, so the targeting limits do not cause it.
+At fixed
+age, the slope of $\ln h_Z$ per dex of $[\mathrm{M/H}]$ is
+<MwMetric name="slopeCountsApogee" /> for the APOGEE counts and
+<MwMetric name="slopeCountsLamost" /> for the counts of LAMOST, whose targeting,
+metallicities and ages are its own, whereas it is <MwMetric name="slopeImigApogee" /> and
+<MwMetric name="slopeImigLamost" /> for their heights in the same cells. Unless both surveys share a bias of the targeting, the selection of APOGEE, its
+spacing in apparent $H$ included, does not cause the difference either. Their global fit
+remains untested. Because the tracer agrees with the counts, the claim holds in the Milky
+Way only if the counts measure the profile correctly. See
+[Milky Way](./milky-way#the-counts-of-lamost).
 
 </Claim>

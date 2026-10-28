@@ -18,6 +18,7 @@ import {
   parseMilkyWay,
   surveyName
 } from '@site/src/components/status/milkyWay'
+import type { Trend } from '@site/src/components/status/record'
 import { fixed, signed, Table, type TableProps } from '@site/src/components/status/tables'
 import useRecord from '@site/src/components/status/useRecord'
 import React, { type ReactNode } from 'react'
@@ -223,6 +224,32 @@ export const TargetingTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
     rows: [
       row('all', data.imigCells),
       ...data.imigCellsTargeting.map((t) => row(boxText(t.box), t.cells))
+    ]
+  }
+})
+
+/**
+ * The slope of ln h_Z per dex of [M/H] at fixed age, in the measured cells of each set:
+ * our counts, and the heights of Imig et al. in the same cells.
+ */
+export const SlopeTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const slope = (t: Trend): string => `$${signed(t.value)} \\pm ${fixed(t.err)}$`
+  const row = (counts: string, cells: ImigCells): readonly string[] => [
+    counts,
+    String(cells.nMeasured),
+    slope(cells.slopes.counts),
+    slope(cells.slopes.imig)
+  ]
+  return {
+    groups: [
+      ['', 2],
+      ['slope of $\\ln h_Z$ per dex', 2]
+    ],
+    head: ['counts', 'cells', 'ours', 'Imig et al.'],
+    rows: [
+      row('APOGEE, all matches', data.imigCells),
+      ...data.imigCellsTargeting.map((t) => row(`APOGEE, ${boxText(t.box)}`, t.cells)),
+      row('LAMOST', data.imigCellsLamost)
     ]
   }
 })

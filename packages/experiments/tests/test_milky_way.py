@@ -203,6 +203,7 @@ def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
     assert first.ratios.imig_mass.value == pytest.approx(first.kinematics.tracer / first.heights.imig_mass.value)
     assert len(result.rc_peak) == 12 and result.r0_kpc == R0_KPC
     assert len(result.imig_cells.cells) == 8 and result.imig_cells.min_matches == 100
+    assert len(result.imig_cells_lamost.cells) == 8
     boxed = [t.cells.n_matches for t in result.imig_cells_targeting]
     assert len(boxed) == 2 and all(0 < n < result.imig_cells.n_matches for n in boxed)
 

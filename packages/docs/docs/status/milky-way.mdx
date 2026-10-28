@@ -10,6 +10,7 @@ import {
   ImigTable,
   MwBinTable,
   MwTrendTable,
+  SlopeTable,
   TargetingTable
 } from '@site/src/components/status/recordTables'
 
@@ -228,14 +229,50 @@ its targets evenly in apparent $H$ rather than drawing them at random (Zasowski 
 Section 4.4), so the chance that a star is targeted depends on its $H$ and, at a given
 distance, on its luminosity, which changes with the population.
 
+### The counts of LAMOST
+
+The boxes leave the even spacing in $H$ untested, because no limit of a cohort records it.
+We test it, with every other part of the selection of APOGEE, by splitting the LAMOST
+counts into the same cells (`experiments.mw_imig_cells.lamost_metallicity_counts`). A cell
+then holds the LAMOST matches of its ages on the scale of Huang et al. (2020) and of its bin
+of the LAMOST $[\mathrm{Fe/H}]$, on the low-$[\alpha/\mathrm{Fe}]$ sequence of LAMOST.
+LAMOST selects its targets, and measures their metallicities and ages, independently of
+APOGEE, so a bias of APOGEE does not carry over to these counts.
+
+These ages are not on the distmass scale of Imig et al., so the ratio of the two heights in
+a cell would compare stars of different ages. We compare instead how each height changes
+with metallicity at fixed age: the slope of $\ln h_Z$ per dex of $[\mathrm{M/H}]$ over the
+measured cells, with one intercept per age bin
+(`experiments.populations.fit_grouped_log_slope`). An offset between the age scales that is
+the same at every metallicity moves the intercepts, not the slope. A zero point between the
+$[\mathrm{Fe/H}]$ of LAMOST and the $[\mathrm{M/H}]$ of ASPCAP leaves the slope of the counts
+unchanged, whereas a stretch scales it, so neither turns a flat slope into a steep one. The
+table gives both slopes for every set of cells, the APOGEE ones of the previous sections
+included.
+
+<SlopeTable />
+
+At fixed age, the heights of our counts hardly change with metallicity. Their slope per dex
+is <MwMetric name="slopeCountsLamost" /> in the <MwMetric name="lamostCells" /> cells that
+the <MwMetric name="lamostCellMatches" /> LAMOST matches measure, against
+<MwMetric name="slopeCountsApogee" /> in the APOGEE cells. In the same cells, the heights of
+Imig et al. fall with slopes of <MwMetric name="slopeImigLamost" /> and
+<MwMetric name="slopeImigApogee" />. The two surveys thus agree with each other, whereas
+both disagree with the fits. To survive this test, a bias of the targeting would have to
+change the counts of both surveys by the same amount, although the surveys select their
+targets in different ways. The disagreement therefore most likely comes from the remaining
+difference, between the global fit of Imig et al. and our fit in a cylinder around the Sun.
+
 ## Limitations
 
 The fraction of a slice assumes that the spectroscopic targeting does not depend on the
 population, its age or its metallicity, at a fixed position, which a selection in magnitude
 and color satisfies only if its limits are the same for every field. For APOGEE we have
-checked this with the targeting limits of every star, which do not change the cells, but not
-for LAMOST, whose matches split the counts of the main test. If it fails, the counts of a population are biased in
-the slices of $|z|$ where the targeting changes, which would bear on the disagreement with
+checked this with the targeting limits of every star, which do not change the cells. For
+LAMOST we have not checked its limits, although its counts change with metallicity at fixed
+age within the errors of those of APOGEE, so a bias larger than those errors would have to
+be common to both surveys. If it fails, the counts of a population are biased in the
+slices of $|z|$ where the targeting changes, which would bear on the disagreement with
 Imig et al., whose fit corrects for the selection function. The counts stop at
 $|z| = 1.2$ kpc, so the window of the oldest populations, about twice their $h_Z$, comes
 close to the edge of the counts. On the distmass scale the bin of 8-10 Gyr has no $h_Z$ in

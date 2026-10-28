@@ -7,8 +7,8 @@
 APOGEE and the ages of distmass. It then compares the heights of Imig et al. (2025) with
 the APOGEE counts on both age scales and with the tracer (:mod:`experiments.mw_imig`), and
 each of their populations with the counts of the same ages and [M/H]
-(:mod:`experiments.mw_imig_cells`), with all the matches and with those of each targeting
-box.
+(:mod:`experiments.mw_imig_cells`), with all the matches, with those of each targeting
+box, and with the LAMOST counts split by [Fe/H].
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from pathlib import Path
 
 import agama
 import numpy as np
+from numpy.typing import NDArray
 
 from experiments.mw_analysis import N_BOOTSTRAP, SEED, MwSurvey, Survey, measure_survey, solar_model
 from experiments.mw_catalogs import (
@@ -40,10 +41,13 @@ from experiments.mw_imig_cells import (
     CellSettings,
     ImigCells,
     TargetedCells,
+    lamost_metallicity_counts,
     measure_cells,
     metallicity_counts,
 )
 from experiments.mw_sources import FILE_SOURCES, GAIA_PATH
+
+FloatArray = NDArray[np.float64]
 
 
 @dataclass(frozen=True)
@@ -52,7 +56,8 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
 
     ``imig`` compares the pooled heights of Imig et al. with the counts and the tracer,
     ``imig_cells`` each of their populations with the counts of its ages and [M/H], and
-    ``imig_cells_targeting`` the same with the matches of each targeting box.
+    ``imig_cells_targeting`` the same with the matches of each targeting box, and
+    ``imig_cells_lamost`` with the LAMOST counts, whose ages are not on the scale of Imig et al.
     """
 
     r0_kpc: float
@@ -64,6 +69,7 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     imig: ImigCheck
     imig_cells: ImigCells
     imig_cells_targeting: list[TargetedCells]
+    imig_cells_lamost: ImigCells
 
 
 def source_path(root: Path, name: str) -> Path:
@@ -79,23 +85,25 @@ def apogee_survey(name: str, apogee: Apogee, gaia: GaiaStars, pot: agama.Potenti
 
 
 def lamost_survey(
-    path: Path, gaia: GaiaStars, pot: agama.Potential, rng: np.random.Generator
+    lamost: dict[str, FloatArray], gaia: GaiaStars, pot: agama.Potential, rng: np.random.Generator
 ) -> tuple[Survey, RedClump]:
-    """Return the LAMOST survey of the catalog at *path*, and the red-clump window of its counts."""
-    lamost = read_lamost(path)
+    """Return the LAMOST survey of the catalog *lamost*, and the red-clump window of its counts."""
     kinematics = lamost_kinematics(lamost, rng)
     counts, clump = lamost_count_sample(gaia, lamost_age_tracers(lamost))
     return Survey("lamost", counts, kinematics, cylindrical_actions(pot, kinematics.phase)), clump
 
 
-def analyze_milky_way(root: Path, n_bootstrap: int = N_BOOTSTRAP, n_draws: int = N_DRAWS) -> MilkyWay:
+def analyze_milky_way(  # pylint: disable=too-many-locals
+    root: Path, n_bootstrap: int = N_BOOTSTRAP, n_draws: int = N_DRAWS
+) -> MilkyWay:
     """Return the Milky Way test from the inputs under *root*."""
     rng = np.random.default_rng(SEED)
     pot = mcmillan17()
     model = solar_model(pot)
     gaia = read_gaia(root / GAIA_PATH)
     apogee = read_apogee(source_path(root, "astronn"), source_path(root, "allstar"))
-    lamost, clump = lamost_survey(source_path(root, "lamost"), gaia, pot, rng)
+    lamost_catalog = read_lamost(source_path(root, "lamost"))
+    lamost, clump = lamost_survey(lamost_catalog, gaia, pot, rng)
     astronn = apogee_survey("apogee", apogee, gaia, pot)
     distmass_apogee = with_distmass_ages(apogee, source_path(root, "distmass"))
     distmass = apogee_survey("apogee_distmass", distmass_apogee, gaia, pot)
@@ -118,4 +126,7 @@ def analyze_milky_way(root: Path, n_bootstrap: int = N_BOOTSTRAP, n_draws: int =
         ),
         imig_cells=cells(distmass_apogee),
         imig_cells_targeting=[TargetedCells(box, cells(distmass_apogee.within(box))) for box in TARGETING_BOXES],
+        imig_cells_lamost=measure_cells(
+            populations, lamost_metallicity_counts(gaia, lamost_catalog, populations), model, rng, CellSettings(n_draws)
+        ),
     )

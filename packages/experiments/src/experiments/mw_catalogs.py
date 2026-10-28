@@ -276,11 +276,16 @@ def lamost_in_disk(cat: dict[str, FloatArray]) -> BoolArray:
     return lamost_low_alpha(cat["FEH"], cat["AFE"]) & (cat["FEH"] > FEH_MIN)
 
 
-def lamost_age_tracers(cat: dict[str, FloatArray]) -> AgeTracers:
-    """Return the LAMOST red-clump stars as age tracers, to be matched to Gaia by position and G."""
+def lamost_age_tracers(cat: dict[str, FloatArray], population: BoolArray | None = None) -> AgeTracers:
+    """Return the LAMOST red-clump stars as age tracers, to be matched to Gaia by position and G.
+
+    Their populations are the stars where *population* holds, by default those of
+    :func:`lamost_in_disk`.
+    """
     return AgeTracers(
-        np.zeros(cat["AGE"].size, dtype=np.int64), cat["GLON"], cat["GLAT"], cat["G"], cat["AGE"], lamost_in_disk(cat)
-    )
+        np.zeros(cat["AGE"].size, dtype=np.int64), cat["GLON"], cat["GLAT"], cat["G"], cat["AGE"],
+        lamost_in_disk(cat) if population is None else population,
+    )  # fmt: skip
 
 
 def lamost_kinematics(cat: dict[str, FloatArray], rng: np.random.Generator) -> KinematicStars:

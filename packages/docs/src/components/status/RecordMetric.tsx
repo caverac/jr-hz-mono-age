@@ -222,6 +222,12 @@ const MW_METRICS = {
   boxRichB: (d: MilkyWayData) => medianText(targeted(d, 1).cells, 0.1, Number.POSITIVE_INFINITY),
   boxTrendA: (d: MilkyWayData) => trendText(targeted(d, 0).cells.trend),
   boxTrendB: (d: MilkyWayData) => trendText(targeted(d, 1).cells.trend),
+  slopeCountsApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.counts),
+  slopeImigApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.imig),
+  slopeCountsLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.counts),
+  slopeImigLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.imig),
+  lamostCells: (d: MilkyWayData) => String(d.imigCellsLamost.nMeasured),
+  lamostCellMatches: (d: MilkyWayData) => count(d.imigCellsLamost.nMatches),
   cellsStars: (d: MilkyWayData) => {
     const measured = d.imigCells.cells.filter((c) => isMeasured(d.imigCells, c))
     const sum = (cells: readonly { readonly nStars: number }[]) =>

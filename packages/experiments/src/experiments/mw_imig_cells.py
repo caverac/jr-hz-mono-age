@@ -21,6 +21,13 @@ whereas APOGEE targets by (J - K_s)_0 and H, with limits that change between coh
 the colors of giants change with metallicity. ``TARGETING_BOXES`` repeat the comparison with
 only the matches of a box of H and (J - K_s)_0 that every cohort they come from contains
 (:class:`experiments.mw_catalogs.TargetingBox`), so that one selection holds in every field.
+
+The counts of LAMOST (:func:`lamost_metallicity_counts`) test our counts with another
+survey: other targeting, other ages and another [Fe/H]. Their ages are not on the scale of
+Imig et al., so their ratios to the heights of Imig et al. mix two age scales. The slope of
+ln h_Z per dex of [M/H] at fixed age, fitted with one intercept per age bin
+(:class:`MetallicitySlopes`), does not need one scale, and every set of cells carries it,
+for our counts and for the heights of Imig et al. in the same cells.
 """
 
 from __future__ import annotations
@@ -31,11 +38,18 @@ import numpy as np
 from numpy.typing import NDArray
 
 from experiments.mw_analysis import SolarModel
-from experiments.mw_catalogs import Apogee, GaiaStars, TargetingBox, apogee_age_tracers
-from experiments.mw_counts import CountSample, apogee_count_sample, count_hz
+from experiments.mw_catalogs import (
+    Apogee,
+    GaiaStars,
+    TargetingBox,
+    apogee_age_tracers,
+    lamost_age_tracers,
+    lamost_low_alpha,
+)
+from experiments.mw_counts import CountSample, apogee_count_sample, count_hz, lamost_count_sample
 from experiments.mw_dynamics import R0_KPC
 from experiments.mw_imig import N_DRAWS, R_SUN_IMIG_KPC, ImigPopulations, split_normal
-from experiments.populations import Estimate, Trend, fit_log_slope
+from experiments.populations import Estimate, Trend, fit_grouped_log_slope, fit_log_slope
 from experiments.stats import half_width
 
 FloatArray = NDArray[np.float64]
@@ -77,10 +91,20 @@ class ImigCell:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(frozen=True)
-class ImigCells:
-    """Every cell and, over the measured ones, the median ratio and the slope of its logarithm per dex of [M/H].
+class MetallicitySlopes:
+    """The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin: ours and theirs, same cells."""
 
-    ``n_matches`` is the number of matched stars that split the counts into populations.
+    counts: Trend
+    imig: Trend
+
+
+@dataclass(frozen=True)
+class ImigCells:
+    """Every cell and, over the measured ones, the median ratio, the slope of its logarithm and those of the heights.
+
+    ``n_matches`` is the number of matched stars that split the counts into populations,
+    ``trend`` the slope of ln(counts / Imig) per dex of [M/H], and ``slopes`` those of the
+    heights at fixed age.
     """
 
     n_matches: int
@@ -89,6 +113,7 @@ class ImigCells:
     n_measured: int
     median_ratio: float
     trend: Trend
+    slopes: MetallicitySlopes
 
 
 def imig_low_alpha(m_h: FloatArray, alpha_m: FloatArray) -> BoolArray:
@@ -98,13 +123,34 @@ def imig_low_alpha(m_h: FloatArray, alpha_m: FloatArray) -> BoolArray:
 
 def metallicity_counts(gaia: GaiaStars, apogee: Apogee, populations: list[ImigPopulations]) -> list[MetallicityCounts]:
     """Return our counts of every [M/H] bin of *populations*, with the ages and ASPCAP abundances of *apogee*."""
-    edges = sorted({edge for pops in populations for edge in zip(pops.m_h_lo.tolist(), pops.m_h_hi.tolist())})
     low = imig_low_alpha(apogee.m_h, apogee.alpha_m)
     return [
         MetallicityCounts(
             lo, hi, apogee_count_sample(gaia, apogee_age_tracers(apogee, low & (apogee.m_h >= lo) & (apogee.m_h < hi)))
         )
-        for lo, hi in edges
+        for lo, hi in _metallicity_edges(populations)
+    ]
+
+
+def _metallicity_edges(populations: list[ImigPopulations]) -> list[tuple[float, float]]:
+    """Return the edges of the [M/H] bins of *populations*, in increasing order."""
+    return sorted({edge for pops in populations for edge in zip(pops.m_h_lo.tolist(), pops.m_h_hi.tolist())})
+
+
+def lamost_metallicity_counts(
+    gaia: GaiaStars, lamost: dict[str, FloatArray], populations: list[ImigPopulations]
+) -> list[MetallicityCounts]:
+    """Return the LAMOST counts of every [M/H] bin of *populations*, split by the [Fe/H] and the alpha of LAMOST."""
+    low = lamost_low_alpha(lamost["FEH"], lamost["AFE"])
+    return [
+        MetallicityCounts(
+            lo,
+            hi,
+            lamost_count_sample(gaia, lamost_age_tracers(lamost, low & (lamost["FEH"] >= lo) & (lamost["FEH"] < hi)))[
+                0
+            ],
+        )
+        for lo, hi in _metallicity_edges(populations)
     ]
 
 
@@ -207,13 +253,27 @@ def measure_cells(
         if c.n_matched >= min_matches and np.isfinite(c.ratio.value) and np.isfinite(c.ratio.err) and c.ratio.err > 0.0
     ]
     n_matches = int(metallicities[0].counts.tracer_age.size) if metallicities else 0
+    slopes = _metallicity_slopes(ok)
     if len(ok) < 3:
         nan = float("nan")
-        return ImigCells(n_matches, min_matches, cells, len(ok), nan, Trend(nan, nan, nan))
+        return ImigCells(n_matches, min_matches, cells, len(ok), nan, Trend(nan, nan, nan), slopes)
     ratio = np.array([c.ratio.value for c in ok])
     err = np.array([c.ratio.err for c in ok])
     m_h = np.array([0.5 * (c.m_h_lo + c.m_h_hi) for c in ok])
-    return ImigCells(n_matches, min_matches, cells, len(ok), float(np.median(ratio)), fit_log_slope(m_h, ratio, err))
+    trend = fit_log_slope(m_h, ratio, err)
+    return ImigCells(n_matches, min_matches, cells, len(ok), float(np.median(ratio)), trend, slopes)
+
+
+def _metallicity_slopes(cells: list[ImigCell]) -> MetallicitySlopes:
+    """Return the slopes of ln h_Z per dex of [M/H] of our counts and of their heights in *cells*, at fixed age."""
+    m_h = np.array([0.5 * (c.m_h_lo + c.m_h_hi) for c in cells])
+    age = np.array([c.age_lo for c in cells])
+
+    def slope(heights: list[Estimate]) -> Trend:
+        value = np.array([h.value for h in heights])
+        return fit_grouped_log_slope(m_h, value, np.array([h.err for h in heights]), age)
+
+    return MetallicitySlopes(slope([c.counts for c in cells]), slope([c.imig for c in cells]))
 
 
 @dataclass(frozen=True)

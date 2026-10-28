@@ -451,10 +451,10 @@ def _log_line(x: FloatArray, y: FloatArray, y_err: FloatArray) -> tuple[FloatArr
     return _line(np.log(x), np.log(y), (y / y_err) ** 2)
 
 
-def _scaled_trend(coef: FloatArray, cov: FloatArray, chi2: float, n: int) -> Trend:
-    """Return the slope of a fit to *n* points, its error times sqrt(max(1, chi^2 per dof)), and that chi^2."""
-    chi2_dof = chi2 / (n - 2)
-    return Trend(float(coef[1]), float(np.sqrt(cov[1, 1] * max(1.0, chi2_dof))), chi2_dof)
+def _scaled_trend(coef: FloatArray, cov: FloatArray, chi2: float, dof: int) -> Trend:
+    """Return the last coefficient of a fit, its error times sqrt(max(1, chi^2 per dof)), and that chi^2 per dof."""
+    chi2_dof = chi2 / dof
+    return Trend(float(coef[-1]), float(np.sqrt(cov[-1, -1] * max(1.0, chi2_dof))), chi2_dof)
 
 
 def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
@@ -465,12 +465,37 @@ def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
 
 def fit_trend(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
     """Return the exponent of y = A x^p, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
-    return _scaled_trend(*_log_line(x, y, y_err), x.size)
+    return _scaled_trend(*_log_line(x, y, y_err), x.size - 2)
 
 
 def fit_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
     """Return the slope of ln y against x, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
-    return _scaled_trend(*_line(x, np.log(y), (y / y_err) ** 2), x.size)
+    return _scaled_trend(*_line(x, np.log(y), (y / y_err) ** 2), x.size - 2)
+
+
+def fit_grouped_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray, group: FloatArray) -> Trend:
+    """Return the slope of ln y against x shared by every *group*, each with its own intercept.
+
+    With one intercept per group, the weighted least-squares slope is that of the deviations
+    of x and ln y from their weighted means in each group, and its variance is the inverse
+    of the weighted sum of the squared deviations of x. The error is scaled by
+    sqrt(max(1, chi^2 per degree of freedom)); with no degree of freedom left, or no spread
+    of x inside any group, every value is NaN.
+    """
+    log_y, w = np.log(y), (y / y_err) ** 2
+    dx, dy = np.empty_like(x), np.empty_like(log_y)
+    groups = np.unique(group)
+    for g in groups:
+        rows = group == g
+        dx[rows] = x[rows] - np.average(x[rows], weights=w[rows])
+        dy[rows] = log_y[rows] - np.average(log_y[rows], weights=w[rows])
+    sxx = float(np.sum(w * dx**2))
+    dof = x.size - groups.size - 1
+    if dof < 1 or sxx <= 0.0:
+        return Trend(float("nan"), float("nan"), float("nan"))
+    slope = float(np.sum(w * dx * dy)) / sxx
+    chi2_dof = float(np.sum(w * (dy - slope * dx) ** 2)) / dof
+    return Trend(slope, float(np.sqrt(max(1.0, chi2_dof) / sxx)), chi2_dof)
 
 
 def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:

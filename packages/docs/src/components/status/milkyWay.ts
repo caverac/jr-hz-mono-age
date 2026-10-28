@@ -114,7 +114,13 @@ export interface ImigCell {
   readonly ratio: Estimate
 }
 
-/** Every cell and, over the measured ones, the median ratio and the slope of its logarithm per dex of [M/H]. */
+/** The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin: ours and theirs in the same cells. */
+export interface MetallicitySlopes {
+  readonly counts: Trend
+  readonly imig: Trend
+}
+
+/** Every cell and, over the measured ones, the median ratio, the slope of its logarithm and those of the heights. */
 export interface ImigCells {
   /** The matched stars that split the counts into populations. */
   readonly nMatches: number
@@ -123,6 +129,7 @@ export interface ImigCells {
   readonly nMeasured: number
   readonly medianRatio: number
   readonly trend: Trend
+  readonly slopes: MetallicitySlopes
 }
 
 /** The value of `jkHi` with which the package marks a targeting box without a red limit. */
@@ -154,6 +161,8 @@ export interface MilkyWayData {
   }
   readonly imigCells: ImigCells
   readonly imigCellsTargeting: readonly TargetedCells[]
+  /** The cells with the LAMOST counts, whose ages are not on the scale of Imig et al. */
+  readonly imigCellsLamost: ImigCells
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -244,7 +253,11 @@ function parseImigCells(cells: unknown): ImigCells {
     cells: list(cells, 'cells').map(parseImigCell),
     nMeasured: num(cells, 'n_measured'),
     medianRatio: num(cells, 'median_ratio'),
-    trend: trend(cells, 'trend')
+    trend: trend(cells, 'trend'),
+    slopes: {
+      counts: trend(field(cells, 'slopes'), 'counts'),
+      imig: trend(field(cells, 'slopes'), 'imig')
+    }
   }
 }
 
@@ -310,6 +323,7 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
         },
         cells: parseImigCells(field(targeted, 'cells'))
       }
-    })
+    }),
+    imigCellsLamost: parseImigCells(field(record, 'imig_cells_lamost'))
   }
 }

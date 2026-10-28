@@ -97,10 +97,14 @@ def cell_lines(cells: ImigCells, title: str = "imig cells") -> list[str]:
         ]
         median = f"{np.median([c.ratio.value for c in measured]):.2f}" if measured else "none"
         lines.append(f"  {lo:+.1f}  {len(measured):5d} {sum(c.n_matched for c in measured):8d}  {median}")
-    t = cells.trend
+    t, ours, theirs = cells.trend, cells.slopes.counts, cells.slopes.imig
     lines.append(
         f"  {cells.n_measured} cells: median {cells.median_ratio:.2f}, "
         f"slope of ln(counts/Imig) {t.value:+.2f}+/-{t.err:.2f} per dex of [M/H]"
+    )
+    lines.append(
+        f"  slope of ln h_Z per dex at fixed age: counts {ours.value:+.2f}+/-{ours.err:.2f}, "
+        f"Imig {theirs.value:+.2f}+/-{theirs.err:.2f}"
     )
     return lines
 
@@ -128,6 +132,7 @@ def report_lines(result: MilkyWay) -> list[str]:
         box = targeted.box
         title = f"imig cells in {box.h_lo:g} < H < {box.h_hi:g}, {box.jk_lo:g} < (J-K)0 < {box.jk_hi:g}"
         lines.extend(cell_lines(targeted.cells, title))
+    lines.extend(cell_lines(result.imig_cells_lamost, "imig cells with LAMOST, LAMOST ages"))
     return lines
 
 

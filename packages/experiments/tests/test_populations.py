@@ -30,6 +30,7 @@ from experiments.populations import (
     Method,
     MonoAge,
     VerticalModel,
+    fit_grouped_log_slope,
     fit_log_slope,
     fit_power_law,
     fit_trend,
@@ -225,6 +226,37 @@ def test_fit_log_slope_recovers_an_exponential_in_x() -> None:
     y = 2.0 * np.exp(0.5 * x)
     trend = fit_log_slope(x, y, 0.05 * y)
     assert trend.value == pytest.approx(0.5) and trend.chi2_dof == pytest.approx(0.0, abs=1e-20)
+
+
+def test_fit_grouped_log_slope_shares_the_slope_across_groups() -> None:
+    """Two groups of different normalization share the slope 0.5 of ln y; one point per group leaves no dof."""
+    x = np.array([-0.4, 0.0, 0.3, -0.2, 0.1, 0.4])
+    group = np.array([1.0, 1.0, 1.0, 2.0, 2.0, 2.0])
+    y = np.where(group == 1.0, 2.0, 5.0) * np.exp(0.5 * x)
+    trend = fit_grouped_log_slope(x, y, 0.05 * y, group)
+    assert trend.value == pytest.approx(0.5) and trend.chi2_dof == pytest.approx(0.0, abs=1e-20)
+    alone = fit_grouped_log_slope(x[:2], y[:2], 0.05 * y[:2], np.array([1.0, 2.0]))
+    assert np.isnan(alone.value) and np.isnan(alone.err)
+    flat = fit_grouped_log_slope(np.repeat([0.1, 0.2], 3), y, 0.05 * y, group)
+    assert np.isnan(flat.value)
+
+
+def test_fit_grouped_log_slope_equals_the_fit_with_one_column_per_group() -> None:
+    """The slope, its error and chi^2 equal those of weighted least squares with an intercept column per group."""
+    rng = np.random.default_rng(8)
+    x = rng.uniform(-0.5, 0.4, 30)
+    group = rng.integers(0, 5, 30).astype(np.float64)
+    y = np.exp(0.3 * x + 0.2 * group + rng.normal(0.0, 0.1, 30))
+    y_err = rng.uniform(0.05, 0.2, 30) * y
+    design = np.column_stack([*(np.asarray(group == g, dtype=np.float64) for g in np.unique(group)), x])
+    w = (y / y_err) ** 2
+    cov = np.linalg.inv(design.T @ (design * w[:, None]))
+    coef = cov @ (design.T @ (w * np.log(y)))
+    dof = x.size - design.shape[1]
+    chi2_dof = float(np.sum(w * (np.log(y) - design @ coef) ** 2)) / dof
+    trend = fit_grouped_log_slope(x, y, y_err, group)
+    assert trend.value == pytest.approx(coef[-1], rel=1e-10) and trend.chi2_dof == pytest.approx(chi2_dof, rel=1e-10)
+    assert trend.err == pytest.approx(np.sqrt(cov[-1, -1] * max(1.0, chi2_dof)), rel=1e-10)
 
 
 def test_fit_trend_widens_its_error_by_the_scatter() -> None:
