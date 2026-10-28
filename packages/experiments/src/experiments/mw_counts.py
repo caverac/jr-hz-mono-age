@@ -25,6 +25,11 @@ position, so the fraction of a slice is unbiased although the completeness of th
 changes with z. h_Z is fitted to the weighted counts as to the star particles of the
 Auriga disks (:func:`experiments.heights.particle_hz`), in the self-consistent window
 L = k h_Z. The counts stop at ``Z_MAX_KPC``, so a window beyond it has no h_Z.
+
+A sample keeps its Gaia stars in ascending |z| (:func:`count_sample`), and a bootstrap
+draw enters each star with its multiplicity instead of copying it, so that the windows of
+the self-consistent search read running sums (:class:`experiments.heights.SortedHeights`)
+rather than scan the cylinder about 650 times per draw.
 """
 
 from __future__ import annotations
@@ -36,7 +41,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import minimize
 
-from experiments.heights import particle_hz, self_consistent_window
+from experiments.heights import SortedHeights, self_consistent_window
 from experiments.mw_catalogs import AgeTracers, GaiaStars
 from experiments.mw_dynamics import DEG, Z_SUN_KPC
 
@@ -64,18 +69,49 @@ SHAPE_BOUNDS = ((-1.95, -1.55), (0.05, 0.20), (-1.5, -1.0), (0.08, 0.25), (-1.0,
 
 @dataclass(frozen=True)
 class CountSample:
-    """|z| (kpc) of the Gaia stars of a window, and the |z|, age and population of their spectroscopic matches."""
+    """|z| (kpc) of the Gaia stars of a window with their multiplicities, and the |z|, age and population of matches.
+
+    ``gaia_absz`` is in ascending order, and ``gaia_rank`` gives the position in it of each
+    row of the catalog. ``gaia_count`` is the number of times each star enters the sample:
+    1 in the catalog, and its multiplicity in a bootstrap draw.
+    """
 
     gaia_absz: FloatArray
+    gaia_rank: NDArray[np.int64]
+    gaia_count: FloatArray
     tracer_absz: FloatArray
     tracer_age: FloatArray
     tracer_in_disk: BoolArray
 
     def resampled(self, rng: np.random.Generator) -> CountSample:
-        """Return a bootstrap copy, with the Gaia stars and the matches resampled independently."""
-        g = rng.integers(0, self.gaia_absz.size, self.gaia_absz.size)
+        """Return a bootstrap copy, with the Gaia stars and the matches resampled independently.
+
+        A draw of the Gaia stars becomes the multiplicity of each star, so the copy keeps
+        ``gaia_absz``. The generator draws rows of the catalog, each entered as often as its
+        star, so the draws do not depend on the order in which the stars are kept.
+        """
+        n_gaia = int(self.gaia_count.sum())
+        entries = np.repeat(self.gaia_rank, self.gaia_count[self.gaia_rank].astype(np.int64))
+        g = entries[rng.integers(0, n_gaia, n_gaia)]
         t = rng.integers(0, self.tracer_age.size, self.tracer_age.size)
-        return CountSample(self.gaia_absz[g], self.tracer_absz[t], self.tracer_age[t], self.tracer_in_disk[t])
+        return CountSample(
+            self.gaia_absz,
+            self.gaia_rank,
+            np.bincount(g, minlength=self.gaia_absz.size).astype(np.float64),
+            self.tracer_absz[t],
+            self.tracer_age[t],
+            self.tracer_in_disk[t],
+        )
+
+
+def count_sample(
+    gaia_absz: FloatArray, tracer_absz: FloatArray, tracer_age: FloatArray, tracer_in_disk: BoolArray
+) -> CountSample:
+    """Return the counts of the Gaia stars at heights *gaia_absz*, each entered once, with their matches."""
+    order = np.argsort(gaia_absz)
+    rank = np.empty_like(order)
+    rank[order] = np.arange(order.size)
+    return CountSample(gaia_absz[order], rank, np.ones(order.size), tracer_absz, tracer_age, tracer_in_disk)
 
 
 @dataclass(frozen=True)
@@ -233,7 +269,7 @@ def lamost_count_sample(gaia: GaiaStars, tracers: AgeTracers) -> tuple[CountSamp
     )
     pairs, claims = np.unique(near[matched], return_counts=True)
     matched &= np.isin(near, pairs[claims == 1])
-    sample = CountSample(
+    sample = count_sample(
         cylinder.absz[clump.inside],
         cylinder.absz[near[matched]],
         tracers.age[matched],
@@ -249,7 +285,7 @@ def apogee_count_sample(gaia: GaiaStars, tracers: AgeTracers) -> CountSample:
     order = np.argsort(ids)
     position = order[np.clip(np.searchsorted(ids, tracers.source_id, sorter=order), 0, ids.size - 1)]
     matched = (tracers.source_id > 0) & (ids[position] == tracers.source_id)
-    return CountSample(
+    return count_sample(
         cylinder.absz,
         cylinder.absz[position[matched]],
         tracers.age[matched],
@@ -276,8 +312,8 @@ def population_weight(sample: CountSample, lo: float, hi: float) -> FloatArray:
 
 def count_hz(sample: CountSample, lo: float, hi: float, k: float) -> tuple[float, float]:
     """Return h_Z (kpc) of the population of ages [*lo*, *hi*) and its window k h_Z; NaN for both beyond the counts."""
-    weight = population_weight(sample, lo, hi)
-    hz, window = self_consistent_window(lambda w: particle_hz(sample.gaia_absz, weight, w), k)
+    heights = SortedHeights.of(sample.gaia_absz, population_weight(sample, lo, hi), sample.gaia_count)
+    hz, window = self_consistent_window(heights.hz, k)
     if not np.isfinite(window) or window > Z_MAX_KPC:
         return float("nan"), float("nan")
     return hz, window

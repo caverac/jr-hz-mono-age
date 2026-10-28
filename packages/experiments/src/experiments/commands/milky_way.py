@@ -15,11 +15,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import click
+import numpy as np
 import pyvo
 
 from experiments._paths import MW_DATA_DIR, MW_ROOT
 from experiments.commands._report import write_json
 from experiments.mw_analysis import N_BOOTSTRAP, MwSurvey
+from experiments.mw_imig_cells import ImigCells
 from experiments.mw_pipeline import MilkyWay, analyze_milky_way
 from experiments.mw_sources import FILE_SOURCES, GAIA_TAP_URL, check_file, check_gaia, fetch_file, fetch_gaia
 
@@ -83,6 +85,23 @@ def survey_lines(survey: MwSurvey) -> list[str]:
     return lines
 
 
+def cell_lines(cells: ImigCells) -> list[str]:
+    """Return the printed summary of the populations of Imig et al. one at a time, by [M/H] bin."""
+    lines = [f"imig cells with {cells.min_matches}+ matches:   [M/H]  cells  matches  median counts/Imig"]
+    for lo in sorted({c.m_h_lo for c in cells.cells}):
+        measured = [
+            c for c in cells.cells if c.m_h_lo == lo and c.n_matched >= cells.min_matches and np.isfinite(c.ratio.value)
+        ]
+        median = f"{np.median([c.ratio.value for c in measured]):.2f}" if measured else "none"
+        lines.append(f"  {lo:+.1f}  {len(measured):5d} {sum(c.n_matched for c in measured):8d}  {median}")
+    t = cells.trend
+    lines.append(
+        f"  {cells.n_measured} cells: median {cells.median_ratio:.2f}, "
+        f"slope of ln(counts/Imig) {t.value:+.2f}+/-{t.err:.2f} per dex of [M/H]"
+    )
+    return lines
+
+
 def report_lines(result: MilkyWay) -> list[str]:
     """Return the printed report of the Milky Way test."""
     lines = [f"Milky Way at R_0 = {result.r0_kpc} kpc, Sigma = {result.sigma_surf:.1f} Msun/pc^2, k = {result.k}"]
@@ -101,6 +120,7 @@ def report_lines(result: MilkyWay) -> list[str]:
         )
     trends = ", ".join(f"{k} {t.value:+.3f}+/-{t.err:.3f}" for k, t in result.imig.trends.items())
     lines.append(f"  trends of tracer/h: {trends}")
+    lines.extend(cell_lines(result.imig_cells))
     return lines
 
 

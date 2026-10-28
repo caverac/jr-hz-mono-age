@@ -6,11 +6,12 @@ import {
   type Line,
   parseJrRelation
 } from '@site/src/components/status/jrRelation'
-import { extent, trendText } from '@site/src/components/status/metrics'
+import { extent, median, trendText } from '@site/src/components/status/metrics'
 import {
   type ImigBin,
   type ImigHeight,
   imigAge,
+  isMeasured,
   MILKY_WAY_PATH,
   type MilkyWayData,
   type MwRange,
@@ -114,6 +115,16 @@ function imigHeight(data: MilkyWayData, height: ImigHeight, age: number): string
     : `${plusMinus(bin.heights[height].value, bin.heights[height].err, 3, false)} kpc`
 }
 
+/** The median of our counts over their h_Z in the measured cells whose [M/H] center lies in [lo, hi), and their number. */
+function cellMedian(data: MilkyWayData, lo: number, hi: number): string {
+  const { imigCells } = data
+  const ratios = imigCells.cells
+    .filter((c) => isMeasured(imigCells, c))
+    .filter((c) => 0.5 * (c.mhLo + c.mhHi) >= lo && 0.5 * (c.mhLo + c.mhHi) < hi)
+    .map((c) => c.ratio.value)
+  return `${fixed(median(ratios))} over ${ratios.length} cells`
+}
+
 /** The ages of the Imig et al. bins without the height `height`. */
 function imigMissing(data: MilkyWayData, height: ImigHeight): string {
   const missing = data.imig.bins.filter((b) => !Number.isFinite(b.heights[height].value))
@@ -183,7 +194,20 @@ const MW_METRICS = {
   imigCountsTrend: (d: MilkyWayData) => trendText(d.imig.trends.imigCounts),
   countsAstronnTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsAstronn),
   countsDistmassTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsDistmass),
-  countsDistmassMissing: (d: MilkyWayData) => imigMissing(d, 'countsDistmass')
+  countsDistmassMissing: (d: MilkyWayData) => imigMissing(d, 'countsDistmass'),
+  cellsMin: (d: MilkyWayData) => String(d.imigCells.minMatches),
+  cellsMeasured: (d: MilkyWayData) => `${d.imigCells.nMeasured} of ${d.imigCells.cells.length}`,
+  cellsMedian: (d: MilkyWayData) => fixed(d.imigCells.medianRatio),
+  cellsTrend: (d: MilkyWayData) => trendText(d.imigCells.trend),
+  cellsMetalPoor: (d: MilkyWayData) => cellMedian(d, Number.NEGATIVE_INFINITY, -0.1),
+  cellsMetalSolar: (d: MilkyWayData) => cellMedian(d, -0.1, 0.1),
+  cellsMetalRich: (d: MilkyWayData) => cellMedian(d, 0.1, Number.POSITIVE_INFINITY),
+  cellsStars: (d: MilkyWayData) => {
+    const measured = d.imigCells.cells.filter((c) => isMeasured(d.imigCells, c))
+    const sum = (cells: readonly { readonly nStars: number }[]) =>
+      cells.reduce((total, c) => total + c.nStars, 0)
+    return `${count(sum(measured))} of their ${count(sum(d.imigCells.cells))} stars`
+  }
 } satisfies Record<string, (d: MilkyWayData) => string>
 
 const JR_METRICS = {

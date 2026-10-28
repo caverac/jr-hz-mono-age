@@ -23,6 +23,7 @@ Two predictions of h_Z from the midplane dispersion sigma_z go through the same 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -71,6 +72,45 @@ def particle_hz(absz: FloatArray, weight: FloatArray, window: float) -> float:
     return float(np.mean(scales))
 
 
+@dataclass(frozen=True)
+class SortedHeights:
+    """Particle heights in ascending order, with the running sums that :func:`particle_hz` takes in each window.
+
+    :func:`particle_hz` scans every particle for each window, and the self-consistent
+    search asks for about 70 windows. Sorted once, the particles inside a window are a
+    prefix of the array, so each window costs one binary search. Entry i of ``count``,
+    ``weight`` and ``moment`` totals the multiplicity, the weight and the weight times |z|
+    of the first i particles.
+    """
+
+    absz: FloatArray
+    count: FloatArray
+    weight: FloatArray
+    moment: FloatArray
+
+    @classmethod
+    def of(cls, absz: FloatArray, weight: FloatArray, multiplicity: FloatArray) -> SortedHeights:
+        """Return the running sums of heights *absz* in ascending order, entering *multiplicity* times each."""
+        if np.any(np.diff(absz) < 0.0):
+            raise ValueError("the heights are not in ascending order")
+
+        def running(values: FloatArray) -> FloatArray:
+            return np.concatenate(([0.0], np.cumsum(values)))
+
+        mass = multiplicity * weight
+        return cls(absz, running(multiplicity), running(mass), running(mass * absz))
+
+    def hz(self, window: float) -> float:
+        """Return :func:`particle_hz` of the heights, each entered with its multiplicity, in *window*."""
+        if self.count[np.searchsorted(self.absz, 0.5 * window, side="right")] < N_MIN_HALF_WINDOW:
+            return float("nan")
+        scales = []
+        for limit in (window, 0.5 * window):
+            inside = np.searchsorted(self.absz, limit, side="right")
+            scales.append(truncated_exp_scale(float(self.moment[inside] / self.weight[inside]), limit))
+        return float(np.mean(scales))
+
+
 def _profile_mean(rho: FloatArray, limit: float, z_grid: FloatArray) -> float:
     """Return the mean height of the profile *rho* on *z_grid* over [0, *limit*].
 
@@ -106,10 +146,10 @@ def self_consistent_window(hz_of_window: Callable[[float], float], k: float) -> 
         scale = hz_of_window(window)
         return window - k * scale if np.isfinite(scale) else -np.inf
 
-    above = np.flatnonzero(np.array([g(float(w)) for w in WINDOW_GRID]) >= 0.0)
-    if above.size == 0 or above[0] == 0:
+    first = next((i for i, w in enumerate(WINDOW_GRID) if g(float(w)) >= 0.0), None)
+    if first is None or first == 0:
         return float("nan"), float("nan")
-    lo, hi = float(WINDOW_GRID[above[0] - 1]), float(WINDOW_GRID[above[0]])
+    lo, hi = float(WINDOW_GRID[first - 1]), float(WINDOW_GRID[first])
     for _ in range(BISECTION_STEPS):
         mid = float(np.sqrt(lo * hi))
         if g(mid) >= 0.0:

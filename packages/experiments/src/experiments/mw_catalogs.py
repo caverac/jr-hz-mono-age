@@ -21,7 +21,7 @@ motions and line-of-sight velocity.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from pathlib import Path
 
 import numpy as np
@@ -89,7 +89,7 @@ class AgeTracers:
     b: FloatArray  # deg
     g: FloatArray
     age: FloatArray
-    in_disk: BoolArray  # low-[alpha/Fe] and [Fe/H] > FEH_MIN
+    in_disk: BoolArray  # in the populations measured: by default low-[alpha/Fe] with [Fe/H] > FEH_MIN
 
 
 @dataclass(frozen=True)
@@ -122,13 +122,20 @@ def read_gaia(path: Path) -> GaiaStars:
 
 
 @dataclass(frozen=True)
-class Apogee:
-    """The astroNN columns of the analysis, as floats, with source_id, and the rows to keep."""
+class Apogee:  # pylint: disable=too-many-instance-attributes
+    """The astroNN columns of the analysis, as floats, with source_id, the rows to keep and the ASPCAP abundances.
+
+    ``m_h`` and ``alpha_m`` are the ASPCAP [M/H] and [alpha/M] of the row-matched allStar,
+    in which Imig et al. (2025) bin their populations. They stay out of ``num``, whose
+    columns the kinematic sample requires to be finite.
+    """
 
     num: dict[str, FloatArray]
     source_id: NDArray[np.int64]
     main: BoolArray  # main survey and the first row of its APOGEE_ID
     apogee_id: NDArray[np.str_]
+    m_h: FloatArray
+    alpha_m: FloatArray
 
 
 def read_apogee(astronn: Path, allstar: Path) -> Apogee:
@@ -137,10 +144,18 @@ def read_apogee(astronn: Path, allstar: Path) -> Apogee:
     _, first = np.unique(cols["APOGEE_ID"], return_index=True)
     main = np.zeros(cols["APOGEE_ID"].size, dtype=np.bool_)
     main[first] = True
-    main &= _columns(allstar, ("EXTRATARG",))["EXTRATARG"] == 0
+    aspcap = _columns(allstar, ("EXTRATARG", "M_H", "ALPHA_M"))
+    main &= aspcap["EXTRATARG"] == 0
     num = {k: np.asarray(v, dtype=np.float64) for k, v in cols.items() if k not in ("APOGEE_ID", "source_id")}
     ids = np.char.strip(np.asarray(cols["APOGEE_ID"]).astype(np.str_))
-    return Apogee(num, np.asarray(cols["source_id"], dtype=np.int64), main, ids)
+    return Apogee(
+        num,
+        np.asarray(cols["source_id"], dtype=np.int64),
+        main,
+        ids,
+        np.asarray(aspcap["M_H"], dtype=np.float64),
+        np.asarray(aspcap["ALPHA_M"], dtype=np.float64),
+    )
 
 
 def with_distmass_ages(apogee: Apogee, distmass: Path) -> Apogee:
@@ -158,7 +173,7 @@ def with_distmass_ages(apogee: Apogee, distmass: Path) -> Apogee:
     err = np.asarray(cols["AGE_ERR"], dtype=np.float64)
     fraction = 0.5 * (10.0 ** err[:, 0] - 10.0 ** err[:, 1])
     num = {**apogee.num, "age_lowess_correct": age, "age_total_error": age * fraction}
-    return Apogee(num, apogee.source_id, apogee.main, apogee.apogee_id)
+    return replace(apogee, num=num)
 
 
 def apogee_kinematics(apogee: Apogee) -> KinematicStars:
@@ -181,8 +196,12 @@ def apogee_kinematics(apogee: Apogee) -> KinematicStars:
     return KinematicStars(age[keep], phase, num["galvr_err"][keep], num["galvz_err"][keep])
 
 
-def apogee_age_tracers(apogee: Apogee) -> AgeTracers:
-    """Return the main-survey APOGEE stars with a Gaia DR3 source_id, an age and abundances."""
+def apogee_age_tracers(apogee: Apogee, population: BoolArray | None = None) -> AgeTracers:
+    """Return the main-survey APOGEE stars with a Gaia DR3 source_id, an age and abundances.
+
+    Their populations are the rows where *population* holds, by default the low-[alpha/Fe]
+    stars with [Fe/H] > ``FEH_MIN``; the stars kept do not depend on it.
+    """
     num = apogee.num
     fe_h, age = num["FE_H"], num["age_lowess_correct"]
     with np.errstate(invalid="ignore"):
@@ -190,9 +209,10 @@ def apogee_age_tracers(apogee: Apogee) -> AgeTracers:
             apogee.main & (apogee.source_id > 0) & np.isfinite(age) & (age > 0.0)
             & np.isfinite(num["MG_H"]) & np.isfinite(fe_h)
         )  # fmt: skip
-    in_disk = apogee_low_alpha(fe_h[keep], num["MG_H"][keep] - fe_h[keep]) & (fe_h[keep] > FEH_MIN)
+        if population is None:
+            population = apogee_low_alpha(fe_h, num["MG_H"] - fe_h) & (fe_h > FEH_MIN)
     nan = np.full(int(keep.sum()), np.nan)
-    return AgeTracers(apogee.source_id[keep], nan, nan, nan, age[keep], in_disk)
+    return AgeTracers(apogee.source_id[keep], nan, nan, nan, age[keep], population[keep])
 
 
 def read_lamost(path: Path) -> dict[str, FloatArray]:

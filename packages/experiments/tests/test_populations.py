@@ -30,6 +30,7 @@ from experiments.populations import (
     Method,
     MonoAge,
     VerticalModel,
+    fit_log_slope,
     fit_power_law,
     fit_trend,
     measure_mono_age,
@@ -216,6 +217,14 @@ def test_fit_trend_is_the_difference_of_the_exponents_with_one_set_of_weights() 
     rel = np.array([0.02, 0.03, 0.05, 0.04, 0.08])
     difference = fit_power_law(x, y, rel * y).value - fit_power_law(x, y_pred, rel * y_pred).value
     assert fit_trend(x, y / y_pred, rel * y / y_pred).value == pytest.approx(difference)
+
+
+def test_fit_log_slope_recovers_an_exponential_in_x() -> None:
+    """An exponential 2 exp(0.5 x) has a slope of 0.5 in ln y against x, also at negative x, with no scatter."""
+    x = np.array([-0.4, -0.1, 0.2, 0.5])
+    y = 2.0 * np.exp(0.5 * x)
+    trend = fit_log_slope(x, y, 0.05 * y)
+    assert trend.value == pytest.approx(0.5) and trend.chi2_dof == pytest.approx(0.0, abs=1e-20)
 
 
 def test_fit_trend_widens_its_error_by_the_scatter() -> None:

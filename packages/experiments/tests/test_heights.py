@@ -15,6 +15,7 @@ from experiments.heights import (
     G_PC,
     N_MIN_HALF_WINDOW,
     Z_GRID,
+    SortedHeights,
     particle_hz,
     profile_hz,
     scaled_particle_hz,
@@ -60,6 +61,27 @@ def test_particle_hz_needs_particles_in_the_inner_half() -> None:
     """With fewer than ``N_MIN_HALF_WINDOW`` particles inside window / 2 there is no fit."""
     absz = np.concatenate([np.full(N_MIN_HALF_WINDOW - 1, 0.1), np.full(100, 0.8)])
     assert np.isnan(particle_hz(absz, np.ones_like(absz), 1.0))
+
+
+@pytest.mark.parametrize("window", [1.0e-4, 0.05, 0.3, 1.0, 3.0, 20.0])
+def test_sorted_heights_give_the_scan_of_particle_hz(window: float) -> None:
+    """Running sums over sorted heights fit as the scan does, with each multiplicity a repeated particle.
+
+    The narrowest window has too few particles in its inner half, so both fits are NaN.
+    """
+    rng = np.random.default_rng(5)
+    absz = np.sort(rng.exponential(0.4, 20_000))
+    weight = rng.uniform(0.5, 2.0, absz.size)
+    multiplicity = rng.integers(0, 3, absz.size).astype(np.float64)
+    repeats = multiplicity.astype(np.int64)
+    expected = particle_hz(np.repeat(absz, repeats), np.repeat(weight, repeats), window)
+    assert SortedHeights.of(absz, weight, multiplicity).hz(window) == pytest.approx(expected, rel=1e-12, nan_ok=True)
+
+
+def test_sorted_heights_need_heights_in_ascending_order() -> None:
+    """Running sums over unsorted heights would not hold the particles inside a window."""
+    with pytest.raises(ValueError, match="ascending"):
+        SortedHeights.of(np.array([0.2, 0.1]), np.ones(2), np.ones(2))
 
 
 @pytest.mark.parametrize("scale", [0.3, 1.0])

@@ -5,6 +5,7 @@ title: Milky Way
 import MilkyWayChart from '@site/src/components/status/MilkyWayChart'
 import { MwMetric } from '@site/src/components/status/RecordMetric'
 import {
+  ImigCellTable,
   ImigRatioTable,
   ImigTable,
   MwBinTable,
@@ -162,21 +163,48 @@ thus lies between two measurements of the vertical profile of the same populatio
 their ages or in how they are weighted. The claim therefore holds in the Milky Way only if
 our counts measure that profile correctly.
 
-Two differences remain untested. Their $h_Z$ is a parameter of a fit over the footprint of
-APOGEE out to $R = 20$ kpc, in which a single exponential in $|z|$ holds at every radius
-and its scale changes only linearly with $R$, whereas ours is fit to a cylinder of radius
-1.5 kpc around the Sun within $|z| < 1.2$ kpc. If the profile at $R_0$ is not an
-exponential, or its flare not linear, the global fit can return a scale height at
-$R_\odot$ that the local profile does not have. Their bins of $[\mathrm{M/H}]$ are also
-pooled here into one population, whereas our counts select $[\mathrm{Fe/H}] > -0.6$
-directly. Comparing single bins of $[\mathrm{M/H}]$ with counts of the same metallicity
-would test the second difference with the files at hand.
+### One population at a time
+
+The pooled heights mix the bins of $[\mathrm{M/H}]$ of each age bin, and each side weights
+them in its own way. We remove the pooling by comparing every population of Imig et al.
+with our counts of the same cell (`experiments.mw_imig_cells`): the APOGEE stars of the
+same ages on the distmass scale and of the same bin of the ASPCAP $[\mathrm{M/H}]$, below
+the $[\alpha/\mathrm{M}]$ that separates the two sequences in their Eq. (1). Their $h_Z$ of
+a single population is the scale of an exponential, moved to $R_0$ by its flare, so it
+needs no window, whereas ours goes through the self-consistent window. A cell needs
+<MwMetric name="cellsMin" /> matched stars for our $h_Z$, which
+<MwMetric name="cellsMeasured" /> cells have, holding <MwMetric name="cellsStars" />.
+
+<ImigCellTable />
+
+Over these cells our counts are thicker than their heights by a median factor of
+<MwMetric name="cellsMedian" />, as in the pooled bins, so the pooling does not cause the
+disagreement. The ratio depends on metallicity instead. Its median is
+<MwMetric name="cellsMetalPoor" /> below $[\mathrm{M/H}] = -0.1$,
+<MwMetric name="cellsMetalSolar" /> between $-0.1$ and $0.1$, and
+<MwMetric name="cellsMetalRich" /> above $0.1$. The slope of its logarithm is
+<MwMetric name="cellsTrend" /> per dex of $[\mathrm{M/H}]$. The two measurements thus
+agree for the metal-poor populations, whereas they disagree for the metal-rich ones.
+
+Whatever causes the disagreement must therefore change with metallicity at fixed age, as
+two differences between the measurements can. Their $h_Z$ is a parameter of a fit over the
+footprint of APOGEE out to $R = 20$ kpc, in which a single exponential in $|z|$ holds at
+every radius and its scale changes only linearly with $R$, whereas ours is fit to a cylinder
+of radius 1.5 kpc around the Sun within $|z| < 1.2$ kpc. Each population enters their fit
+with its own radial profile and flare, so if the profile at $R_0$ is not an exponential, or
+the flare not linear, the scale height that the fit returns at $R_\odot$ can be off by an
+amount that differs between populations. Our counts, in turn, assume that the targeting
+does not depend on the population at a fixed position. The surveys select their targets by
+color, however. Because the colors of giants change with metallicity, a color limit that
+changes across the fields at different $|z|$ would bias the fraction of each metallicity in
+the slices.
 
 ## Limitations
 
-The age fraction of a slice assumes that the spectroscopic targeting does not depend on
-age at a fixed position, which holds for selections in magnitude and color but has not been
-checked against the targeting flags. If it fails, the counts of a population are biased in
+The fraction of a slice assumes that the spectroscopic targeting does not depend on the
+population, its age or its metallicity, at a fixed position, which a selection in magnitude
+and color satisfies only if its limits are the same for every field. We have not checked
+this against the targeting flags. If it fails, the counts of a population are biased in
 the slices of $|z|$ where the targeting changes, which would bear on the disagreement with
 Imig et al., whose fit corrects for the selection function. The counts stop at
 $|z| = 1.2$ kpc, so the window of the oldest populations, about twice their $h_Z$, comes

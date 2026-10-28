@@ -96,6 +96,32 @@ export interface ImigBin {
   readonly ratios: Readonly<Record<ImigHeight, Estimate>>
 }
 
+/** One population of Imig et al. against our counts of its ages and [M/H]: their h_Z at R_0, ours (kpc), the ratio. */
+export interface ImigCell {
+  readonly ageLo: number
+  readonly ageHi: number
+  readonly mhLo: number
+  readonly mhHi: number
+  /** Their stars in the cell. */
+  readonly nStars: number
+  /** Our matched stars in the cell. */
+  readonly nMatched: number
+  readonly imig: Estimate
+  /** NaN with fewer than `minMatches` matches. */
+  readonly counts: Estimate
+  /** Our counts over their h_Z. */
+  readonly ratio: Estimate
+}
+
+/** Every cell and, over the measured ones, the median ratio and the slope of its logarithm per dex of [M/H]. */
+export interface ImigCells {
+  readonly minMatches: number
+  readonly cells: readonly ImigCell[]
+  readonly nMeasured: number
+  readonly medianRatio: number
+  readonly trend: Trend
+}
+
 export interface MilkyWayData {
   readonly r0: number
   readonly sigmaSurf: number
@@ -106,6 +132,7 @@ export interface MilkyWayData {
     readonly bins: readonly ImigBin[]
     readonly trends: Readonly<Record<ImigHeight, Trend>>
   }
+  readonly imigCells: ImigCells
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -175,6 +202,35 @@ function parseImigBin(bin: unknown): ImigBin {
   }
 }
 
+function parseImigCell(cell: unknown): ImigCell {
+  return {
+    ageLo: num(cell, 'age_lo'),
+    ageHi: num(cell, 'age_hi'),
+    mhLo: num(cell, 'm_h_lo'),
+    mhHi: num(cell, 'm_h_hi'),
+    nStars: num(cell, 'n_stars'),
+    nMatched: num(cell, 'n_matched'),
+    imig: estimate(cell, 'imig'),
+    counts: estimate(cell, 'counts'),
+    ratio: estimate(cell, 'ratio')
+  }
+}
+
+function parseImigCells(cells: unknown): ImigCells {
+  return {
+    minMatches: num(cells, 'min_matches'),
+    cells: list(cells, 'cells').map(parseImigCell),
+    nMeasured: num(cells, 'n_measured'),
+    medianRatio: num(cells, 'median_ratio'),
+    trend: trend(cells, 'trend')
+  }
+}
+
+/** Whether `cell` has enough matches for our h_Z, and a finite ratio. */
+export function isMeasured(cells: ImigCells, cell: ImigCell): boolean {
+  return cell.nMatched >= cells.minMatches && Number.isFinite(cell.ratio.value)
+}
+
 /** Check and read the record of the Milky Way test. */
 export function parseMilkyWay(record: unknown): MilkyWayData {
   const imig = field(record, 'imig')
@@ -193,6 +249,7 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
     imig: {
       bins: list(imig, 'bins').map(parseImigBin),
       trends: byHeight(field(imig, 'trends'), trend)
-    }
+    },
+    imigCells: parseImigCells(field(record, 'imig_cells'))
   }
 }

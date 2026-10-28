@@ -4,7 +4,8 @@ The Gaia cylinder holds red giants whose |z| is exponential with a scale that de
 age, and whose Wesenheit magnitudes follow a red clump at M_W = -1.75 above a flat
 background. LAMOST and APOGEE observe a random subset of them, with ages, abundances of the
 low-[alpha/Fe] disk, and the phase-space coordinates of stars of the solar annulus. The
-distmass ages are 10 percent older than the astroNN ones. The heights and dispersions are
+distmass ages are 10 percent older than the astroNN ones, and one APOGEE star in ten lies
+on the high-[alpha/M] side of the split of Imig et al. in its ASPCAP abundances. The heights and dispersions are
 not tied to each other: the files only exercise the reading, matching and measuring code.
 """
 
@@ -99,7 +100,12 @@ def write_world(root: Path) -> dict[str, np.ndarray]:
             "AGE_ERR": np.tile([0.15, -0.13], (n_ap, 1)),
         }
     ).write(_path(root, "distmass"), overwrite=True)  # fmt: skip
-    Table({"EXTRATARG": np.zeros(n_ap, dtype=np.int16)}).write(_path(root, "allstar"), overwrite=True)
+    Table(
+        {
+            "EXTRATARG": np.zeros(n_ap, dtype=np.int16), "M_H": ap_fe,
+            "ALPHA_M": np.where(np.arange(n_ap) % 10 == 0, 0.3, 0.0),
+        }
+    ).write(_path(root, "allstar"), overwrite=True)  # fmt: skip
 
     ages = [(1.0, 1.26), (1.26, 1.58), (1.58, 2.0), (2.0, 2.51)]
     rows = [(lo, hi, m_h) for lo, hi in ages for m_h in (-0.25, 0.05)]
@@ -116,6 +122,9 @@ def write_world(root: Path) -> dict[str, np.ndarray]:
         fits.Column(name="NU_0", format="D", array=np.full(n_imig, 2.0)),
         fits.Column(name="NU_0_ERRS", format="2D", array=np.full((n_imig, 2), 0.1)),
         fits.Column(name="A_FLARE", format="D", array=np.full(n_imig, 0.05)),
+        fits.Column(name="MIN_M_H", format="D", array=np.array([r[2] - 0.15 for r in rows] + [-0.05])),
+        fits.Column(name="MAX_M_H", format="D", array=np.array([r[2] + 0.15 for r in rows] + [0.05])),
+        fits.Column(name="N_STARS_OBS", format="K", array=np.full(n_imig, 500)),
     ]
     fits.BinTableHDU.from_columns(columns).writeto(_path(root, "imig"), overwrite=True)
     return {"absz": np.abs(z), "age": age, "m_w": m_w}

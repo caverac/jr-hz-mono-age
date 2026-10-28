@@ -438,13 +438,23 @@ def measure_bin(
     )
 
 
+def _line(x: FloatArray, y: FloatArray, w: FloatArray) -> tuple[FloatArray, FloatArray, float]:
+    """Return the coefficients, their covariance and the chi^2 of the line of *y* on *x*, with weights *w*."""
+    design = np.vstack([np.ones_like(x), x]).T
+    cov = np.linalg.inv(design.T @ (design * w[:, None]))
+    coef = cov @ (design.T @ (w * y))
+    return coef, cov, float(np.sum(w * (y - design @ coef) ** 2))
+
+
 def _log_line(x: FloatArray, y: FloatArray, y_err: FloatArray) -> tuple[FloatArray, FloatArray, float]:
     """Return the coefficients, their covariance and the chi^2 of the weighted least-squares line of ln y on ln x."""
-    lx, ly, w = np.log(x), np.log(y), (y / y_err) ** 2
-    design = np.vstack([np.ones_like(lx), lx]).T
-    cov = np.linalg.inv(design.T @ (design * w[:, None]))
-    coef = cov @ (design.T @ (w * ly))
-    return coef, cov, float(np.sum(w * (ly - design @ coef) ** 2))
+    return _line(np.log(x), np.log(y), (y / y_err) ** 2)
+
+
+def _scaled_trend(coef: FloatArray, cov: FloatArray, chi2: float, n: int) -> Trend:
+    """Return the slope of a fit to *n* points, its error times sqrt(max(1, chi^2 per dof)), and that chi^2."""
+    chi2_dof = chi2 / (n - 2)
+    return Trend(float(coef[1]), float(np.sqrt(cov[1, 1] * max(1.0, chi2_dof))), chi2_dof)
 
 
 def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
@@ -455,9 +465,12 @@ def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
 
 def fit_trend(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
     """Return the exponent of y = A x^p, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
-    coef, cov, chi2 = _log_line(x, y, y_err)
-    chi2_dof = chi2 / (x.size - 2)
-    return Trend(float(coef[1]), float(np.sqrt(cov[1, 1] * max(1.0, chi2_dof))), chi2_dof)
+    return _scaled_trend(*_log_line(x, y, y_err), x.size)
+
+
+def fit_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
+    """Return the slope of ln y against x, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
+    return _scaled_trend(*_line(x, np.log(y), (y / y_err) ** 2), x.size)
 
 
 def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:

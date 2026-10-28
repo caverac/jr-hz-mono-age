@@ -4,10 +4,11 @@ import {
   type JrRelationData,
   parseJrRelation
 } from '@site/src/components/status/jrRelation'
-import { significance } from '@site/src/components/status/metrics'
+import { median, significance } from '@site/src/components/status/metrics'
 import {
   IMIG_HEIGHTS,
   type ImigHeight,
+  isMeasured,
   MILKY_WAY_PATH,
   type MilkyWayData,
   parseMilkyWay,
@@ -155,6 +156,37 @@ export const ImigRatioTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
     )
   ])
 }))
+
+/**
+ * The populations of Imig et al. one at a time, by [M/H] bin: the cells with enough matches
+ * for our h_Z, their stars and ours, and the median and range of our counts over their h_Z.
+ */
+export const ImigCellTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const { imigCells } = data
+  const edges = [...new Set(imigCells.cells.map((c) => c.mhLo))].sort((a, b) => a - b)
+  return {
+    groups: [
+      ['', 4],
+      ['counts over Imig et al.', 2]
+    ],
+    head: ['$[\\mathrm{M/H}]$', 'cells', 'their stars', 'our matches', 'median', 'range'],
+    rows: edges.map((lo) => {
+      const all = imigCells.cells.filter((c) => c.mhLo === lo)
+      const measured = all.filter((c) => isMeasured(imigCells, c))
+      const ratios = measured.map((c) => c.ratio.value)
+      return [
+        `${signed(lo, 1)} to ${signed(all[0]?.mhHi ?? Number.NaN, 1)}`,
+        `${measured.length} of ${all.length}`,
+        String(measured.reduce((sum, c) => sum + c.nStars, 0)),
+        String(measured.reduce((sum, c) => sum + c.nMatched, 0)),
+        fixed(median(ratios)),
+        measured.length < 2
+          ? fixed(ratios[0] ?? Number.NaN)
+          : `${fixed(Math.min(...ratios))} to ${fixed(Math.max(...ratios))}`
+      ]
+    })
+  }
+})
 
 /** The proxy J_R,w and the whole-disk heights of every halo. */
 export const JrTable = fromRecord(JR_RELATION_PATH, parseJrRelation, (data: JrRelationData) => ({

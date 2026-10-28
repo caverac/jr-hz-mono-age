@@ -51,7 +51,10 @@ M_H_MIN = -0.6
 AGE_MAX_GYR = 10.0
 R_SUN_IMIG_KPC = 8.3
 N_DRAWS = 300
-COLUMNS = ("MIN_AGE", "MAX_AGE", "H_Z", "H_Z_ERR", "SMD_0", "SMD_0_ERRS", "NU_0", "NU_0_ERRS", "A_FLARE")
+COLUMNS = (
+    "MIN_AGE", "MAX_AGE", "H_Z", "H_Z_ERR", "SMD_0", "SMD_0_ERRS", "NU_0", "NU_0_ERRS", "A_FLARE",
+    "MIN_M_H", "MAX_M_H", "N_STARS_OBS",
+)  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -95,7 +98,11 @@ class ImigCheck:
 
 @dataclass(frozen=True)
 class ImigPopulations:  # pylint: disable=too-many-instance-attributes
-    """The populations of one age bin: h_Z, Sigma and nu at R_sun with lower and upper errors, and the flare."""
+    """The populations of one age bin: h_Z, Sigma and nu at R_sun with lower and upper errors, the flare, the [M/H] bin.
+
+    ``m_h_lo`` and ``m_h_hi`` are the edges of the [M/H] bin of each population, and
+    ``n_stars`` the number of their stars in it.
+    """
 
     age_lo: float
     age_hi: float
@@ -106,6 +113,9 @@ class ImigPopulations:  # pylint: disable=too-many-instance-attributes
     nu: FloatArray
     nu_err: FloatArray  # (n, 2)
     a_flare: FloatArray
+    m_h_lo: FloatArray
+    m_h_hi: FloatArray
+    n_stars: FloatArray
 
 
 @dataclass(frozen=True)

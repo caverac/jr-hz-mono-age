@@ -28,9 +28,9 @@ from experiments.mw_catalogs import (
 from experiments.mw_counts import (
     APOGEE_BOX,
     MW_FIT_RANGE,
-    CountSample,
     apogee_count_sample,
     count_hz,
+    count_sample,
     fit_luminosity_function,
     gaia_cylinder,
     lamost_count_sample,
@@ -140,13 +140,37 @@ def test_count_hz_recovers_the_scale_of_a_population() -> None:
     rng = np.random.default_rng(4)
     absz = rng.exponential(0.25, 200_000)
     absz = absz[absz < 1.2]
-    sample = CountSample(absz, absz[:5000], np.full(5000, 3.0), np.ones(5000, dtype=bool))
+    sample = count_sample(absz, absz[:5000], np.full(5000, 3.0), np.ones(5000, dtype=bool))
     assert np.all(slice_fraction(sample, 2.0, 4.0)[:8] == 1.0)
     hz, window = count_hz(sample, 2.0, 4.0, 2.0)
     assert hz == pytest.approx(0.25, rel=0.05) and window == pytest.approx(2.0 * hz, rel=1e-3)
     thick = rng.uniform(0.0, 1.2, 50_000)
-    flat = CountSample(thick, thick[:1000], np.full(1000, 3.0), np.ones(1000, dtype=bool))
+    flat = count_sample(thick, thick[:1000], np.full(1000, 3.0), np.ones(1000, dtype=bool))
     assert np.all(np.isnan(count_hz(flat, 2.0, 4.0, 2.0)))
+
+
+def test_count_sample_sorts_the_gaia_stars_and_ranks_the_catalog() -> None:
+    """The heights are kept in ascending order, and the rank of each catalog row points at its star."""
+    absz = np.array([0.5, 0.1, 0.9, 0.3])
+    sample = count_sample(absz, absz[:2], np.full(2, 3.0), np.ones(2, dtype=bool))
+    assert np.all(np.diff(sample.gaia_absz) >= 0.0)
+    assert np.array_equal(sample.gaia_absz[sample.gaia_rank], absz)
+    assert np.array_equal(sample.gaia_count, np.ones(4))
+
+
+def test_a_resampled_count_sample_holds_the_stars_of_a_copy() -> None:
+    """A draw enters the stars and matches that copying the drawn catalog rows would; a draw of it keeps its stars."""
+    rng = np.random.default_rng(6)
+    absz, tracer_absz = rng.exponential(0.3, 5000), rng.uniform(0.0, 1.2, 300)
+    sample = count_sample(absz, tracer_absz, rng.uniform(0.0, 10.0, 300), np.ones(300, dtype=bool))
+    draw = sample.resampled(np.random.default_rng(7))
+    copy = np.random.default_rng(7)
+    rows, matches = copy.integers(0, absz.size, absz.size), copy.integers(0, 300, 300)
+    assert np.array_equal(np.repeat(draw.gaia_absz, draw.gaia_count.astype(np.int64)), np.sort(absz[rows]))
+    assert np.array_equal(draw.tracer_absz, tracer_absz[matches])
+    twice = draw.resampled(rng)
+    assert twice.gaia_count.sum() == absz.size
+    assert np.all(twice.gaia_count[draw.gaia_count == 0] == 0)
 
 
 def test_imig_pooling_and_draws(world_root: Path) -> None:
@@ -178,6 +202,7 @@ def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
     assert np.isfinite(first.heights.imig_counts.value) and first.kinematics.n_kin > 0
     assert first.ratios.imig_mass.value == pytest.approx(first.kinematics.tracer / first.heights.imig_mass.value)
     assert len(result.rc_peak) == 12 and result.r0_kpc == R0_KPC
+    assert len(result.imig_cells.cells) == 8 and result.imig_cells.min_matches == 100
 
 
 def test_a_bin_without_matches_has_no_median_age(world_root: Path) -> None:
