@@ -24,9 +24,11 @@ reproduces how $h_Z$, and hence the slope $a = J_{R,\mathrm{med}}/h_Z$, changes 
 every halo. Over 2-10 Gyr it falls slightly short of the oldest populations, because a
 population of 1 Gyr of ages is not one isothermal component. The vertical Jeans equation,
 with the dispersion of each population measured at every height, removes that residual,
-with a tilt term that holds up the thick old populations of Au19. A self-gravitating sheet with the
-same dispersions does not reproduce the heights, because it ties them to the mass of the
-layer rather than to the whole potential ([The sheet](#the-sheet)).
+with a tilt term that holds up the thick old populations of Au19. The self-gravitating sheet,
+the vertical half of the slope that the
+[companion paper](https://github.com/caverac/jr-hz-relation) derives for a whole disk, does
+not reproduce the heights of populations of one age, because it treats each population as
+if it made the potential of the whole layer ([The sheet](#the-sheet)).
 
 ## Measurement
 
@@ -57,10 +59,12 @@ potential at the median radius of the annulus. It passes through the same self-c
 window as the stars, so that the measured and the predicted $h_Z$ come from one estimator.
 A second tracer uses the potential of the snapshot, averaged over azimuth, in place of the
 fit, as a check of the fit. The sheet, which [The sheet](#the-sheet) compares with the
-tracer, predicts $h_Z = \sigma_z^2/(\pi G \Sigma)$, with $\Sigma$ the mass per area of all
-the particles of the annulus with $|z| < 1.1$ kpc. We write $h_\mathrm{pred}$ for the height
-that any of these predictions, or the vertical Jeans equation below, gives a population
-from its own $\sigma_z$. None of them comes from the $J_R$-$h_Z$ relation.
+tracer, predicts $h_Z = \sigma_z^2/(\pi G \Sigma)$, the vertical half of the slope of the
+companion paper, with $\Sigma$ the mass per area of all the particles of the annulus with
+$|z| < 1.1$ kpc. We write $h_\mathrm{pred}$ for the height that any of these predictions, or
+the vertical Jeans equation below, gives a population from its own $\sigma_z$. Because
+$J_{R,\mathrm{med}}$ is measured for each population, the ratio of a predicted to the
+measured $h_Z$ tests the vertical half of the slope alone.
 
 ## Scale heights
 
@@ -275,11 +279,13 @@ because the tilt term accounts for the thickness of its old populations.
 ## The sheet
 
 A self-gravitating isothermal sheet of surface density $\Sigma$ has
-$h_Z = \sigma_z^2/(\pi G \Sigma)$, which at fixed $\Sigma$ makes every population grow as
+$h_Z = \sigma_z^2/(\pi G \Sigma)$, the vertical half of the slope that the companion paper
+derives for a whole disk. At fixed $\Sigma$ it makes every population grow as
 $\sigma_z^2$, whereas the measured heights grow as $\sigma_z^\eta$ with $\eta$ of
-<Metric name="etaRange" />. The sheet describes a layer whose own mass sets its potential,
-as for a whole disk, whereas a population of 1 Gyr of ages is one part of that layer and
-moves in the potential of all of it. Against the measured heights, the sheet comes within
+<Metric name="etaRange" />. The sheet is the isothermal tracer of a layer whose own mass
+makes its potential, the picture that the companion paper adopts for a whole disk, whereas
+a population of 1 Gyr of ages is one part of that layer and moves in the potential of all
+of it. Against the measured heights, the sheet comes within
 10 percent in <Metric name="sheetWithin10" /> populations, with ratios from
 <Metric name="sheetRange" />: <Metric name="sheetYoung" /> for the youngest population of
 each halo and <Metric name="sheetOld" /> for the oldest. Its trends with age over 0-10 Gyr

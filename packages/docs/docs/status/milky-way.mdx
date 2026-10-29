@@ -86,11 +86,13 @@ negative below 6 Gyr and positive above.
 
 The tracer is the profile $\exp(-\Delta\Phi/\sigma_z^2)$ of McMillan (2017) at $R_0$, with
 the $\sigma_z$ of the population. For comparison with the Auriga test we also carry the
-self-gravitating sheet, with the mass of the same potential within $|z| < 1.1$ kpc,
+self-gravitating sheet, the vertical half of the slope of the
+[companion paper](https://github.com/caverac/jr-hz-relation), with the mass of the same
+potential within $|z| < 1.1$ kpc,
 $\Sigma = $ <MwMetric name="sigmaSurf" /> $M_\odot\,\mathrm{pc}^{-2}$, and the profile
 $\mathrm{sech}^2(|z|/z_0)$, $z_0 = \sigma_z^2/(\pi G \Sigma)$. We write $h_\mathrm{pred}$
-for the height that either predicts for a population, which owes nothing to the $J_R$-$h_Z$
-relation. Both predictions go through the same counts as the populations, in each bootstrap draw through the counts of the draw,
+for the height that either predicts for a population from its own $\sigma_z$. Both
+predictions go through the same counts as the populations, in each bootstrap draw through the counts of the draw,
 because the slices of 0.1 kpc thicken thin populations. The fraction of a population is
 interpolated between the centers of the slices and held constant below the first one, so it
 falls more slowly than a thin population does. With the Gaia stars of APOGEE, an

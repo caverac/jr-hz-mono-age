@@ -12,20 +12,22 @@ import ScalingChart from '@site/src/components/status/ScalingChart'
 # Overview
 
 We test whether the mono-age populations of a disk galaxy are isothermal tracers of the
-total gravitational potential. A population of one age holds a small part of the mass of
-its disk, so its vertical profile should be set by the whole potential it moves in, as
-$\rho \propto \exp(-\Delta\Phi/\sigma_z^2)$, rather than by its own gravity, as in a
-self-gravitating sheet. In the seven Auriga halos of Palicio et al. (2025), the tracer
+total gravitational potential. The companion paper,
+[`jr-hz-relation`](https://github.com/caverac/jr-hz-relation), derives the slope of the
+relation between radial action and scale height that Palicio et al. (2025) find across
+galaxies, treating a whole disk as a self-gravitating isothermal sheet. A population of one
+age holds a small part of the mass of its disk, so its vertical profile should follow the
+whole potential it moves in, as $\rho \propto \exp(-\Delta\Phi/\sigma_z^2)$, rather than
+that of a sheet of its own. In the seven Auriga halos of Palicio et al. (2025), the tracer
 predicts the scale height $h_Z$ of <Metric name="tracerWithin10" /> of the
 <Metric name="populations" /> mono-age populations within 10 percent and reproduces how
 $h_Z$ changes with age in every halo. Star counts of Gaia giants in the solar
 neighborhood, split into populations by the ages of LAMOST and APOGEE, give the same answer
-for the Milky Way. Summed over the populations of
-each disk, the tracers also predict the thickness of the whole disk, and with it the heights
-of the relation between radial action and scale height that Palicio et al. (2025) find
-across galaxies. The one open question concerns the published heights of Imig et al.
-(2025), which grow more slowly with age than our star counts of the same stars, for reasons
-that our data cannot reach.
+for the Milky Way. Summed over the populations of each disk, the tracers also predict the
+thickness of the whole disk, and with it the heights of that relation across galaxies. The
+one open question concerns the published heights of Imig et al. (2025), which grow more
+slowly with age than our star counts of the same stars, for reasons that our data cannot
+reach.
 
 Every number on these pages is computed in the browser from the records that the Python
 package writes under `assets/data/`, so the prose cannot drift from the data. A result that
@@ -34,30 +36,54 @@ a check was made only with code outside the package, the text says so and gives 
 
 ## The claim
 
-The paper argues that a mono-age population of a disk behaves as an isothermal tracer of
-the total gravitational potential, with the vertical density
+The companion paper derives the slope of the $J_R$-$h_Z$ relation for a whole disk from the
+radial action of an epicycle and the scale height of a self-gravitating isothermal sheet of
+surface density $\Sigma$,
+
+$$
+J_R^{\max} = c_{\max}\frac{\sigma_R^2}{\kappa}, \qquad
+h_Z = \frac{\sigma_z^2}{\pi G \Sigma},
+$$
+
+so that
+
+$$
+a = \frac{J_R^{\max}}{h_Z} = c_{\max}\,\frac{\pi G \Sigma}{\kappa}
+\left(\frac{\sigma_R}{\sigma_z}\right)^2,
+$$
+
+with the factor of order unity between the scale of the sheet and a fitted $h_Z$ absorbed
+into $c_{\max}$. The sheet is the isothermal tracer of the potential that its own mass
+makes, the picture that the companion paper adopts for a whole disk. A population of one
+age holds only part of that mass, so we keep the radial half of the derivation and test its
+vertical half population by population. We argue that such a population behaves as an
+isothermal tracer of the total gravitational potential, with the vertical density
 
 $$
 \rho(z) \propto \exp\left[-\frac{\Delta\Phi(R, z)}{\sigma_z^2}\right], \qquad
-\Delta\Phi(R, z) = \Phi(R, z) - \Phi(R, 0),
+\Delta\Phi(R, z) = \Phi(R, z) - \Phi(R, 0).
 $$
 
-rather than as a self-gravitating isothermal sheet of surface density $\Sigma$, whose scale
-height is $h_Z = \sigma_z^2/(\pi G \Sigma)$. At fixed $\Sigma$, the sheet makes every
-population follow $h_Z \propto \sigma_z^2$. A tracer follows $h_Z \propto \sigma_z^\eta$
-instead, where $\eta$ depends on the shape of $\Delta\Phi$ over the heights that the
-population reaches: $\eta = 1$ where $\Delta\Phi \propto z^2$, as near the midplane of any
-smooth mass distribution, and $\eta = 2$ where $\Delta\Phi \propto |z|$, as above a thin
-one. Because the slope $a = J_{R,\mathrm{med}}/h_Z$ of the $J_R$-$h_Z$ relation (Palicio
-et al. 2025) divides by $h_Z$, the two pictures also predict different age dependences of
-$a$.
+Applied population by population with the $\Sigma$ of the whole disk, as in our tests, the
+sheet makes every population follow $h_Z \propto \sigma_z^2$. A tracer follows
+$h_Z \propto \sigma_z^\eta$ instead, where $\eta$ depends on the shape of $\Delta\Phi$ over
+the heights that the population reaches: $\eta = 1$ where $\Delta\Phi \propto z^2$, as near
+the midplane of any smooth mass distribution, and $\eta = 2$ where $\Delta\Phi \propto |z|$,
+as above a thin one. Because the slope divides by $h_Z$, the two pictures predict different
+age dependences of $a$. For dispersions that grow with age as $\mathrm{age}^{\beta_R}$ and
+$\mathrm{age}^{\beta_z}$, at fixed $\Sigma$ and $\kappa$, the sheet gives
+$a \propto \mathrm{age}^{2(\beta_R - \beta_z)}$, whereas the tracer gives
+$a \propto \mathrm{age}^{2\beta_R - \eta\beta_z}$ over a range of $\sigma_z$ in which $\eta$
+is constant.
 
 We write $h_\mathrm{pred}$ for the scale height that a model of the vertical structure
-predicts for a population from its own $\sigma_z$, whether the tracer, the sheet or the
-vertical Jeans equation. Each model gives a profile in $|z|$, which we fit with the same
-estimator as the stars, so that $h_\mathrm{pred}/h_Z$ compares two heights measured the same
-way. None of the predictions uses the $J_R$-$h_Z$ relation, whose slope $a$ we measure
-population by population rather than assume.
+predicts for a population from its own $\sigma_z$: the sheet, which is the vertical half of
+the derivation above; the tracer, which replaces it; or the vertical Jeans equation. Each
+model gives a profile in $|z|$, which we fit with the same estimator as the stars, so that
+$h_\mathrm{pred}/h_Z$ compares two heights measured the same way. For a population we write
+the slope as $a = J_{R,\mathrm{med}}/h_Z$, with the median radial action of its stars.
+Because we measure $J_{R,\mathrm{med}}$ rather than predict it, $h_\mathrm{pred}/h_Z$ tests
+the vertical half of the slope alone.
 
 ## Results
 
@@ -271,10 +297,11 @@ the counts, the claim holds in the Milky Way unless the counts, rather than thei
 misplace how the heights grow with age.
 
 Two parts of the picture lie outside these tests. Every Auriga population comes from one
-annulus per halo, so we do not yet know how $\eta$ depends on radius. The tracer also says
-nothing about the radial action: we measure the slope $a = J_{R,\mathrm{med}}/h_Z$
-population by population, and hence the ratio of radial to vertical heating, but do not
-explain it.
+annulus per halo, so we do not yet know how $\eta$ depends on radius. We have also not
+tested the radial half of the derivation, $J_R^{\max} = c_{\max}\sigma_R^2/\kappa$, on
+populations of one age: we measure $J_{R,\mathrm{med}}$ of every population, and hence the
+ratio of radial to vertical heating in $a$, but have not compared it with
+$\sigma_R^2/\kappa$.
 
 ## Conclusions
 
