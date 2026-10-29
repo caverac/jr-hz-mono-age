@@ -16,7 +16,8 @@ from experiments.cosmology import Cosmology
 from experiments.heights import Z_GRID
 from experiments.mock import true_components
 from experiments.potential import (
-    RESIDUAL_MIN_PER_SLICE,
+    RESIDUAL_MIN_PER_SECTOR,
+    RESIDUAL_SECTORS,
     circular_velocity,
     fit_potential,
     potential_check,
@@ -106,15 +107,38 @@ def test_potential_check_compares_slices(galaxy: Galaxy, truth: agama.Potential)
 
 
 def test_vertical_residual_removes_the_radial_gradient() -> None:
-    """A residual a + b (R - R_mid) + c |z| comes back as a + c |z| at R_mid, in slices of at least 50 stars."""
+    """A residual a + b (R - R_mid) + c |z| comes back as a + c |z| at R_mid; sparse slices are left out."""
     rng = np.random.default_rng(4)
     cyl_r, absz = rng.uniform(7.5, 9.0, 20_000), rng.uniform(0.0, 1.0, 20_000)
+    azimuth = rng.uniform(-np.pi, np.pi, 20_000)
     delta = 30.0 + 80.0 * (cyl_r - 8.2) + 50.0 * absz
-    residual = vertical_residual(cyl_r, absz, delta, 8.2)
+    residual = vertical_residual(cyl_r, azimuth, absz, delta, 8.2)
     assert len(residual.z) == 10
     np.testing.assert_allclose(residual.residual, 30.0 + 50.0 * np.array(residual.z), atol=0.5)
-    sparse = vertical_residual(cyl_r[: RESIDUAL_MIN_PER_SLICE * 5], absz[: RESIDUAL_MIN_PER_SLICE * 5], delta, 8.2)
+    n_sparse = RESIDUAL_MIN_PER_SECTOR * RESIDUAL_SECTORS * 5
+    sparse = vertical_residual(cyl_r[:n_sparse], azimuth[:n_sparse], absz[:n_sparse], delta[:n_sparse], 8.2)
     assert len(sparse.z) < 10
+
+
+def test_vertical_residual_weights_every_azimuth_equally() -> None:
+    """Stars crowding toward a bar's axis with height barely move the azimuthal average of an m = 2 residual.
+
+    The residual is 1000 cos(2 phi), with no vertical trend, and the fraction of stars near
+    phi = 0 grows with |z|, so the median over all the stars of the top slice exceeds 500.
+    The sector average stays within 10 percent of the amplitude; the remainder comes from
+    the crowding inside each sector.
+    """
+    rng = np.random.default_rng(8)
+    n = 200_000
+    absz = rng.uniform(0.0, 1.0, n)
+    crowded = rng.uniform(size=n) < 0.6 * absz
+    azimuth = np.where(crowded, rng.normal(0.0, 0.3, n), rng.uniform(-np.pi, np.pi, n))
+    cyl_r = rng.uniform(7.5, 9.0, n)
+    delta = 1000.0 * np.cos(2.0 * azimuth)
+    residual = vertical_residual(cyl_r, azimuth, absz, delta, 8.2)
+    np.testing.assert_allclose(residual.residual, 0.0, atol=100.0)
+    top = absz > 0.9
+    assert np.median(delta[top]) > 500.0
 
 
 def test_snapshot_vertical_potential_adds_the_vertical_residual(galaxy: Galaxy, truth: agama.Potential) -> None:
@@ -127,5 +151,5 @@ def test_snapshot_vertical_potential_adds_the_vertical_residual(galaxy: Galaxy, 
 
 def test_snapshot_vertical_potential_needs_stars(galaxy: Galaxy, truth: agama.Potential) -> None:
     """Without a |z| slice of enough stars there is no residual to add."""
-    with pytest.raises(ValueError, match=re.escape("no |z| slice")):
+    with pytest.raises(ValueError, match=re.escape("no |z| slice holds")):
         snapshot_vertical_potential(truth, galaxy.stars, np.zeros(galaxy.stars.mass.size, dtype=bool), 8.0)

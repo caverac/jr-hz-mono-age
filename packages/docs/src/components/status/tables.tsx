@@ -1,8 +1,10 @@
 import MathLabel from '@site/src/components/MathLabel'
 import { Pending } from '@site/src/components/status/controls'
-import type { StatusData } from '@site/src/components/status/data'
+import type { Estimate, StatusData } from '@site/src/components/status/data'
 import { FAMILIES } from '@site/src/components/status/families'
 import {
+  AGE_RANGES,
+  ageRange,
   exponentComparisons,
   extent,
   haloSummaries,
@@ -17,17 +19,17 @@ import {
 import useStatusData from '@site/src/components/status/useStatusData'
 import React, { type ReactNode } from 'react'
 
-function fixed(value: number, digits = 2): string {
+export function fixed(value: number, digits = 2): string {
   return Number.isFinite(value) ? value.toFixed(digits) : 'none'
 }
 
-function signed(value: number, digits = 2): string {
+export function signed(value: number, digits = 2): string {
   return Number.isFinite(value)
     ? `${value >= 0 ? '+' : '-'}${Math.abs(value).toFixed(digits)}`
     : 'none'
 }
 
-interface TableProps {
+export interface TableProps {
   /** Headers spanning several columns, as (label, span) pairs over every column; '' leaves a span blank. */
   readonly groups?: readonly (readonly [string, number])[]
   /** The column headers, with inline math between dollar signs. */
@@ -36,7 +38,7 @@ interface TableProps {
 }
 
 /** A table of numbers computed from the records. */
-function Table({ groups, head, rows }: TableProps): ReactNode {
+export function Table({ groups, head, rows }: TableProps): ReactNode {
   return (
     <div className="status-table">
       <table>
@@ -85,6 +87,8 @@ function fromRecords(rows: (data: StatusData) => TableProps): () => ReactNode {
 const PREDICTORS: readonly (readonly [Predictor, string])[] = [
   ['tracer', 'tracer, fitted $\\Phi$'],
   ['tracerSnapshot', 'tracer, snapshot $\\Phi$'],
+  ['jeansSigma', 'Jeans, $\\sigma_z(z)$'],
+  ['jeans', 'Jeans, $\\sigma_z(z)$ and tilt'],
   ['sheet', 'sheet']
 ]
 
@@ -218,4 +222,99 @@ export const WindowTable = fromRecords((data) => ({
     fixed(row.halos),
     ...FAMILIES.map(([name]) => fixed(row.curves[name]))
   ])
+}))
+
+/** The trends of h_pred / h_Z of the Jeans diagnostics, without and with the tilt term. */
+export const JeansTrendTable = fromRecords((data) => ({
+  groups: [
+    ['', 2],
+    ['Jeans, $\\sigma_z(z)$', 2],
+    ['Jeans, $\\sigma_z(z)$ and tilt', 2]
+  ],
+  head: ['halo', '$\\tau$ (Gyr)', 'trend', '$/\\sigma$', 'trend', '$/\\sigma$'],
+  rows: data.halos.flatMap((halo) =>
+    AGE_RANGES.flatMap(([lo, hi]) => {
+      const range = ageRange(halo, lo, hi)
+      if (range === undefined) {
+        return []
+      }
+      return [
+        [
+          halo.label,
+          `${lo}-${hi}`,
+          ...[range.trends.jeansSigma, range.trends.jeans].flatMap((t) => [
+            `$${signed(t.value, 3)} \\pm ${fixed(t.err, 3)}$`,
+            `$${signed(significance(t), 1)}$`
+          ])
+        ]
+      ]
+    })
+  )
+}))
+
+/** The whole-disk h_Z of every halo and its predictions as a sum of tracers, over the measured h_Z. */
+export const TracerSumTable = fromRecords((data) => ({
+  groups: [
+    ['', 3],
+    ["Palicio's window", 3],
+    ['self-consistent window', 3]
+  ],
+  head: [
+    'halo',
+    '$R$ (kpc)',
+    'unmodeled (%)',
+    '$h_Z$ (kpc)',
+    'one per ring',
+    'per ring and age',
+    '$h_Z$ (kpc)',
+    'one per ring',
+    'per ring and age'
+  ],
+  rows: data.halos.map((halo) => {
+    const whole = halo.tracerSum.whole
+    const ratioCell = (e: Estimate) => `$${fixed(e.value, 3)} \\pm ${fixed(e.err, 3)}$`
+    return [
+      halo.label,
+      `${fixed(whole.rLo, 0)}-${fixed(whole.rHi, 0)}`,
+      fixed(100 * whole.unmodeledMixture, 1),
+      fixed(whole.measured.palicio.value),
+      ratioCell(whole.ratioSingle.palicio),
+      ratioCell(whole.ratioMixture.palicio),
+      fixed(whole.measured.scaled.value),
+      ratioCell(whole.ratioSingle.scaled),
+      ratioCell(whole.ratioMixture.scaled)
+    ]
+  })
+}))
+
+/** The range of the mean motions of the populations of every halo older than 5 Gyr. */
+export const MotionTable = fromRecords((data) => ({
+  groups: [
+    ['', 1],
+    ['populations older than 5 Gyr', 4]
+  ],
+  head: ['halo', 'thickening (Gyr$^{-1}$)', 'bending (km s$^{-1}$)', 'asymmetry', 'warp (kpc)'],
+  rows: data.halos.map((halo) => {
+    const old = halo.motions.filter((bin) => bin.ageLo >= 5)
+    const span = (values: readonly number[], digits: number) => {
+      const [lo, hi] = extent(values)
+      return `$${signed(lo, digits)}$ to $${signed(hi, digits)}$`
+    }
+    return [
+      halo.label,
+      span(
+        old.map((b) => b.thickening.value),
+        2
+      ),
+      span(
+        old.map((b) => b.bending.value),
+        2
+      ),
+      span(
+        old.map((b) => b.asymmetry.value),
+        3
+      ),
+      `${fixed(Math.min(...old.map((b) => b.warp.value)), 3)} to ${fixed(Math.max(...old.map((b) => b.warp.value)), 3)}`
+    ]
+  })
 }))

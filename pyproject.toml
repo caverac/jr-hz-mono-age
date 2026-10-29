@@ -102,6 +102,10 @@ module = "h5py.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["astropy.*", "pyvo.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = "agama"
 ignore_missing_imports = true
 

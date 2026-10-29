@@ -1,0 +1,19 @@
+{
+  "snapshot": {
+    "halo": 16,
+    "level": 4,
+    "suite": "Original",
+    "snapshot": 127
+  },
+  "jr_map": {
+    "window": {
+      "l_kpc": 20.0,
+      "z_lim": 1.0
+    },
+    "n_stars": 790812,
+    "n_cells": 8498,
+    "jr_w": 73.59599401178049,
+    "jr_cells_lo": 52.12927486393967,
+    "jr_cells_hi": 102.98096799041683
+  }
+}

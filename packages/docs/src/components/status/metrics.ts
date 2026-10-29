@@ -13,6 +13,7 @@ import type {
   StatusData,
   Trend
 } from '@site/src/components/status/data'
+import { plusMinus, signed } from '@site/src/components/status/format'
 
 export type { Predictor } from '@site/src/components/status/data'
 
@@ -81,6 +82,11 @@ export interface ExponentComparison {
 /** A trend in units of its error: how many standard errors it lies from 0. */
 export function significance(trend: Trend): number {
   return trend.value / trend.err
+}
+
+/** A trend with its error and its distance from 0 in standard errors. */
+export function trendText(trend: Trend): string {
+  return `${plusMinus(trend.value, trend.err)} (${signed(significance(trend), 1)} standard errors)`
 }
 
 /** The comparisons of every halo over every range of `AGE_RANGES`. */

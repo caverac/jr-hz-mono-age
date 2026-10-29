@@ -23,9 +23,10 @@ import numpy as np
 
 from experiments.heights import particle_hz, scaled_particle_hz, scaled_profile_hz, sheet_hz, tracer_profile
 from experiments.palicio import PalicioWindow
-from experiments.populations import Z_MID_MAX_KPC, Z_SAMPLE_MAX_KPC, clipped_dispersion, surface_density
+from experiments.populations import Z_MID_MAX_KPC, Z_SAMPLE_MAX_KPC, surface_density
 from experiments.potential import vertical_potential
 from experiments.snapshot import Galaxy, Particles, cylindrical_velocities
+from experiments.stats import clipped_dispersion
 
 K_WINDOW = 2.0
 RING_EDGES_KPC = (4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0)

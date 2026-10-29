@@ -15,12 +15,14 @@ from experiments.heights import (
     G_PC,
     N_MIN_HALF_WINDOW,
     Z_GRID,
+    exponential_profile_hz,
     particle_hz,
     profile_hz,
     scaled_particle_hz,
     scaled_profile_hz,
     self_consistent_window,
     sheet_hz,
+    sheet_profile,
     tracer_profile,
     truncated_exp_scale,
 )
@@ -124,3 +126,23 @@ def test_sheet_hz() -> None:
     """The sheet height is sigma_z^2 / (pi G Sigma), converted from pc to kpc."""
     assert sheet_hz(20.0, 50.0) == pytest.approx(400.0 / (np.pi * G_PC * 50.0) / 1.0e3)
     assert sheet_hz(20.0, 50.0) == pytest.approx(0.5921, abs=1e-4)
+
+
+@pytest.mark.parametrize("sigma_z", [10.0, 15.0, 25.0])
+def test_the_sheet_profile_returns_its_scale_in_the_window(sigma_z: float) -> None:
+    """At k = 2 the windowed sech^2 layer of the sheet returns sigma_z^2 / (pi G Sigma); a thin sheet stays finite."""
+    assert scaled_profile_hz(sheet_profile(sigma_z, 50.0), 2.0)[0] == pytest.approx(sheet_hz(sigma_z, 50.0), rel=0.003)
+    thin = sheet_profile(1.0, 500.0)
+    assert np.all(np.isfinite(thin)) and thin[0] == pytest.approx(1.0) and thin[-1] == 0.0
+
+
+@pytest.mark.parametrize(("limit", "ratio"), [(0.6, 0.923), (1.2, 0.730), (3.0, 0.694)])
+def test_the_exponential_fit_of_a_profile(limit: float, ratio: float) -> None:
+    """An exponential returns its scale at any limit, whereas a sech^2 layer, flat at the plane, comes out thinner.
+
+    Its windowed h_Z at k = 2 is z_0 (test above). The exponential matched to its mean height
+    below *limit* thins as the limit grows past the flat core, by *ratio* of the windowed h_Z.
+    """
+    assert exponential_profile_hz(np.exp(-Z_GRID / 0.3), limit) == pytest.approx(0.3, rel=1e-3)
+    sech2 = np.cosh(Z_GRID / 0.4) ** -2
+    assert exponential_profile_hz(sech2, limit) / scaled_profile_hz(sech2, 2.0)[0] == pytest.approx(ratio, abs=0.002)

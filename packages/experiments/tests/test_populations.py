@@ -16,27 +16,32 @@ import pytest
 
 from experiments.cosmology import Cosmology
 from experiments.heights import Z_GRID, sheet_hz
+from experiments.jeans import TILT_R_MAX_KPC, TILT_R_MIN_KPC
 from experiments.palicio import PalicioWindow
 from experiments.populations import (
     AGE_BINS,
     AGE_RANGES,
     K_SCAN,
+    R_MAX_KPC,
+    R_MIN_KPC,
     Z_LIM_SCAN_KPC,
     AnnulusSample,
     Estimate,
     Method,
     MonoAge,
     VerticalModel,
-    clipped_dispersion,
+    fit_grouped_log_slope,
+    fit_log_slope,
     fit_power_law,
     fit_trend,
-    half_width,
     measure_mono_age,
     surface_density,
 )
 from experiments.snapshot import Galaxy, Header, Particles, Stars
+from experiments.stats import clipped_dispersion, half_width
 
 G_LINEAR = 900.0  # (km/s)^2 / kpc
+R_MID_KPC = 8.25
 SIGMA_SURF = 50.0
 N_PER_BIN = 4_000
 
@@ -59,7 +64,7 @@ def tracer_height(age: float) -> float:
 def synthetic_sample(height: Callable[[float], float] = scale_height) -> AnnulusSample:
     """Return N_PER_BIN stars per 1 Gyr bin with heights of scale *height*, and the known dispersions and actions."""
     rng = np.random.default_rng(21)
-    parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass")}
+    parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass", "r")}
     for lo, hi in AGE_BINS:
         mid = 0.5 * (lo + hi)
         z = rng.exponential(height(mid), N_PER_BIN) * rng.choice([-1.0, 1.0], N_PER_BIN)
@@ -70,14 +75,32 @@ def synthetic_sample(height: Callable[[float], float] = scale_height) -> Annulus
         parts["v_z"].append(rng.normal(0.0, vertical_dispersion(mid), N_PER_BIN))
         parts["jr"].append(np.where(np.abs(z) < 0.5, jr, np.nan))
         parts["initial_mass"].append(np.ones(N_PER_BIN))
+        parts["r"].append(rng.uniform(R_MIN_KPC, R_MAX_KPC, N_PER_BIN))
     return AnnulusSample(**{key: np.concatenate(value) for key, value in parts.items()})
 
 
-def measure(sample: AnnulusSample) -> MonoAge:
-    """Return the mono-age measurement of *sample* in the linear potential, with a snapshot's 5 percent deeper."""
+def synthetic_outer(height: Callable[[float], float] = scale_height) -> AnnulusSample:
+    """Return the populations of :func:`synthetic_sample` in the rings of the tilt term outside the annulus."""
+    sample = synthetic_sample(height)
+    rng = np.random.default_rng(22)
+    inner = rng.uniform(size=sample.r.size) < 0.5
+    r = np.where(
+        inner,
+        rng.uniform(TILT_R_MIN_KPC, R_MIN_KPC, sample.r.size),
+        rng.uniform(R_MAX_KPC, TILT_R_MAX_KPC, sample.r.size),
+    )
+    return AnnulusSample(**{**sample.__dict__, "r": r, "jr": np.full(r.size, np.nan)})
+
+
+def measure(sample: AnnulusSample, outer: AnnulusSample | None = None) -> MonoAge:
+    """Return the mono-age measurement of *sample* in the linear potential, with a snapshot's 5 percent deeper.
+
+    Without *outer*, no star lies outside the annulus.
+    """
     phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi)
-    return measure_mono_age(sample, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
+    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC)
+    outside = sample.select(np.zeros(sample.z.size, dtype=bool)) if outer is None else outer
+    return measure_mono_age(sample, outside, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
 
 
 @pytest.fixture(name="measured", scope="module")
@@ -135,10 +158,11 @@ def test_clipped_dispersion_ignores_outliers() -> None:
 
 
 def test_half_width() -> None:
-    """Half the 16th-84th percentile interval of a unit Gaussian is about 1; NaN draws are ignored."""
+    """Half the 16th-84th percentile interval of a unit Gaussian is about 1; NaN draws are ignored, all NaN is NaN."""
     draws = np.random.default_rng(7).normal(0.0, 1.0, 100_000)
     assert half_width(draws) == pytest.approx(1.0, rel=0.02)
     assert half_width(np.append(draws, np.nan)) == half_width(draws)
+    assert np.isnan(half_width(np.array([np.nan, np.nan])))
 
 
 def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge) -> None:
@@ -148,7 +172,7 @@ def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge)
     more than 5 errors.
     """
     for r in measured.ranges:
-        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot"}
+        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans"}
         trend = r.trends["tracer"]
         if r.lo == 0.0:
             assert trend.value > 5.0 * trend.err
@@ -163,6 +187,29 @@ def test_trend_vanishes_when_the_tracer_is_right() -> None:
         assert abs(r.trends["tracer"].value) < 3.0 * r.trends["tracer"].err
 
 
+def test_jeans_heights_follow_the_tracer_of_an_isothermal_untilted_population() -> None:
+    """With sigma_z constant in z and v_R independent of v_z, both Jeans heights equal the tracer's within errors."""
+    exact = measure(synthetic_sample(tracer_height))
+    for b in exact.bins:
+        tolerance = 4.0 * b.ratios.tracer.err
+        assert b.ratios.jeans_sigma.value == pytest.approx(b.ratios.tracer.value, abs=tolerance)
+        assert b.ratios.jeans.value == pytest.approx(b.ratios.tracer.value, abs=tolerance)
+        assert len(b.jeans.z) == len(b.jeans.sigma2) == len(b.jeans.tilt) > 0
+    assert set(exact.ranges[0].trends) >= {"jeans_sigma", "jeans"}
+
+
+def test_stars_outside_the_annulus_change_only_the_tilt_term() -> None:
+    """The stars of the rings around the annulus enter only the tilt term, with resamplings of their own."""
+    alone = measure(synthetic_sample(tracer_height))
+    joined = measure(synthetic_sample(tracer_height), synthetic_outer(tracer_height))
+    for a, b in zip(alone.bins, joined.bins, strict=True):
+        assert (a.heights, a.kinematics, a.ratios.tracer, a.ratios.jeans_sigma) == (
+            b.heights, b.kinematics, b.ratios.tracer, b.ratios.jeans_sigma
+        )  # fmt: skip
+        assert np.all(np.isnan(a.jeans.tilt)) and np.isfinite(b.jeans.tilt[0])
+        assert b.ratios.jeans.value == pytest.approx(b.ratios.tracer.value, abs=4.0 * b.ratios.jeans.err)
+
+
 def test_fit_trend_is_the_difference_of_the_exponents_with_one_set_of_weights() -> None:
     """With the same relative errors, the trend of y / y_pred is the exponent of y minus that of y_pred."""
     x = np.array([0.5, 1.5, 2.5, 4.0, 8.0])
@@ -171,6 +218,45 @@ def test_fit_trend_is_the_difference_of_the_exponents_with_one_set_of_weights() 
     rel = np.array([0.02, 0.03, 0.05, 0.04, 0.08])
     difference = fit_power_law(x, y, rel * y).value - fit_power_law(x, y_pred, rel * y_pred).value
     assert fit_trend(x, y / y_pred, rel * y / y_pred).value == pytest.approx(difference)
+
+
+def test_fit_log_slope_recovers_an_exponential_in_x() -> None:
+    """An exponential 2 exp(0.5 x) has a slope of 0.5 in ln y against x, also at negative x, with no scatter."""
+    x = np.array([-0.4, -0.1, 0.2, 0.5])
+    y = 2.0 * np.exp(0.5 * x)
+    trend = fit_log_slope(x, y, 0.05 * y)
+    assert trend.value == pytest.approx(0.5) and trend.chi2_dof == pytest.approx(0.0, abs=1e-20)
+
+
+def test_fit_grouped_log_slope_shares_the_slope_across_groups() -> None:
+    """Two groups of different normalization share the slope 0.5 of ln y; one point per group leaves no dof."""
+    x = np.array([-0.4, 0.0, 0.3, -0.2, 0.1, 0.4])
+    group = np.array([1.0, 1.0, 1.0, 2.0, 2.0, 2.0])
+    y = np.where(group == 1.0, 2.0, 5.0) * np.exp(0.5 * x)
+    trend = fit_grouped_log_slope(x, y, 0.05 * y, group)
+    assert trend.value == pytest.approx(0.5) and trend.chi2_dof == pytest.approx(0.0, abs=1e-20)
+    alone = fit_grouped_log_slope(x[:2], y[:2], 0.05 * y[:2], np.array([1.0, 2.0]))
+    assert np.isnan(alone.value) and np.isnan(alone.err)
+    flat = fit_grouped_log_slope(np.repeat([0.1, 0.2], 3), y, 0.05 * y, group)
+    assert np.isnan(flat.value)
+
+
+def test_fit_grouped_log_slope_equals_the_fit_with_one_column_per_group() -> None:
+    """The slope, its error and chi^2 equal those of weighted least squares with an intercept column per group."""
+    rng = np.random.default_rng(8)
+    x = rng.uniform(-0.5, 0.4, 30)
+    group = rng.integers(0, 5, 30).astype(np.float64)
+    y = np.exp(0.3 * x + 0.2 * group + rng.normal(0.0, 0.1, 30))
+    y_err = rng.uniform(0.05, 0.2, 30) * y
+    design = np.column_stack([*(np.asarray(group == g, dtype=np.float64) for g in np.unique(group)), x])
+    w = (y / y_err) ** 2
+    cov = np.linalg.inv(design.T @ (design * w[:, None]))
+    coef = cov @ (design.T @ (w * np.log(y)))
+    dof = x.size - design.shape[1]
+    chi2_dof = float(np.sum(w * (np.log(y) - design @ coef) ** 2)) / dof
+    trend = fit_grouped_log_slope(x, y, y_err, group)
+    assert trend.value == pytest.approx(coef[-1], rel=1e-10) and trend.chi2_dof == pytest.approx(chi2_dof, rel=1e-10)
+    assert trend.err == pytest.approx(np.sqrt(cov[-1, -1] * max(1.0, chi2_dof)), rel=1e-10)
 
 
 def test_fit_trend_widens_its_error_by_the_scatter() -> None:

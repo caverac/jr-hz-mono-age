@@ -5,7 +5,8 @@
 2. Rotate them into the disk frame and fit the axisymmetric AGAMA potential
    (:func:`experiments.potential.fit_potential`).
 3. In the annulus, measure the mono-age populations (:mod:`experiments.populations`),
-   with the tracer in the fitted potential and in the snapshot's.
+   with the tracer in the fitted potential and in the snapshot's, and the tilt term of
+   their Jeans equation over a wider range of radii.
 4. Measure the whole disk in rings over Palicio's radial range (:mod:`experiments.whole_disk`).
 """
 
@@ -28,6 +29,7 @@ from experiments.populations import (
     annulus_sample,
     measure_mono_age,
     median_radius,
+    outer_sample,
     surface_density,
 )
 from experiments.potential import (
@@ -98,12 +100,12 @@ def analyze_halo(prepared: PreparedHalo, method: Method) -> HaloAnalysis:
     r_mid = median_radius(galaxy, annulus)
     sigma_surf = surface_density(galaxy, R_MIN_KPC, R_MAX_KPC)
     phi_snapshot, residual = snapshot_vertical_potential(pot, galaxy.stars, annulus, r_mid)
-    model = VerticalModel(sigma_surf, vertical_potential(pot, r_mid), phi_snapshot)
+    model = VerticalModel(sigma_surf, vertical_potential(pot, r_mid), phi_snapshot, r_mid)
     return HaloAnalysis(
         snapshot=prepared.snapshot,
         annulus=Annulus(R_MIN_KPC, R_MAX_KPC, r_mid, circular_velocity(pot, r_mid), sigma_surf, int(annulus.sum())),
         potential_check=potential_check(pot, galaxy.stars, annulus),
         residual=residual,
-        mono_age=measure_mono_age(sample, model, method),
+        mono_age=measure_mono_age(sample, outer_sample(galaxy, R_MIN_KPC, R_MAX_KPC), model, method),
         whole_disk=measure_whole_disk(galaxy, pot, method.window),
     )

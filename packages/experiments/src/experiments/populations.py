@@ -5,19 +5,24 @@ are split into 1 Gyr age bins from 0 to 10 Gyr. For each bin:
 
 - J_R,med and sigma_R come from the stars with |z| < ``Z_JR_MAX_KPC``, and the midplane
   sigma_z from those with |z| < ``Z_MID_MAX_KPC``. Dispersions are clipped at
-  ``VEL_CLIP_SIGMA`` MAD sigmas around the median.
+  ``VEL_CLIP_SIGMA`` MAD sigmas around the median (:mod:`experiments.stats`).
 - h_Z is fitted to the heights weighted by initial mass, the analog of star counts,
   because the number of giants of a given age is proportional to the initial mass of
   the population. It is fitted in the self-consistent window k h_Z and in Palicio's
   fixed window Z_lim (:mod:`experiments.heights`).
 - The sheet and the isothermal tracer predict h_Z from sigma_z. The tracer is put
   through the same self-consistent window twice: in the fitted potential and in the
-  snapshot's.
+  snapshot's. Two diagnostics of the tracer's assumptions go through it too: the vertical
+  Jeans equation in the fitted potential with the measured sigma_z(z), without and with
+  the tilt term (:mod:`experiments.jeans`). The tilt term also uses the stars of the bin
+  outside the annulus, within the wider range of radii of :mod:`experiments.jeans`.
 - a = J_R,med / h_Z, and its predictions with the same J_R,med.
 - The ratio of each predicted h_Z to the measured one, in which J_R,med cancels.
 
 Errors are half the 16th-84th percentile interval of ``N_BOOTSTRAP`` resamplings of the
-stars of a bin. Each resampling gives every quantity at once, so that ratios of
+stars of a bin. The stars outside the annulus are resampled with a generator of their
+own, so that the resamplings of the annulus do not depend on them. Each resampling gives
+every quantity at once, so that ratios of
 quantities measured on the same stars, such as a and h_pred / h_Z, carry their
 correlations. The age exponent of each quantity is a weighted least-squares fit of ln y
 against ln age. The trend of a ratio h_pred / h_Z is the same fit, with its error scaled
@@ -37,6 +42,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from experiments.heights import (
+    Z_GRID,
     particle_hz,
     profile_hz,
     scaled_particle_hz,
@@ -44,9 +50,18 @@ from experiments.heights import (
     sheet_hz,
     tracer_profile,
 )
+from experiments.jeans import (
+    TILT_R_MAX_KPC,
+    TILT_R_MIN_KPC,
+    JeansProfile,
+    JeansStars,
+    jeans_density,
+    jeans_profile,
+)
 from experiments.palicio import PalicioWindow
 from experiments.potential import radial_actions
 from experiments.snapshot import Galaxy, cylindrical_velocities
+from experiments.stats import clipped_dispersion, half_width
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -58,8 +73,6 @@ Z_RMID_MAX_KPC = 2.5  # the stars whose median radius is R_mid
 Z_JR_MAX_KPC = 0.5
 Z_MID_MAX_KPC = 0.3
 Z_SIGMA_KPC = 1.1  # the layer whose mass per area is the Sigma of the sheet
-VEL_CLIP_SIGMA = 4.0
-MAD_TO_SIGMA = 1.4826
 AGE_BINS = tuple((float(t), float(t + 1)) for t in range(10))
 AGE_RANGES = ((0.0, 10.0), (2.0, 10.0), (0.0, 8.0), (2.0, 8.0))
 K_MAIN = 2.0
@@ -67,6 +80,7 @@ K_SCAN = (1.5, 2.0, 3.0)
 Z_LIM_SCAN_KPC = (0.5, 1.0, 1.5, 2.5)
 N_BOOTSTRAP = 300
 SEED = 20261023
+OUTER_SEED = 20261027  # the resamplings of the stars outside the annulus
 
 
 @dataclass(frozen=True)
@@ -88,7 +102,7 @@ class Method:
 
 @dataclass(frozen=True)
 class AnnulusSample:
-    """The star particles of the annulus: age (Gyr), z (kpc), v_R and v_z (km/s), J_R (kpc km/s), initial mass."""
+    """The star particles of the annulus: age (Gyr), z and R (kpc), v_R and v_z (km/s), J_R (kpc km/s), initial mass."""
 
     age: FloatArray
     z: FloatArray
@@ -96,19 +110,45 @@ class AnnulusSample:
     v_z: FloatArray
     jr: FloatArray  # NaN where |z| >= Z_JR_MAX_KPC
     initial_mass: FloatArray
+    r: FloatArray  # kpc, the cylindrical radius
 
     def select(self, keep: BoolArray | IndexArray) -> AnnulusSample:
         """Return the stars where the mask *keep* is true, or at the indices *keep*, which may repeat."""
         return AnnulusSample(**{f.name: getattr(self, f.name)[keep] for f in fields(self)})
 
+    def jeans_stars(self) -> JeansStars:
+        """Return the stars as the Jeans equation reads them, weighted by initial mass."""
+        return JeansStars(self.r, self.z, self.v_r, self.v_z, self.initial_mass)
+
+
+@dataclass(frozen=True)
+class BinStars:
+    """The star particles of one age bin: those of the annulus, and those of the range of the tilt term outside it."""
+
+    annulus: AnnulusSample
+    outer: AnnulusSample
+
+    def resampled(self, rng: np.random.Generator, outer_rng: np.random.Generator) -> BinStars:
+        """Return a bootstrap resampling of the annulus with *rng* and of the stars outside it with *outer_rng*."""
+        n, m = self.annulus.z.size, self.outer.z.size
+        return BinStars(self.annulus.select(rng.integers(0, n, n)), self.outer.select(outer_rng.integers(0, m, m)))
+
+    def jeans_stars(self) -> JeansStars:
+        """Return all the stars of the bin as the Jeans equation reads them."""
+        inner, outer = self.annulus.jeans_stars(), self.outer.jeans_stars()
+        return JeansStars(
+            **{f.name: np.concatenate([getattr(inner, f.name), getattr(outer, f.name)]) for f in fields(inner)}
+        )
+
 
 @dataclass(frozen=True)
 class VerticalModel:
-    """What the predictions of h_Z in one annulus need: Sigma and Delta Phi(R_mid, z) on ``Z_GRID``."""
+    """What the predictions of h_Z in one annulus need: Sigma, Delta Phi(R_mid, z) on ``Z_GRID`` and R_mid."""
 
     sigma_surf: float  # Msun/pc^2
     phi_fit: FloatArray  # (km/s)^2, the fitted potential
     phi_snapshot: FloatArray  # (km/s)^2, the snapshot's potential
+    r_mid: float  # kpc
 
 
 @dataclass(frozen=True)
@@ -134,12 +174,18 @@ class Heights:
 
 @dataclass(frozen=True)
 class Predictions:
-    """h_Z of one age bin predicted by the sheet and by the tracer, with the tracer's window."""
+    """h_Z of one age bin predicted by the sheet and by the tracer, with the tracer's window, and the Jeans diagnostics.
+
+    ``jeans_sigma`` integrates the vertical Jeans equation with the measured sigma_z(z) and
+    no tilt term, ``jeans`` with both.
+    """
 
     sheet: float
     tracer: float
     tracer_window: float
     tracer_snapshot: float
+    jeans_sigma: float
+    jeans: float
 
 
 @dataclass(frozen=True)
@@ -159,6 +205,8 @@ class Ratios:
     sheet: Estimate
     tracer: Estimate
     tracer_snapshot: Estimate
+    jeans_sigma: Estimate
+    jeans: Estimate
 
 
 @dataclass(frozen=True)
@@ -173,6 +221,7 @@ class AgeBin:  # pylint: disable=too-many-instance-attributes
     predictions: Predictions
     slopes: Slopes
     ratios: Ratios
+    jeans: JeansProfile
 
 
 @dataclass(frozen=True)
@@ -231,19 +280,6 @@ class MonoAge:
     window_scan: list[ScanRow]
 
 
-def clipped_dispersion(v: FloatArray) -> float:
-    """Return the dispersion of *v* within ``VEL_CLIP_SIGMA`` MAD sigmas of its median."""
-    center = np.median(v)
-    mad = MAD_TO_SIGMA * np.median(np.abs(v - center))
-    return float(np.std(v[np.abs(v - center) < VEL_CLIP_SIGMA * mad]))
-
-
-def half_width(draws: FloatArray) -> float:
-    """Return half the 16th-84th percentile interval of the finite *draws*."""
-    lo, hi = np.percentile(draws[np.isfinite(draws)], [16.0, 84.0])
-    return float(0.5 * (hi - lo))
-
-
 def surface_density(galaxy: Galaxy, r_lo: float, r_hi: float) -> float:
     """Return the mass per area (Msun/pc^2) of every particle with r_lo <= R < r_hi and |z| < ``Z_SIGMA_KPC``."""
     mass = 0.0
@@ -269,7 +305,23 @@ def annulus_sample(galaxy: Galaxy, pot: agama.Potential, r_lo: float, r_hi: floa
     near = np.abs(pos[:, 2]) < Z_JR_MAX_KPC
     jr[near] = radial_actions(pot, pos[near], vel[near])
     age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[annulus], galaxy.header.scale_factor)
-    return AnnulusSample(age, pos[:, 2], v_r, v_z, jr, stars.initial_mass[annulus]), annulus
+    return AnnulusSample(age, pos[:, 2], v_r, v_z, jr, stars.initial_mass[annulus], cyl_r[annulus]), annulus
+
+
+def outer_sample(galaxy: Galaxy, r_lo: float, r_hi: float) -> AnnulusSample:
+    """Return the star particles of the range of the tilt term outside [r_lo, r_hi), without J_R.
+
+    They are the stars with ``TILT_R_MIN_KPC`` <= R < ``TILT_R_MAX_KPC`` and
+    |z| < ``Z_SAMPLE_MAX_KPC`` outside the annulus; only the tilt term uses them.
+    """
+    stars = galaxy.stars
+    cyl_r = stars.cylindrical_radius
+    in_range = (cyl_r >= TILT_R_MIN_KPC) & (cyl_r < TILT_R_MAX_KPC) & (np.abs(stars.pos[:, 2]) < Z_SAMPLE_MAX_KPC)
+    keep = in_range & ((cyl_r < r_lo) | (cyl_r >= r_hi))
+    pos, vel = stars.pos[keep], stars.vel[keep]
+    v_r, v_z = cylindrical_velocities(pos, vel)
+    age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[keep], galaxy.header.scale_factor)
+    return AnnulusSample(age, pos[:, 2], v_r, v_z, np.full(pos.shape[0], np.nan), stars.initial_mass[keep], cyl_r[keep])
 
 
 def median_radius(galaxy: Galaxy, annulus: BoolArray) -> float:
@@ -292,15 +344,19 @@ class _BinValues:  # pylint: disable=too-many-instance-attributes
     tracer: float
     tracer_window: float
     tracer_snapshot: float
+    jeans_sigma: float
+    jeans: float
 
 
-def _bin_values(rows: AnnulusSample, model: VerticalModel, k: float) -> _BinValues:
-    """Return the kinematics, h_Z and the predicted h_Z of the stars *rows* of one bin."""
+def _bin_values(stars: BinStars, model: VerticalModel, k: float) -> _BinValues:
+    """Return the kinematics, h_Z and the predicted h_Z of the stars of one bin."""
+    rows = stars.annulus
     absz = np.abs(rows.z)
     jr_rows = (absz < Z_JR_MAX_KPC) & np.isfinite(rows.jr)
     sigma_z = clipped_dispersion(rows.v_z[absz < Z_MID_MAX_KPC])
     hz, window = scaled_particle_hz(absz, rows.initial_mass, k)
     tracer, tracer_window = scaled_profile_hz(tracer_profile(model.phi_fit, sigma_z), k)
+    profile = _jeans(stars, model)
     return _BinValues(
         sigma_r=clipped_dispersion(rows.v_r[jr_rows]),
         sigma_z=sigma_z,
@@ -311,20 +367,32 @@ def _bin_values(rows: AnnulusSample, model: VerticalModel, k: float) -> _BinValu
         tracer=tracer,
         tracer_window=tracer_window,
         tracer_snapshot=scaled_profile_hz(tracer_profile(model.phi_snapshot, sigma_z), k)[0],
+        jeans_sigma=scaled_profile_hz(jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=False), k)[0],
+        jeans=scaled_profile_hz(jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=True), k)[0],
     )
 
 
+def _jeans(stars: BinStars, model: VerticalModel) -> JeansProfile:
+    """Return sigma_z^2(z) of the annulus and the tilt term of all the stars of one bin."""
+    return jeans_profile(stars.jeans_stars(), R_MIN_KPC, R_MAX_KPC, model.r_mid)
+
+
 def measure_bin(
-    rows: AnnulusSample, bounds: tuple[float, float], model: VerticalModel, method: Method, rng: np.random.Generator
+    stars: BinStars,
+    bounds: tuple[float, float],
+    model: VerticalModel,
+    method: Method,
+    rngs: tuple[np.random.Generator, np.random.Generator],
 ) -> AgeBin:
-    """Return the measurement and the predictions of the age bin *rows*, whose ages lie within *bounds* (Gyr).
+    """Return the measurement and the predictions of the age bin *stars*, whose ages lie within *bounds* (Gyr).
 
     Every error comes from one bootstrap: each draw resamples the stars of the bin with
-    replacement and recomputes every quantity from them.
+    replacement, those of the annulus with ``rngs[0]`` and those outside it with
+    ``rngs[1]``, and recomputes every quantity from them.
     """
-    point = _bin_values(rows, model, method.k)
-    n = rows.z.size
-    draws = [_bin_values(rows.select(rng.integers(0, n, n)), model, method.k) for _ in range(method.n_bootstrap)]
+    rows = stars.annulus
+    point = _bin_values(stars, model, method.k)
+    draws = [_bin_values(stars.resampled(*rngs), model, method.k) for _ in range(method.n_bootstrap)]
 
     def spread(get: Callable[[_BinValues], float]) -> Estimate:
         return Estimate(get(point), half_width(np.array([get(draw) for draw in draws], dtype=np.float64)))
@@ -353,18 +421,40 @@ def measure_bin(
         sheet=spread(lambda v: v.sheet / v.hz),
         tracer=spread(lambda v: v.tracer / v.hz),
         tracer_snapshot=spread(lambda v: v.tracer_snapshot / v.hz),
+        jeans_sigma=spread(lambda v: v.jeans_sigma / v.hz),
+        jeans=spread(lambda v: v.jeans / v.hz),
     )
-    predictions = Predictions(point.sheet, point.tracer, point.tracer_window, point.tracer_snapshot)
-    return AgeBin(*bounds, float(np.median(rows.age)), kinematics, heights, predictions, slopes, ratios)
+    return AgeBin(
+        *bounds,
+        float(np.median(rows.age)),
+        kinematics,
+        heights,
+        Predictions(
+            point.sheet, point.tracer, point.tracer_window, point.tracer_snapshot, point.jeans_sigma, point.jeans
+        ),
+        slopes,
+        ratios,
+        _jeans(stars, model),
+    )
+
+
+def _line(x: FloatArray, y: FloatArray, w: FloatArray) -> tuple[FloatArray, FloatArray, float]:
+    """Return the coefficients, their covariance and the chi^2 of the line of *y* on *x*, with weights *w*."""
+    design = np.vstack([np.ones_like(x), x]).T
+    cov = np.linalg.inv(design.T @ (design * w[:, None]))
+    coef = cov @ (design.T @ (w * y))
+    return coef, cov, float(np.sum(w * (y - design @ coef) ** 2))
 
 
 def _log_line(x: FloatArray, y: FloatArray, y_err: FloatArray) -> tuple[FloatArray, FloatArray, float]:
     """Return the coefficients, their covariance and the chi^2 of the weighted least-squares line of ln y on ln x."""
-    lx, ly, w = np.log(x), np.log(y), (y / y_err) ** 2
-    design = np.vstack([np.ones_like(lx), lx]).T
-    cov = np.linalg.inv(design.T @ (design * w[:, None]))
-    coef = cov @ (design.T @ (w * ly))
-    return coef, cov, float(np.sum(w * (ly - design @ coef) ** 2))
+    return _line(np.log(x), np.log(y), (y / y_err) ** 2)
+
+
+def _scaled_trend(coef: FloatArray, cov: FloatArray, chi2: float, dof: int) -> Trend:
+    """Return the last coefficient of a fit, its error times sqrt(max(1, chi^2 per dof)), and that chi^2 per dof."""
+    chi2_dof = chi2 / dof
+    return Trend(float(coef[-1]), float(np.sqrt(cov[-1, -1] * max(1.0, chi2_dof))), chi2_dof)
 
 
 def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
@@ -375,9 +465,37 @@ def fit_power_law(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Estimate:
 
 def fit_trend(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
     """Return the exponent of y = A x^p, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
-    coef, cov, chi2 = _log_line(x, y, y_err)
-    chi2_dof = chi2 / (x.size - 2)
-    return Trend(float(coef[1]), float(np.sqrt(cov[1, 1] * max(1.0, chi2_dof))), chi2_dof)
+    return _scaled_trend(*_log_line(x, y, y_err), x.size - 2)
+
+
+def fit_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
+    """Return the slope of ln y against x, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
+    return _scaled_trend(*_line(x, np.log(y), (y / y_err) ** 2), x.size - 2)
+
+
+def fit_grouped_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray, group: FloatArray) -> Trend:
+    """Return the slope of ln y against x shared by every *group*, each with its own intercept.
+
+    With one intercept per group, the weighted least-squares slope is that of the deviations
+    of x and ln y from their weighted means in each group, and its variance is the inverse
+    of the weighted sum of the squared deviations of x. The error is scaled by
+    sqrt(max(1, chi^2 per degree of freedom)); with no degree of freedom left, or no spread
+    of x inside any group, every value is NaN.
+    """
+    log_y, w = np.log(y), (y / y_err) ** 2
+    dx, dy = np.empty_like(x), np.empty_like(log_y)
+    groups = np.unique(group)
+    for g in groups:
+        rows = group == g
+        dx[rows] = x[rows] - np.average(x[rows], weights=w[rows])
+        dy[rows] = log_y[rows] - np.average(log_y[rows], weights=w[rows])
+    sxx = float(np.sum(w * dx**2))
+    dof = x.size - groups.size - 1
+    if dof < 1 or sxx <= 0.0:
+        return Trend(float("nan"), float("nan"), float("nan"))
+    slope = float(np.sum(w * dx * dy)) / sxx
+    chi2_dof = float(np.sum(w * (dy - slope * dx) ** 2)) / dof
+    return Trend(slope, float(np.sqrt(max(1.0, chi2_dof) / sxx)), chi2_dof)
 
 
 def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
@@ -412,6 +530,8 @@ def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
             "sheet": trend(lambda b: b.ratios.sheet),
             "tracer": trend(lambda b: b.ratios.tracer),
             "tracer_snapshot": trend(lambda b: b.ratios.tracer_snapshot),
+            "jeans_sigma": trend(lambda b: b.ratios.jeans_sigma),
+            "jeans": trend(lambda b: b.ratios.jeans),
         },
         eta=exponents["hz"].value / exponents["sigma_z"].value,
         sheet_exponent=2.0 * (exponents["sigma_r"].value - exponents["sigma_z"].value),
@@ -454,14 +574,17 @@ def window_scan(groups: list[AnnulusSample], bins: list[AgeBin], phi_z: FloatArr
     return rows
 
 
-def measure_mono_age(sample: AnnulusSample, model: VerticalModel, method: Method) -> MonoAge:
-    """Return the mono-age measurement of the annulus *sample*."""
-    rng = np.random.default_rng(SEED)
+def measure_mono_age(sample: AnnulusSample, outer: AnnulusSample, model: VerticalModel, method: Method) -> MonoAge:
+    """Return the mono-age measurement of the annulus *sample*, with the stars *outer* for the tilt term."""
+    rngs = (np.random.default_rng(SEED), np.random.default_rng(OUTER_SEED))
     absz = np.abs(sample.z)
     z_lim = method.window.z_lim
     hz_all = particle_hz(absz, sample.initial_mass, z_lim)
     groups = [sample.select((sample.age >= lo) & (sample.age < hi)) for lo, hi in AGE_BINS]
-    bins = [measure_bin(g, bounds, model, method, rng) for g, bounds in zip(groups, AGE_BINS, strict=True)]
+    bins = [
+        measure_bin(BinStars(g, outer.select((outer.age >= lo) & (outer.age < hi))), (lo, hi), model, method, rngs)
+        for g, (lo, hi) in zip(groups, AGE_BINS, strict=True)
+    ]
     return MonoAge(
         method=method,
         hz_all_fixed=hz_all,

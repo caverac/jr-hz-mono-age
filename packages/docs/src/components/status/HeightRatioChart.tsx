@@ -26,16 +26,26 @@ const TOLERANCE = 0.1
 const STYLE = {
   tracer: { dash: 'solid', marker: 'circle', open: false },
   tracerSnapshot: { dash: 'dotted', marker: 'diamond', open: false },
+  jeansSigma: { dash: 'dashed', marker: 'triangle', open: false },
+  jeans: { dash: 'dotted', marker: 'triangle', open: true },
   sheet: { dash: 'dashed', marker: 'circle', open: true }
 } as const
 
 const LABELS: Record<Predictor, string> = {
   tracer: 'tracer, fitted $\\Phi$',
   tracerSnapshot: 'tracer, snapshot $\\Phi$',
+  jeansSigma: 'Jeans, $\\sigma_z(z)$',
+  jeans: 'Jeans, $\\sigma_z(z)$ and tilt',
   sheet: 'sheet'
 }
 
-const PREDICTORS: readonly Predictor[] = ['tracer', 'tracerSnapshot', 'sheet']
+const PREDICTORS: readonly Predictor[] = [
+  'tracer',
+  'tracerSnapshot',
+  'jeansSigma',
+  'jeans',
+  'sheet'
+]
 
 interface Hovered {
   readonly halo: string

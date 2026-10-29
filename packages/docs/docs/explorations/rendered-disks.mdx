@@ -19,6 +19,29 @@ representative age of 1, 3, 5, 7 and 11 Gyr. Faint pixels are smoothed more than
 ones, which removes the particle noise of the outskirts without blurring the center. The
 edge-on view covers $|z| < 7.5$ kpc.
 
+## Why these seven halos
+
+The public data release of the Auriga Project holds 30 halos of the Original suite at
+Level 4, the resolution used here, and 6 at Level 3, besides suites of lower mass
+and runs without baryons ([data release](https://wwwmpa.mpa-garching.mpg.de/auriga/data.html)).
+We analyze the seven that Palicio et al. (2025, Table 1) used for the $J_R$-$h_Z$
+relation: Au2, Au3, Au16, Au19, Au23, Au24 and Au27. Taking the same seven lets each halo
+keep the windows $Z_\mathrm{lim}$ and $L_\mathrm{kpc}$ of their Table 1, so that our heights
+can be compared with theirs directly ([Fixed-window bias](../status/window-bias),
+[Across galaxies](../status/across-galaxies)). No property of the halos entered the choice,
+whose only purpose is that comparison.
+
+Palicio et al. chose their cosmological disks, these seven included, by eye: "These
+simulations represent Milky Way-like galaxies and were selected for the pronounced spiral
+arms shown in their pre-visualisation images" (Sect. 2.1). The criterion has no stated
+threshold, nor does the paper give a reason for leaving out the other 23 halos of the
+suite. The seven are therefore disks with visible spiral structure, not a random or
+complete sample of the Auriga galaxies. Au23 is likely barred, because its overdensity map
+"suggests the presence of a long bar in the central regions" (their Sect. 3.2). The tests
+of these pages hold for these seven halos. The other 23 have not been analyzed, although
+the same commands would analyze them, with windows given by `--z-lim` and `--l-kpc`
+because Palicio et al. list none for them.
+
 ## Reproducing the images
 
 ```bash

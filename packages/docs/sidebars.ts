@@ -8,7 +8,13 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Status',
       collapsed: false,
-      items: ['status/overview', 'status/tracer-vs-sheet', 'status/window-bias']
+      items: [
+        'status/overview',
+        'status/tracer-vs-sheet',
+        'status/window-bias',
+        'status/across-galaxies',
+        'status/milky-way'
+      ]
     },
     {
       type: 'category',

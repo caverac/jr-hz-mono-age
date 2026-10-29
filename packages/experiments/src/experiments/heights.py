@@ -12,12 +12,13 @@ population inside L = k h(L), the smallest root of that equation, so that popula
 one profile shape are fitted over the same part of their profiles: an exponential
 returns its scale height at any k.
 
-Two predictions of h_Z from the midplane dispersion sigma_z go through the same windows:
+Two predictions of h_Z come from the midplane dispersion sigma_z:
 
 - the self-gravitating isothermal sheet, h_Z = sigma_z^2 / (pi G Sigma), with Sigma the
-  surface density of all the mass near the plane;
+  surface density of all the mass near the plane: the z_0 of its profile sech^2(|z| / z_0),
+  which the window L = 2 h_Z returns, so that the scale is compared with the windowed fit;
 - the isothermal tracer of the total potential, rho(z) ~ exp(-Delta Phi(z) / sigma_z^2),
-  whose profile is fitted as the particles are.
+  whose profile goes through the same window as the particles.
 """
 
 from __future__ import annotations
@@ -93,6 +94,16 @@ def profile_hz(rho: FloatArray, window: float, z_grid: FloatArray = Z_GRID) -> f
     )
 
 
+def exponential_profile_hz(rho: FloatArray, limit: float, z_grid: FloatArray = Z_GRID) -> float:
+    """Return the scale of the exponential on [0, *limit*] that maximum likelihood fits to the profile *rho*.
+
+    This is the fit of a single exponential without a window, which matches the mean height
+    of the profile below *limit*; for a profile that is not exponential it differs from the
+    windowed h_Z.
+    """
+    return truncated_exp_scale(_profile_mean(rho, limit, z_grid), limit)
+
+
 def self_consistent_window(hz_of_window: Callable[[float], float], k: float) -> tuple[float, float]:
     """Return h_Z and the window L at the smallest root of L = k h(L); NaN for both if none on ``WINDOW_GRID``.
 
@@ -106,10 +117,10 @@ def self_consistent_window(hz_of_window: Callable[[float], float], k: float) -> 
         scale = hz_of_window(window)
         return window - k * scale if np.isfinite(scale) else -np.inf
 
-    above = np.flatnonzero(np.array([g(float(w)) for w in WINDOW_GRID]) >= 0.0)
-    if above.size == 0 or above[0] == 0:
+    first = next((i for i, w in enumerate(WINDOW_GRID) if g(float(w)) >= 0.0), None)
+    if first is None or first == 0:
         return float("nan"), float("nan")
-    lo, hi = float(WINDOW_GRID[above[0] - 1]), float(WINDOW_GRID[above[0]])
+    lo, hi = float(WINDOW_GRID[first - 1]), float(WINDOW_GRID[first])
     for _ in range(BISECTION_STEPS):
         mid = float(np.sqrt(lo * hi))
         if g(mid) >= 0.0:
@@ -137,3 +148,14 @@ def scaled_profile_hz(rho: FloatArray, k: float, z_grid: FloatArray = Z_GRID) ->
 def sheet_hz(sigma_z: float, sigma_surf: float) -> float:
     """Return sigma_z^2 / (pi G Sigma) in kpc, for sigma_z in km/s and Sigma in Msun/pc^2."""
     return float(sigma_z**2 / (np.pi * G_PC * sigma_surf) / 1.0e3)
+
+
+def sheet_profile(sigma_z: float, sigma_surf: float, z_grid: FloatArray = Z_GRID) -> FloatArray:
+    """Return the self-gravitating isothermal sheet sech^2(|z| / z_0) on *z_grid*, with z_0 = :func:`sheet_hz`.
+
+    Its h_Z in the self-consistent window L = 2 h_Z is z_0 to 0.2 percent, so at k = 2 the
+    profile and the scale are the same prediction. sech^2 x = 4 e^{-2x} / (1 + e^{-2x})^2,
+    which does not overflow for thin sheets.
+    """
+    decay = np.exp(-2.0 * np.abs(z_grid) / sheet_hz(sigma_z, sigma_surf))
+    return np.asarray(4.0 * decay / (1.0 + decay) ** 2, dtype=np.float64)
