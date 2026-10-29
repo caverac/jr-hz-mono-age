@@ -6,7 +6,7 @@ import React, { type ReactNode } from 'react'
 export type MarkerShape = 'circle' | 'square' | 'triangle' | 'diamond' | 'cross'
 
 /** The dash patterns of the lines. */
-export type Dash = 'solid' | 'dashed' | 'dotted'
+export type Dash = 'solid' | 'dashed' | 'dotted' | 'dashdot'
 
 const SYMBOLS: Record<MarkerShape, d3.SymbolType> = {
   circle: d3.symbolCircle,
@@ -67,7 +67,21 @@ export function Marker({
   )
 }
 
-/** The color key of a halo, set before its name in buttons and readouts. */
+/** The number of slots of the categorical palette (`src/css/viz.css`). */
+export const SERIES_SLOTS = 8
+
+/**
+ * The color of the series `index` (from 0) of a chart, from the categorical palette in its
+ * fixed order. A chart with more series than slots must fold or facet them, never cycle.
+ */
+export function seriesColor(index: number): string {
+  if (!Number.isInteger(index) || index < 0 || index >= SERIES_SLOTS) {
+    throw new RangeError(`The palette has ${SERIES_SLOTS} slots, not a slot ${index + 1}.`)
+  }
+  return `var(--viz-series-${index + 1})`
+}
+
+/** The color key of a halo or a series, set before its name in buttons and readouts. */
 export function Swatch({ color }: { readonly color: string }): ReactNode {
   return <span className="viz-swatch" style={{ background: color }} aria-hidden="true" />
 }
@@ -85,6 +99,8 @@ export interface LegendEntry {
   readonly open?: boolean
   /** A shaded band, such as a tolerance or a percentile range. */
   readonly band?: boolean
+  /** The color of the line and the marker, as in the chart; the foreground color if absent. */
+  readonly color?: string
 }
 
 /** The sample of one legend entry: its band, line and marker, in a small SVG. */
@@ -95,10 +111,17 @@ function Sample({ entry }: { readonly entry: LegendEntry }): ReactNode {
         <rect x={0} y={2} width={30} height={10} className="viz-band" />
       ) : null}
       {entry.dash === undefined ? null : (
-        <line x1={0} x2={30} y1={7} y2={7} className={dashClass(entry.dash)} />
+        <line
+          x1={0}
+          x2={30}
+          y1={7}
+          y2={7}
+          className={dashClass(entry.dash)}
+          style={entry.color === undefined ? undefined : { stroke: entry.color }}
+        />
       )}
       {entry.marker === undefined ? null : (
-        <Marker shape={entry.marker} x={15} y={7} open={entry.open} />
+        <Marker shape={entry.marker} x={15} y={7} open={entry.open} color={entry.color} />
       )}
     </svg>
   )

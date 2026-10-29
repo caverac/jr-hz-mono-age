@@ -24,3 +24,110 @@ halos of the Original suite at Level 4: Au2, Au3, Au16, Au19, Au23, Au24 and Au2
   [doi:10.1093/mnras/stae1598](https://doi.org/10.1093/mnras/stae1598)
 
 We thank the Auriga team for making these simulations public.
+
+## Milky Way data
+
+The Milky Way analysis ([Milky Way](./status/milky-way.mdx)) uses six public catalogs, which
+`uv run experiments milky-way fetch` downloads at the versions that
+`experiments.mw_sources` pins by checksum.
+
+### Gaia
+
+We select the Gaia DR3 sources of a cylinder around the Sun from the ESA archive.
+
+> This work has made use of data from the European Space Agency (ESA) mission Gaia
+> ([https://www.cosmos.esa.int/gaia](https://www.cosmos.esa.int/gaia)), processed by the
+> Gaia Data Processing and Analysis Consortium (DPAC,
+> [https://www.cosmos.esa.int/web/gaia/dpac/consortium](https://www.cosmos.esa.int/web/gaia/dpac/consortium)).
+> Funding for the DPAC has been provided by national institutions, in particular the
+> institutions participating in the Gaia Multilateral Agreement.
+
+- Gaia Collaboration, Prusti, T., et al. 2016, A&amp;A, 595, A1,
+  [doi:10.1051/0004-6361/201629272](https://doi.org/10.1051/0004-6361/201629272)
+- Gaia Collaboration, Vallenari, A., et al. 2023, A&amp;A, 674, A1,
+  [doi:10.1051/0004-6361/202243940](https://doi.org/10.1051/0004-6361/202243940)
+
+### SDSS-IV and APOGEE
+
+We use three catalogs of APOGEE DR17: allStarLite, the astroNN catalog of abundances,
+distances and ages, and the DistMass catalog of distances, masses and ages.
+
+> Funding for the Sloan Digital Sky Survey IV has been provided by the Alfred P. Sloan
+> Foundation, the U.S. Department of Energy Office of Science, and the Participating
+> Institutions. SDSS acknowledges support and resources from the Center for
+> High-Performance Computing at the University of Utah. The SDSS web site is
+> www.sdss4.org. SDSS is managed by the Astrophysical Research Consortium for the
+> Participating Institutions of the SDSS Collaboration including the Brazilian
+> Participation Group, the Carnegie Institution for Science, Carnegie Mellon University,
+> Center for Astrophysics | Harvard &amp; Smithsonian (CfA), the Chilean Participation
+> Group, the French Participation Group, Instituto de Astrof&iacute;sica de Canarias, The
+> Johns Hopkins University, Kavli Institute for the Physics and Mathematics of the
+> Universe (IPMU) / University of Tokyo, the Korean Participation Group, Lawrence Berkeley
+> National Laboratory, Leibniz Institut f&uuml;r Astrophysik Potsdam (AIP),
+> Max-Planck-Institut f&uuml;r Astronomie (MPIA Heidelberg), Max-Planck-Institut f&uuml;r
+> Astrophysik (MPA Garching), Max-Planck-Institut f&uuml;r Extraterrestrische Physik (MPE),
+> National Astronomical Observatories of China, New Mexico State University, New York
+> University, University of Notre Dame, Observat&oacute;rio Nacional / MCTI, The Ohio State
+> University, Pennsylvania State University, Shanghai Astronomical Observatory, United
+> Kingdom Participation Group, Universidad Nacional Aut&oacute;noma de M&eacute;xico,
+> University of Arizona, University of Colorado Boulder, University of Oxford, University
+> of Portsmouth, University of Utah, University of Virginia, University of Washington,
+> University of Wisconsin, Vanderbilt University, and Yale University.
+
+- Blanton, M. R., et al. 2017, AJ, 154, 28,
+  [doi:10.3847/1538-3881/aa7567](https://doi.org/10.3847/1538-3881/aa7567)
+- Majewski, S. R., et al. 2017, AJ, 154, 94,
+  [doi:10.3847/1538-3881/aa784d](https://doi.org/10.3847/1538-3881/aa784d)
+- Abdurro'uf, et al. 2022, ApJS, 259, 35,
+  [doi:10.3847/1538-4365/ac4414](https://doi.org/10.3847/1538-4365/ac4414)
+- Wilson, J. C., et al. 2019, PASP, 131, 055001,
+  [doi:10.1088/1538-3873/ab0075](https://doi.org/10.1088/1538-3873/ab0075)
+- Gunn, J. E., et al. 2006, AJ, 131, 2332,
+  [doi:10.1086/500975](https://doi.org/10.1086/500975)
+- Leung, H. W., &amp; Bovy, J. 2019a, MNRAS, 483, 3255,
+  [doi:10.1093/mnras/sty3217](https://doi.org/10.1093/mnras/sty3217) (astroNN abundances)
+- Leung, H. W., &amp; Bovy, J. 2019b, MNRAS, 489, 2079,
+  [doi:10.1093/mnras/stz2245](https://doi.org/10.1093/mnras/stz2245) (astroNN distances)
+- Mackereth, J. T., et al. 2019, MNRAS, 489, 176,
+  [doi:10.1093/mnras/stz1521](https://doi.org/10.1093/mnras/stz1521) (astroNN ages)
+- Stone-Martinez, A., et al. 2024, AJ, 167, 73,
+  [doi:10.3847/1538-3881/ad12a6](https://doi.org/10.3847/1538-3881/ad12a6) (DistMass)
+
+### 2MASS
+
+The test of the APOGEE targeting uses the 2MASS photometry that APOGEE records for every
+star.
+
+> This publication makes use of data products from the Two Micron All Sky Survey, which
+> is a joint project of the University of Massachusetts and the Infrared Processing and
+> Analysis Center/California Institute of Technology, funded by the National Aeronautics
+> and Space Administration and the National Science Foundation.
+
+- Skrutskie, M. F., et al. 2006, AJ, 131, 1163,
+  [doi:10.1086/498708](https://doi.org/10.1086/498708)
+
+### LAMOST
+
+We use the LAMOST-Gaia catalog of primary red-clump stars of Huang et al. (2020), from
+Zenodo.
+
+> Guoshoujing Telescope (the Large Sky Area Multi-Object Fiber Spectroscopic Telescope
+> LAMOST) is a National Major Scientific Project built by the Chinese Academy of Sciences.
+> Funding for the project has been provided by the National Development and Reform
+> Commission. LAMOST is operated and managed by the National Astronomical Observatories,
+> Chinese Academy of Sciences.
+
+- Huang, Y., et al. 2020, ApJS, 249, 29,
+  [doi:10.3847/1538-4365/ab994f](https://doi.org/10.3847/1538-4365/ab994f)
+- Huang, Y. 2020, Precise distances, masses, ages and 3D velocities of ~140000 red clump
+  stars, Version 1.0, Zenodo,
+  [doi:10.5281/zenodo.3875974](https://doi.org/10.5281/zenodo.3875974)
+
+### Imig et al. (2025)
+
+We compare our heights with the density fits of Imig et al. (2025), from their repository
+[`astrojimig/mw_density_imig2025`](https://github.com/astrojimig/mw_density_imig2025) at
+commit `18a367a`, released under CC BY 4.0.
+
+- Imig, J., et al. 2025, ApJ, 990, 203,
+  [doi:10.3847/1538-4357/adf723](https://doi.org/10.3847/1538-4357/adf723)

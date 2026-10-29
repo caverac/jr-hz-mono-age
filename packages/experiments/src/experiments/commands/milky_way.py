@@ -134,6 +134,11 @@ def cell_lines(cells: ImigCells, title: str = "imig cells") -> list[str]:
         for name in ("counts", "counts_exponential", "imig", "imig_sun", "tracer", "sigma_z")
     )
     lines.append(f"  slope of ln h_Z (ln sigma_z) per dex at fixed age: {slopes}")
+    dispersion = ", ".join(
+        f"{name} {getattr(cells.dispersion, name).value:+.2f}+/-{getattr(cells.dispersion, name).err:.2f}"
+        for name in ("counts_exponential", "imig_exponential", "imig_sun")
+    )
+    lines.append(f"  slope of ln h_Z per ln sigma_z at fixed [M/H]: {dispersion}")
     return lines
 
 

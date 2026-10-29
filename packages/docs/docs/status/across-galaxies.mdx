@@ -10,12 +10,22 @@ import { TracerSumTable } from '@site/src/components/status/tables'
 
 # Across galaxies
 
-Palicio et al. (2025, Sect. 3.4) relate the radial action of each galaxy to the scale
-height of its whole disk, across 23 simulated galaxies, whereas the populations of this
-analysis relate $J_{R,\mathrm{med}}$ to $h_Z$ within one annulus of one galaxy. This page
-measures their relation in the seven Auriga halos with a reproducible stand-in for their
-radial action, asks how much of it the window of their scale heights sets, and tests
-whether the tracers of the populations of each disk predict its whole-disk $h_Z$.
+Summed over rings of 1 kpc and ages of 1 Gyr, the isothermal tracers of the populations of
+each Auriga disk predict <Metric name="sumMixtureScaled" /> of the scale height of the whole
+disk in the self-consistent window. Across the seven halos, the slope of a proxy for the
+radial action of Palicio et al. (2025, Sect. 3.4) against these predicted heights is
+<JrMetric name="slopeScaledMixture" />, against <JrMetric name="slopeScaled" /> with the
+measured heights and <JrMetric name="palicioSlope" /> km/s in Palicio et al., so the heights
+of the relation between radial action and scale height across galaxies follow from the
+tracers within each disk. The slope depends on the window of the heights: in the fixed
+windows of Palicio et al. it is <JrMetric name="slopePalicio" />. The radial actions
+themselves lie outside the tracer, which says nothing about $J_R$.
+
+Palicio et al. (2025) relate the radial action of each galaxy to the scale height of its
+whole disk, across 23 simulated galaxies, whereas the populations of this analysis relate
+$J_{R,\mathrm{med}}$ to $h_Z$ within one annulus of one galaxy. This page builds a
+reproducible stand-in for their radial action, measures the relation in the seven Auriga
+halos, and sums the tracers of each disk into its whole-disk height.
 
 ```bash
 OMP_NUM_THREADS=4 uv run experiments auriga jr-map 2 3 16 19 23 24 27
@@ -32,14 +42,14 @@ stated rule. Their paper lists neither the value for each galaxy nor the solar a
 momentum $L_\odot$ in which they quote the slope, $3.69\times10^{-2}\,L_\odot/\mathrm{kpc}$.
 We therefore define a proxy that follows the construction of their maps as far as the
 paper describes it (`experiments.jr_map`). The star particles with $|Z| < Z_\mathrm{lim}$
-inside the square $|X|, |Y| < L_\mathrm{kpc}$ fill cells of 0.375 kpc, their cell width,
-and each cell with at least 10 particles takes the median $J_R$ of its particles,
-weighted by stellar mass as they weight it. The proxy is the median of the cell values
+inside the square $|X|, |Y| < L_\mathrm{kpc}$ fill cells of 0.375 kpc, their cell width.
+Each cell with at least 10 particles takes the median $J_R$ of its particles, weighted by
+stellar mass as they weight it. The proxy is the median of the cell values
 whose centers lie at $0.2\,L_\mathrm{kpc} \le R < L_\mathrm{kpc}$, the radial range of
 their $h_Z$, so that half of those cells lie above it and half below. Unlike their maps,
-the cells are not smoothed with an Epanechnikov kernel of 0.5 kpc, and $J_R$ comes from
-the Staeckel fudge of AGAMA in the potential of `experiments.potential`, not from their
-fit and code. With $L_\odot = R_0V_0$, $R_0 = 8.2$ kpc and $V_0 = 233$ km/s, the value
+the cells are not smoothed with an Epanechnikov kernel of 0.5 kpc. Our $J_R$ come from the
+Staeckel fudge of AGAMA in the potential of `experiments.potential`, not from their fit and
+code. With $L_\odot = R_0V_0$, $R_0 = 8.2$ kpc and $V_0 = 233$ km/s, the value
 that the companion project
 [`jr-hz-relation`](https://github.com/caverac/jr-hz-relation) adopts, their slope is
 <JrMetric name="palicioSlope" /> km/s.
@@ -53,7 +63,7 @@ self-consistent window $L = 2h_Z$ over the same radii.
 
 <JrRelationChart />
 
-_Figure 6. The proxy $J_{R,w}$ of every halo against its whole-disk $h_Z$ in the windows
+_Figure 9. The proxy $J_{R,w}$ of every halo against its whole-disk $h_Z$ in the windows
 of Palicio et al. (filled circles) and in the self-consistent window (open circles), joined
 for each halo. The solid and dashed lines are the least-squares lines through each set,
 and the dotted line has the slope of Palicio et al., drawn through the mean point of the
@@ -62,7 +72,7 @@ the buttons._
 
 <JrTable />
 
-The proxy spans <JrMetric name="jrRange" /> kpc km/s across the seven halos, and their
+The proxy spans <JrMetric name="jrRange" /> kpc km/s across the seven halos. Their
 whole-disk $h_Z$ spans <JrMetric name="hzPalicioRange" /> kpc in the windows of Palicio et
 al. and <JrMetric name="hzScaledRange" /> kpc in the self-consistent window. With $h_Z$
 measured in their windows, the least-squares slope of $J_{R,w}$ against $h_Z$ is
@@ -83,7 +93,7 @@ beyond its window.
 
 The relation across galaxies uses the $h_Z$ of all the stars of a disk, whereas the tracer
 predicts the profile of one mono-age population. If every population of a disk is an
-isothermal tracer, the profile of the whole disk is their sum, and its $h_Z$ follows from
+isothermal tracer, the profile of the whole disk is their sum, whose $h_Z$ follows from
 the kinematics of its populations and the potential alone (`experiments.tracer_sum`). We
 split the radial range of Palicio et al. of each halo into rings of 1 kpc, and each ring
 into age bins of 1 Gyr from 0 to 14 Gyr. Each cell enters as the tracer
@@ -101,7 +111,7 @@ with errors from 50 bootstrap draws of the stars.
 
 In the self-consistent window, one tracer per ring predicts
 <Metric name="sumSingleScaled" /> of the measured whole-disk $h_Z$, with a median of
-<Metric name="sumSingleMedian" />, and the sum over ring and age predicts
+<Metric name="sumSingleMedian" />, whereas the sum over ring and age predicts
 <Metric name="sumMixtureScaled" />, with a median of <Metric name="sumMixtureMedian" />.
 Summing by age removes the excess of one tracer per ring, which is the failure expected of
 one isothermal component for populations of different $\sigma_z$ (the whole-disk tracer of
@@ -122,9 +132,11 @@ $h_Z$ and <JrMetric name="scaledMixtureDeviation" /> from that of Palicio et al.
 predicted $h_Z$ in their windows, it is <JrMetric name="slopePalicioMixture" />. The heights
 of the relation across galaxies therefore follow from the tracers of the populations of
 each disk, in the window in which the tracer was tested. The relation also needs the
-radial action of each disk, which the tracer does not predict: its link to $h_Z$ is the
-ratio of radial to vertical heating, which this analysis measures population by
-population, as the slope $a = J_{R,\mathrm{med}}/h_Z$, but does not explain.
+radial action of each disk, which the tracer does not predict. The companion project takes
+it from the epicycle, $J_R^{\max} = c_{\max}\sigma_R^2/\kappa$, which makes the slope a
+ratio of radial to vertical heating. We measure that ratio population by population, as
+$a = J_{R,\mathrm{med}}/h_Z$, but have not compared $J_{R,\mathrm{med}}$ with
+$\sigma_R^2/\kappa$.
 
 ## Limitations
 

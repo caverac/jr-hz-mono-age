@@ -209,6 +209,20 @@ export interface ImigCells {
   readonly medianRatio: number
   readonly trends: CellTrends
   readonly slopes: MetallicitySlopes
+  readonly dispersion: DispersionSlopes
+}
+
+/**
+ * The slope of ln h_Z per ln sigma_z of the cell's kinematic stars at fixed [M/H], one
+ * intercept per [M/H] bin, in the same cells.
+ */
+export interface DispersionSlopes {
+  /** The exponential fit to our counts. */
+  readonly countsExponential: Trend
+  /** The exponential fit to their model through our counts. */
+  readonly imigExponential: Trend
+  /** Their published h_Z at their Sun. */
+  readonly imigSun: Trend
 }
 
 /** The value of `jkHi` with which the package marks a targeting box without a red limit. */
@@ -375,6 +389,11 @@ function parseImigCells(cells: unknown): ImigCells {
       imigSun: trend(field(cells, 'slopes'), 'imig_sun'),
       tracer: trend(field(cells, 'slopes'), 'tracer'),
       sigmaZ: trend(field(cells, 'slopes'), 'sigma_z')
+    },
+    dispersion: {
+      countsExponential: trend(field(cells, 'dispersion'), 'counts_exponential'),
+      imigExponential: trend(field(cells, 'dispersion'), 'imig_exponential'),
+      imigSun: trend(field(cells, 'dispersion'), 'imig_sun')
     }
   }
 }
@@ -421,6 +440,27 @@ export const METALLICITY_LABELS: readonly string[] = [
   '$-0.1$ to $0.1$',
   '$> 0.1$'
 ]
+
+/**
+ * The power of sigma_z with which the exponential fit to the tracer grows between the first
+ * and the last sigma_z (km/s) of the estimators, NaN without two of them.
+ */
+export function tracerGrowth(estimators: readonly TracerEstimator[]): {
+  readonly slope: number
+  readonly lo: number
+  readonly hi: number
+} {
+  const first = estimators[0]
+  const last = estimators[estimators.length - 1]
+  if (first === undefined || last === undefined || first === last) {
+    return { slope: Number.NaN, lo: Number.NaN, hi: Number.NaN }
+  }
+  return {
+    slope: Math.log(last.exponential / first.exponential) / Math.log(last.sigmaZ / first.sigmaZ),
+    lo: first.sigmaZ,
+    hi: last.sigmaZ
+  }
+}
 
 /** Whether `cell` has enough matches for our h_Z, and a finite ratio. */
 export function isMeasured(cells: ImigCells, cell: ImigCell): boolean {

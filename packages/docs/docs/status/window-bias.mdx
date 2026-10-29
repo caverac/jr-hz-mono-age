@@ -8,13 +8,18 @@ import WindowBiasChart from '@site/src/components/status/WindowBiasChart'
 
 # Fixed-window bias
 
-Palicio et al. (2025, Sect. 3.4) fit $h_Z$ of each galaxy inside fixed windows,
-$|Z| < Z_\mathrm{lim}$ and $|Z| < Z_\mathrm{lim}/2$, with $Z_\mathrm{lim}$ from
-<Metric name="zLimRange" /> kpc in the seven halos (their Table 1), whereas this analysis
-fits each population in a window that scales with its own thickness. This page tests, with
-vertical profiles of known shape, when a fixed window biases $h_Z$, and places the Auriga
-populations on the same diagram. The bias bears on the relation of Palicio et al. across
-galaxies, which rests on fixed-window heights ([Across galaxies](./across-galaxies)).
+The scale height of a profile that is not exponential depends on the window of $|z|$ in
+which it is fit. With profiles of known shape, we find that a fixed window recovers
+exponentials within <Metric name="exponentialFixedBias" /> of their scale, whereas it returns
+<Metric name="sech2Thin" /> times the self-consistent $h_Z$ of a $\mathrm{sech}^2$ layer that
+is thin against the window and <Metric name="sech2Window" /> times that of one as thick as
+the window. The Auriga populations follow the $\mathrm{sech}^2$ curve, as tracers in a
+potential that is harmonic near the plane should. The self-consistent window that this
+analysis uses recovers every injected profile within <Metric name="selfConsistentBias" />.
+The bias matters wherever heights from different windows are compared, as with the
+whole-disk heights of Palicio et al. (2025, Sect. 3.4), whose fixed windows have
+$Z_\mathrm{lim}$ from <Metric name="zLimRange" /> kpc in the seven halos (their Table 1)
+([Across galaxies](./across-galaxies)).
 
 ## Why the shape matters
 
@@ -54,7 +59,7 @@ uv run experiments window-injection
 
 <WindowBiasChart />
 
-_Figure 4. Top: the fixed-window $h_Z$ over the self-consistent one, against
+_Figure 8. Top: the fixed-window $h_Z$ over the self-consistent one, against
 $h_Z/Z_\mathrm{lim}$. For the injected profiles, $h_Z$ stands for $h_\mathrm{ref}$. Lines
 with open squares are the medians over the draws, with gray bands spanning their 16th to
 84th percentiles. Filled circles are the Auriga populations, each with the

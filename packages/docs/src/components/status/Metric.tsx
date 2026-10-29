@@ -87,6 +87,11 @@ function au19Trend(d: StatusData, predictor: Predictor): string {
   return trendText(range.trends[predictor])
 }
 
+/** The sum of tracers over the measured h_Z, in the self-consistent window, in every radial range of every halo. */
+function ringMixtureRatios(d: StatusData): readonly number[] {
+  return d.halos.flatMap((h) => h.tracerSum.rings.map((r) => r.ratioMixture.scaled.value))
+}
+
 /** The comparison of the halos with the injected curves over the range of h_Z / Z_lim that starts at `lo`. */
 function windowRow(d: StatusData, lo: number) {
   const row = windowComparison(d, ['sech2', 'exponential']).find((r) => r.lo === lo)
@@ -133,7 +138,6 @@ const METRICS = {
   jeansWithin10: (d: StatusData) => String(within(d, 'jeans', 0.1)),
   jeansSigmaMedian: (d: StatusData) => fixed(median(ratios(d, 'jeansSigma'))),
   jeansMedian: (d: StatusData) => fixed(median(ratios(d, 'jeans'))),
-  jeansSigmaRange: (d: StatusData) => between(extent(ratios(d, 'jeansSigma'))),
   jeansSigmaNegative2: (d: StatusData) => {
     const values = trendsOf(d, 'jeansSigma', 2).map((t) => t.value)
     return `${values.filter((v) => v < 0).length} of the ${values.length}`
@@ -152,8 +156,6 @@ const METRICS = {
     ),
   jeansSignTest2: (d: StatusData) =>
     fixed(signTest(trendsOf(d, 'jeans', 2).map((t) => t.value)), 3),
-  jeansSigmaSignTest2: (d: StatusData) =>
-    fixed(signTest(trendsOf(d, 'jeansSigma', 2).map((t) => t.value)), 2),
   residualRange: (d: StatusData) => between(extent(d.halos.map((h) => residualAt(h, 1))), 0),
   snapshotRange: (d: StatusData) => between(extent(d.halos.flatMap((h) => snapshotRatios(h)))),
   tracerChi2Range: (d: StatusData) =>
@@ -170,16 +172,8 @@ const METRICS = {
     fixed(Math.min(...exponentComparisons(d).map((c) => Math.abs(significance(c.sheetTrend)))), 0),
   exponentShift: (d: StatusData) => between(extent(exponentShifts(d))),
   etaRange: (d: StatusData) => between(extent(etas(d))),
-  wholeSheet: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.sheet))),
   wholeTracer: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.tracer))),
   wholePalicio: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.palicio))),
-  au23Residual: (d: StatusData) => fixed(residualAt(haloRecord(d, 'Au23'), 1), 0),
-  au23Snapshot: (d: StatusData) => between(extent(snapshotRatios(haloRecord(d, 'Au23')))),
-  otherResidual: (d: StatusData) =>
-    fixed(
-      Math.max(...d.halos.filter((h) => h.label !== 'Au23').map((h) => Math.abs(residualAt(h, 1)))),
-      0
-    ),
   mockSpin: (d: StatusData) => fixed(d.mock.spinErrorDeg, 3),
   mockVc: (d: StatusData) => percent(Math.abs(d.mock.vCirc / d.mock.vCircTrue - 1)),
   mockPhi: (d: StatusData) => percent(d.mock.deltaPhiError),
@@ -246,6 +240,11 @@ const METRICS = {
     between(extent(d.halos.map((h) => h.tracerSum.whole.ratioSingle.scaled.value))),
   sumMixtureScaled: (d: StatusData) =>
     between(extent(d.halos.map((h) => h.tracerSum.whole.ratioMixture.scaled.value))),
+  sumRingsScaled: (d: StatusData) => between(extent(ringMixtureRatios(d))),
+  sumRingsWithin10: (d: StatusData) => {
+    const values = ringMixtureRatios(d)
+    return `${values.filter((v) => Math.abs(v - 1) <= 0.1).length} of the ${values.length}`
+  },
   sumSinglePalicio: (d: StatusData) =>
     between(extent(d.halos.map((h) => h.tracerSum.whole.ratioSingle.palicio.value))),
   sumMixturePalicio: (d: StatusData) =>

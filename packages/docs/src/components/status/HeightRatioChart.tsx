@@ -31,7 +31,8 @@ const STYLE = {
   sheet: { dash: 'dashed', marker: 'circle', open: true }
 } as const
 
-const LABELS: Record<Predictor, string> = {
+/** The name of every prediction, as the charts print it. */
+export const PREDICTOR_LABELS: Readonly<Record<Predictor, string>> = {
   tracer: 'tracer, fitted $\\Phi$',
   tracerSnapshot: 'tracer, snapshot $\\Phi$',
   jeansSigma: 'Jeans, $\\sigma_z(z)$',
@@ -39,7 +40,8 @@ const LABELS: Record<Predictor, string> = {
   sheet: 'sheet'
 }
 
-const PREDICTORS: readonly Predictor[] = [
+/** The predictions in the order the charts list them. */
+export const PREDICTORS: readonly Predictor[] = [
   'tracer',
   'tracerSnapshot',
   'jeansSigma',
@@ -63,7 +65,7 @@ function Readout({ hovered }: { readonly hovered: Hovered | null }): ReactNode {
   }
   const { halo, bin } = hovered
   const parts = PREDICTORS.map(
-    (p) => `${LABELS[p]}: $${format(ratio(bin, p))} \\pm ${format(bin.ratios[p].err)}$`
+    (p) => `${PREDICTOR_LABELS[p]}: $${format(ratio(bin, p))} \\pm ${format(bin.ratios[p].err)}$`
   )
   return (
     <p className="viz-note">
@@ -182,7 +184,10 @@ export default function HeightRatioChart(): ReactNode {
   const [selected, setSelected] = useState<string | null>(null)
   const [hovered, setHovered] = useState<Hovered | null>(null)
   const entries: readonly LegendEntry[] = [
-    ...PREDICTORS.filter((p) => shown.has(p)).map((p) => ({ label: LABELS[p], ...STYLE[p] })),
+    ...PREDICTORS.filter((p) => shown.has(p)).map((p) => ({
+      label: PREDICTOR_LABELS[p],
+      ...STYLE[p]
+    })),
     { label: `$|h_\\mathrm{pred}/h_Z - 1| \\le ${TOLERANCE}$`, band: true }
   ]
   return (
@@ -196,7 +201,7 @@ export default function HeightRatioChart(): ReactNode {
           <div className="viz-controls">
             <Chips
               label="Predictions"
-              options={PREDICTORS.map((p) => [p, LABELS[p]] as const)}
+              options={PREDICTORS.map((p) => [p, PREDICTOR_LABELS[p]] as const)}
               isPressed={(p) => shown.has(p)}
               onToggle={(p) => setShown((current) => toggled(current, p))}
             />

@@ -8,15 +8,29 @@
   --viz-band: rgba(0, 0, 0, 0.08);
   /* The surface of the chart boxes, which rings the markers. */
   --viz-surface: var(--ifm-background-surface-color);
-  /* One color per Auriga halo, in the fixed order of the halos: the first seven slots of
-     the categorical palette of the dataviz reference, validated against this surface. */
-  --viz-halo-au2: #2a78d6;
-  --viz-halo-au3: #eb6834;
-  --viz-halo-au16: #1baf7a;
-  --viz-halo-au19: #eda100;
-  --viz-halo-au23: #e87ba4;
-  --viz-halo-au24: #008300;
-  --viz-halo-au27: #6250d6;
+  /* The categorical palette of the dataviz reference, in its fixed order, validated for
+     adjacent pairs against this surface. A chart of several series takes the slots in order. */
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-series-3: #1baf7a;
+  --viz-series-4: #eda100;
+  --viz-series-5: #e87ba4;
+  --viz-series-6: #008300;
+  --viz-series-7: #6250d6;
+  --viz-series-8: #e34948;
+  /* One color per Auriga halo, in the fixed order of the halos: the first seven slots. */
+  --viz-halo-au2: var(--viz-series-1);
+  --viz-halo-au3: var(--viz-series-2);
+  --viz-halo-au16: var(--viz-series-3);
+  --viz-halo-au19: var(--viz-series-4);
+  --viz-halo-au23: var(--viz-series-5);
+  --viz-halo-au24: var(--viz-series-6);
+  --viz-halo-au27: var(--viz-series-7);
+  /* The three metallicity groups of the Milky Way: metal-poor and metal-rich at the two
+     poles of the diverging pair of the reference, solar in the muted ink between them. */
+  --viz-metal-poor: #2a78d6;
+  --viz-metal-solar: #7a7f87;
+  --viz-metal-rich: #e34948;
   /* One font and size for tick labels, axis titles and in-plot text: the KaTeX
      text face, so that a number on an axis matches the math of its title. */
   --viz-font-family: KaTeX_Main, 'Times New Roman', serif;
@@ -35,18 +49,22 @@
   --viz-grid: rgba(255, 255, 255, 0.12);
   --viz-background: #1b1b1d;
   --viz-band: rgba(255, 255, 255, 0.1);
-  /* The same seven hues, stepped for the dark surface. */
-  --viz-halo-au2: #3987e5;
-  --viz-halo-au3: #d95926;
-  --viz-halo-au16: #199e70;
-  --viz-halo-au19: #c98500;
-  --viz-halo-au23: #d55181;
-  --viz-halo-au24: #008300;
-  --viz-halo-au27: #9085e9;
+  /* The same eight hues, stepped for the dark surface; the halos follow them. */
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+  --viz-series-3: #199e70;
+  --viz-series-4: #c98500;
+  --viz-series-5: #d55181;
+  --viz-series-6: #008300;
+  --viz-series-7: #9085e9;
+  --viz-series-8: #e66767;
+  --viz-metal-poor: #3987e5;
+  --viz-metal-solar: #9aa0a6;
+  --viz-metal-rich: #e66767;
 }
 
-/* The box of an interactive chart. Charts tell series apart by line style, marker
-   shape and fill, in the foreground color, not by hue. */
+/* The box of an interactive chart. Charts tell series apart by line style, marker shape
+   and fill, and by the colors of the palette above where a series has a button of its own. */
 .viz {
   contain: inline-size;
   margin: 1.5rem 0;
@@ -146,6 +164,10 @@
   stroke-dasharray: 1.5 3;
 }
 
+.viz-line--dashdot {
+  stroke-dasharray: 7 3 1.5 3;
+}
+
 .viz-band {
   fill: var(--viz-band);
   stroke: none;
@@ -171,6 +193,16 @@
   fill: transparent;
   stroke: none;
   pointer-events: all;
+}
+
+/* The error bars of dense panels, lighter than their markers. */
+.viz-errorbar {
+  opacity: 0.55;
+}
+
+/* A line that summarizes the marks around it, such as a running median. */
+.viz-line--median {
+  stroke-width: 2.5;
 }
 
 /* The lines of one halo. */
@@ -200,9 +232,93 @@
   font-size: var(--viz-font-size);
 }
 
+/* A reference line, such as a slope of 1 or 2, behind the data. */
+.viz-guide {
+  fill: none;
+  stroke: var(--viz-muted);
+  stroke-width: 1;
+}
+
+/* The marks of a chart enter once, when the chart first scrolls into view: lines draw
+   from their first point (`pathLength` 1), markers grow from their centers, in the order
+   of the delays the charts set. Before that, they are hidden. */
+.viz-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.viz-reveal:not(.viz-reveal--in) .viz-pop,
+.viz-reveal:not(.viz-reveal--in) .viz-draw,
+.viz-reveal:not(.viz-reveal--in) .viz-fadein {
+  opacity: 0;
+}
+
+.viz-reveal--in .viz-pop {
+  animation: viz-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.viz-draw {
+  stroke-dasharray: 1;
+}
+
+.viz-reveal--in .viz-draw {
+  animation: viz-draw 1.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.viz-reveal--in .viz-fadein {
+  animation: viz-fadein 0.9s ease-out both;
+}
+
+/* A mark that moves to its new place when the chart switches what it shows. */
+.viz-move {
+  transition: transform 0.9s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@keyframes viz-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes viz-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes viz-fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .viz-reveal--in .viz-pop,
+  .viz-reveal--in .viz-draw,
+  .viz-reveal--in .viz-fadein {
+    animation: none;
+  }
+
+  .viz-move {
+    transition: none;
+  }
+}
+
 /* Every halo but the highlighted one. */
 .viz-faded {
   opacity: 0.12;
+  transition: opacity 0.3s;
 }
 
 .viz-legend {
@@ -259,6 +375,11 @@
   border-color: var(--viz-fg);
 }
 
+/* A ring keeps a swatch in the foreground color visible on a pressed button. */
+.viz-chip[aria-pressed='true'] .viz-swatch {
+  box-shadow: 0 0 0 1px var(--viz-background);
+}
+
 .viz-note {
   margin: 0.5rem 0 0;
   font-family: var(--viz-font-family);
@@ -310,60 +431,6 @@
 .status-table__groups th:first-child {
   text-align: center;
   border-bottom: 1px solid var(--ifm-color-emphasis-300);
-}
-
-/* The status board: one card per statement, labeled by how far it has been checked. */
-.claim {
-  --claim-color: var(--ifm-color-emphasis-600);
-  margin: 1rem 0;
-  padding: 0.75rem 1rem 0.25rem;
-  border: 1px solid var(--ifm-color-emphasis-200);
-  border-left: 4px solid var(--claim-color);
-  border-radius: 6px;
-}
-
-.claim--reproduced {
-  --claim-color: var(--ifm-color-success);
-}
-
-.claim--preliminary {
-  --claim-color: var(--ifm-color-warning);
-}
-
-.claim--open {
-  --claim-color: var(--ifm-color-danger);
-}
-
-.claim__header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 0.75rem;
-  align-items: baseline;
-  margin-bottom: 0.4rem;
-}
-
-.claim__label {
-  padding: 0.05rem 0.5rem;
-  border: 1px solid var(--claim-color);
-  border-radius: 999px;
-  color: var(--claim-color);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.claim__title {
-  font-weight: 600;
-}
-
-.claim__body > p {
-  margin-bottom: 0.6rem;
-}
-
-.claim__command {
-  margin: 0 0 0.6rem;
-  font-size: 0.85rem;
 }
 
 /* A static figure drawn by the Python package. */

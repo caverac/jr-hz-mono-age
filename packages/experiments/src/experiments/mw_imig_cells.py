@@ -48,7 +48,10 @@ survey: other targeting, other ages and another [Fe/H]. Their ages are not on th
 Imig et al., so their ratios to the heights of Imig et al. mix two age scales. The slope of
 ln h_Z per dex of [M/H] at fixed age, fitted with one intercept per age bin
 (:class:`MetallicitySlopes`), does not need one scale, and every set of cells carries it for
-each height.
+each height. The slope of ln h_Z per ln sigma_z of each cell's kinematic stars at fixed
+[M/H], fitted with one intercept per [M/H] bin (:class:`DispersionSlopes`), compares how the
+heights grow with the dispersion: as sigma_z where the potential is harmonic, faster where
+it is not.
 """
 
 from __future__ import annotations
@@ -189,6 +192,15 @@ class MetallicitySlopes:
 
 
 @dataclass(frozen=True)
+class DispersionSlopes:
+    """The slope of ln h_Z per ln sigma_z of the cell's kinematic stars at fixed [M/H], one intercept per [M/H] bin."""
+
+    counts_exponential: Trend  # the exponential fit to our counts
+    imig_exponential: Trend  # the exponential fit to their model through our counts
+    imig_sun: Trend  # their published h_Z at their Sun
+
+
+@dataclass(frozen=True)
 class RatioTrends:
     """The slope of the logarithm of a ratio per ln age, one intercept per [M/H] bin, and per dex, one per age bin."""
 
@@ -206,12 +218,13 @@ class CellTrends:
 
 
 @dataclass(frozen=True)
-class ImigCells:
+class ImigCells:  # pylint: disable=too-many-instance-attributes
     """Every cell and, over the measured ones, the median ratio, the trends of the ratios and the slopes of the heights.
 
     ``n_matches`` is the number of matched stars that split the counts into populations,
     ``median_ratio`` the median of our windowed h_Z over their model through our counts,
-    and ``slopes`` the slopes of every height per dex of [M/H] at fixed age.
+    ``slopes`` the slopes of every height per dex of [M/H] at fixed age, and ``dispersion``
+    the slopes of the exponential heights per ln sigma_z at fixed [M/H].
     """
 
     n_matches: int
@@ -221,6 +234,7 @@ class ImigCells:
     median_ratio: float
     trends: CellTrends
     slopes: MetallicitySlopes
+    dispersion: DispersionSlopes
 
 
 @dataclass(frozen=True)
@@ -513,7 +527,9 @@ def measure_cells(
             for get in (lambda c: c.ratios.counted, lambda c: c.ratios.exponential, lambda c: c.ratios.tracer)
         )
     )
-    return ImigCells(n_matches, min_matches, cells, len(ok), median, trends, _metallicity_slopes(ok))
+    return ImigCells(
+        n_matches, min_matches, cells, len(ok), median, trends, _metallicity_slopes(ok), _dispersion_slopes(ok)
+    )
 
 
 def _finite(cells: list[ImigCell], get: Getter) -> list[ImigCell]:
@@ -553,6 +569,21 @@ def _metallicity_slopes(cells: list[ImigCell]) -> MetallicitySlopes:
         _per_dex(cells, lambda c: c.theirs.sun),
         _per_dex(cells, lambda c: c.kinematics.tracer),
         _per_dex(cells, lambda c: c.kinematics.sigma_z),
+    )
+
+
+def _per_ln_sigma(cells: list[ImigCell], get: Getter) -> Trend:
+    """Return the slope of ln *get* per ln sigma_z at fixed [M/H], over the cells with a sigma_z."""
+    with_sigma = _finite(cells, lambda c: c.kinematics.sigma_z)
+    return _grouped(with_sigma, get, lambda c: float(np.log(c.kinematics.sigma_z.value)), lambda c: c.m_h_lo)
+
+
+def _dispersion_slopes(cells: list[ImigCell]) -> DispersionSlopes:
+    """Return the slope of every exponential height of *cells* per ln sigma_z at fixed [M/H]."""
+    return DispersionSlopes(
+        _per_ln_sigma(cells, lambda c: c.ours.exponential),
+        _per_ln_sigma(cells, lambda c: c.theirs.exponential),
+        _per_ln_sigma(cells, lambda c: c.theirs.sun),
     )
 
 

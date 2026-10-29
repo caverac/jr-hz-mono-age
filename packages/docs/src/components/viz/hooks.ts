@@ -64,3 +64,20 @@ export function usePrefersReducedMotion(): boolean {
   }, [])
   return reduced
 }
+
+/**
+ * Whether the marks of a chart should be shown: false until the element first enters the
+ * viewport, then true for good, so that the marks animate in once. True from the start
+ * under reduced motion.
+ */
+export function useRevealed<T extends Element>(ref: RefObject<T | null>): boolean {
+  const inView = useInView(ref)
+  const reduced = usePrefersReducedMotion()
+  const [revealed, setRevealed] = useState(false)
+  useEffect(() => {
+    if (inView || reduced) {
+      setRevealed(true)
+    }
+  }, [inView, reduced])
+  return revealed
+}
