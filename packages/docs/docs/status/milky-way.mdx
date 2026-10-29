@@ -22,11 +22,16 @@ import {
 
 # Milky Way
 
-This page tests the isothermal tracer on the mono-age populations of the Milky Way, whose
-scale heights come from star counts rather than from star particles, and compares it with
-the heights that Imig et al. (2025) fit without a window of $|z|$. The measurement follows
-the one of the Auriga disks as closely as the data allow, so that the two tests can be
-read side by side.
+We test the isothermal tracer on the mono-age populations of the Milky Way, whose scale
+heights we measure from star counts of Gaia giants around the Sun. With the ages of LAMOST,
+and of APOGEE on two age scales, the tracer in the potential of McMillan (2017) predicts
+the scale height of every population of 2 Gyr, with ratios of
+<MwMetric name="lamostTracer" />, <MwMetric name="apogeeTracer" /> and
+<MwMetric name="distmassTracer" /> and no trend with age, so the populations of the Milky
+Way behave as those of the Auriga disks do. The heights that Imig et al. (2025) fit to
+APOGEE with a model of the whole disk agree with ours in level and in their dependence on
+metallicity once both are measured with the same estimator, whereas they grow more slowly
+with age, a difference that our tests of the data that both analyses share do not explain.
 
 ```bash
 uv run experiments milky-way fetch
@@ -34,7 +39,7 @@ uv run experiments milky-way check
 OMP_NUM_THREADS=4 uv run experiments milky-way analyze
 ```
 
-## Measurement
+## Star counts
 
 A spectroscopic survey cannot give the density of a population against $|z|$ without its
 selection function, whereas a complete photometric sample can. We count the Gaia DR3
@@ -50,167 +55,147 @@ and $G$. APOGEE DR17 splits the <MwMetric name="apogeeGaia" /> giants of the box
 $-2.6 < M_W < -0.9$ through matches by Gaia source identifier, with the ages of the
 astroNN catalog (<MwMetric name="apogeeMatched" /> matches) and with those of the distmass
 catalog of Stone-Martinez et al. (2024), which Imig et al. (2025) adopt
-(<MwMetric name="distmassMatched" /> matches). Both surveys select their targets by magnitude and color, not by age at a
-fixed position, so the fraction of a slice is unbiased although their completeness changes
-with $|z|$.
+(<MwMetric name="distmassMatched" /> matches). Both surveys select their targets by
+magnitude and color, not by age at a fixed position, so the fraction of a population is
+unbiased although their completeness changes with $|z|$.
 
 A population is a range of ages of the low-$[\alpha/\mathrm{Fe}]$ disk with
 $[\mathrm{Fe/H}] > -0.6$, in the counts and in the kinematics of both surveys
-(`experiments.mw_catalogs`), on each age scale. We fit $h_Z$ to the counts in the self-consistent window
-$L = 2h_Z$, as for the Auriga populations; because the counts stop at $|z| = 1.2$ kpc, a
-population whose window would reach beyond it has no $h_Z$. The kinematics come from the
-giants of the solar annulus $7.5 < R < 9$ kpc: $\sigma_z$ from those with
-$|z| < 0.3$ kpc, with their median velocity error removed in quadrature, and
+(`experiments.mw_catalogs`), on each age scale. We fit $h_Z$ to the counts in the
+self-consistent window $L = 2h_Z$, as for the Auriga populations, so a population whose
+window would reach beyond the edge of the counts at $|z| = 1.2$ kpc has no $h_Z$. The
+kinematics come from the giants of the solar annulus $7.5 < R < 9$ kpc: $\sigma_z$ from
+those with $|z| < 0.3$ kpc, with their median velocity error removed in quadrature, and
 $J_{R,\mathrm{med}}$ from those with $|z| < 0.5$ kpc, in the potential of McMillan (2017).
 Every star is placed in the Galactocentric frame of the astroNN catalog, with the Sun at
 $R_0 = $ <MwMetric name="r0" /> kpc and 20.8 pc above the plane (Bennett & Bovy 2019).
 
-The tracer is the profile $\exp(-\Delta\Phi/\sigma_z^2)$ of McMillan (2017) at $R_0$, and
-the sheet uses the mass of the same potential within $|z| < 1.1$ kpc,
-$\Sigma = $ <MwMetric name="sigmaSurf" /> $M_\odot\,\mathrm{pc}^{-2}$, as the Auriga sheet
-uses the mass of all particles in the same layer. The errors of the ratios come from
-<MwMetric name="nBootstrap" /> bootstrap draws that resample, in each draw, the Gaia stars,
-their matches and the kinematic stars of the population.
-
-The fraction of a slice holds only if the matches sample the parts of the slice as its Gaia
-stars do. A check outside the package finds that they do not near the plane, where most
-matches of both surveys lie toward the anticenter. Because the populations change across
-the cylinder, the fraction of a slice is then biased. We therefore model the fraction of a population at a position as
-$P(x, z) = A(z)\,e^{g x}$, with $x$ the distance from the Sun toward the Galactic center in
-the plane and one gradient $g$ per population, shared by all its slices. The gradient
+The populations change across the cylinder, the old ones being more common toward the
+Galactic center. Near the plane, a check outside the package finds most matches of both
+surveys toward the anticenter, so the fraction of a population in a slice depends on where
+in the slice it is measured. We model the fraction at a position
+as $P(x, z) = A(z)\,e^{g x}$, with $x$ the distance from the Sun toward the Galactic center
+in the plane and one gradient $g$ per population, shared by all its slices. The gradient
 maximizes the Poisson likelihood of the memberships of the matches, with $A$ of each slice
-profiled out. Each Gaia star then enters the population with the weight $A(z)\,e^{g x}$ (`experiments.mw_counts.population_counts`). On synthetic populations of
-known gradient the corrected counts recover the true $h_Z$
+profiled out. Each Gaia star then enters the population with the weight
+$A(z)\,e^{g x}$ (`experiments.mw_counts.population_counts`). On synthetic populations of known gradient,
+the corrected counts recover the true $h_Z$
 (`tests/test_milky_way.py::test_population_counts_correct_a_gradient`). The gradients of the
-age bins span <MwMetric name="gradientRange" /> kpc$^{-1}$ (see the table of scale heights):
-negative below 6 Gyr, where the populations are more common toward the anticenter, and
-positive above. A prediction needs no such correction, because its profile does not depend
-on $x$.
+age bins span <MwMetric name="gradientRange" /> kpc$^{-1}$ (see the table of scale heights),
+negative below 6 Gyr and positive above.
 
-The slices bias the counts of thin populations. The fraction of a population is
-interpolated between the centers of the slices of 0.1 kpc and held constant below the first
-one, so it falls more slowly than a thin population does, and the counts move its stars to
-larger $|z|$. With the Gaia stars of APOGEE, an exponential of 0.15 kpc comes out
-<MwMetric name="biasApogee15" /> times its scale, one of 0.20 kpc
-<MwMetric name="biasApogee20" /> times and one of 0.40 kpc <MwMetric name="biasApogee40" />
-times (`experiments.mw_counts.count_bias`). The predictions therefore go through the same
-counts as the populations, in each bootstrap draw through the counts of the draw: the mass
-of a predicted profile in each slice, over the Gaia stars of the slice, is its fraction,
-which the interpolation and the self-consistent window then fit
-(`experiments.mw_counts.predicted_hz`). The tracer enters with its profile, and the sheet
-with its profile $\mathrm{sech}^2(|z|/z_0)$, $z_0 = \sigma_z^2/(\pi G \Sigma)$, whose height
-in the window $L = 2h_Z$ is $z_0$ itself. The sheet is thus the prediction that the Auriga
-test compares with the particles.
+The tracer is the profile $\exp(-\Delta\Phi/\sigma_z^2)$ of McMillan (2017) at $R_0$, with
+the $\sigma_z$ of the population. For comparison with the Auriga test we also carry the
+self-gravitating sheet, with the mass of the same potential within $|z| < 1.1$ kpc,
+$\Sigma = $ <MwMetric name="sigmaSurf" /> $M_\odot\,\mathrm{pc}^{-2}$, and the profile
+$\mathrm{sech}^2(|z|/z_0)$, $z_0 = \sigma_z^2/(\pi G \Sigma)$. We write $h_\mathrm{pred}$
+for the height that either predicts for a population, which owes nothing to the $J_R$-$h_Z$
+relation. Both predictions go through the same counts as the populations, in each bootstrap draw through the counts of the draw,
+because the slices of 0.1 kpc thicken thin populations. The fraction of a population is
+interpolated between the centers of the slices and held constant below the first one, so it
+falls more slowly than a thin population does. With the Gaia stars of APOGEE, an
+exponential of 0.15 kpc comes out <MwMetric name="biasApogee15" /> times its scale, one of
+0.20 kpc <MwMetric name="biasApogee20" /> times and one of 0.40 kpc
+<MwMetric name="biasApogee40" /> times (`experiments.mw_counts.count_bias`). The mass of a
+predicted profile in each slice, over the Gaia stars of the slice, is its fraction, which
+the interpolation and the self-consistent window then fit like a measured one
+(`experiments.mw_counts.predicted_hz`). The errors come from
+<MwMetric name="nBootstrap" /> bootstrap draws that resample the Gaia stars, their matches
+and the kinematic stars of the population.
 
 <CountBiasTable />
 
-## Scale heights
+## The tracer predicts the star counts
 
 <MilkyWayChart />
 
-_Figure 5. Predicted over measured $h_Z$ for every mono-age population of the Milky Way,
+_Figure 10. Predicted over measured $h_Z$ for every mono-age population of the Milky Way,
 against its median age $\tau$: the tracer (filled markers, solid lines) and the sheet (open
 markers, dashed lines) over the star counts of LAMOST (circles) and of APOGEE with the
 astroNN ages (squares) and the distmass ages (triangles), and the tracer over the heights
 of Imig et al. pooled by mass (diamonds) and by counts (crosses), with dotted lines, at the
 geometric mean of the edges of their age bins. The gray band marks agreement within 10
-percent. The buttons hide or show each series._
+percent. Each series has its own color, shown on the button that hides or shows it._
 
 <MwBinTable />
 
-With the star counts of LAMOST, the tracer predicts $h_Z$ within 10 percent in
-<MwMetric name="lamostWithin10" /> age bins, with ratios of <MwMetric name="lamostTracer" />.
-With those of APOGEE it does so in <MwMetric name="apogeeWithin10" /> on the astroNN scale
-and in <MwMetric name="distmassWithin10" /> on the distmass scale, with ratios of
-<MwMetric name="apogeeTracer" /> and <MwMetric name="distmassTracer" />. The sheet gives
-ratios of <MwMetric name="lamostSheet" />, <MwMetric name="apogeeSheet" /> and
-<MwMetric name="distmassSheet" />: it is too thin for the young populations, and its ratio
-rises with age, as in the Auriga disks, although it does not overshoot the oldest
-populations as much as it does there.
-
-## Age dependence
+The tracer predicts the star counts with every survey and age scale. It comes within 10
+percent in <MwMetric name="lamostWithin10" /> age bins with LAMOST, with ratios of
+<MwMetric name="lamostTracer" />, and in <MwMetric name="apogeeWithin10" /> and
+<MwMetric name="distmassWithin10" /> with APOGEE on the astroNN and the distmass scale,
+with ratios of <MwMetric name="apogeeTracer" /> and <MwMetric name="distmassTracer" />. The
+populations of the solar neighborhood thus have the thickness that their dispersions give
+them in the potential of the Galaxy, as the Auriga populations have in theirs.
 
 <MwTrendTable />
 
-Over 0-10 Gyr, the trend of the tracer is <MwMetric name="lamostTracerTrend0" /> with
-LAMOST, <MwMetric name="apogeeTracerTrend0" /> with APOGEE on the astroNN scale and
-<MwMetric name="distmassTracerTrend0" /> on the distmass scale, so the tracer reproduces how
-$h_Z$ changes with age in the Milky Way as it does in the Auriga disks. The trend of the
-sheet is <MwMetric name="lamostSheetTrend0" />, <MwMetric name="apogeeSheetTrend0" /> and
-<MwMetric name="distmassSheetTrend0" />. The exponent $\eta = \beta_h/\beta_z$ over
-0-10 Gyr is <MwMetric name="lamostEta" />, <MwMetric name="apogeeEta" /> and
-<MwMetric name="distmassEta" />, inside the range that the Auriga disks span.
-
-Over 2-10 Gyr, with four bins, the trends of the tracer are
-<MwMetric name="lamostTracerTrend2" />, <MwMetric name="apogeeTracerTrend2" /> and
-<MwMetric name="distmassTracerTrend2" />, and those of the sheet
-<MwMetric name="lamostSheetTrend2" />, <MwMetric name="apogeeSheetTrend2" /> and
-<MwMetric name="distmassSheetTrend2" />. With every survey the trend of the sheet lies
-further from 0 than that of the tracer, although on the distmass scale the trend of the
-tracer is not 0 either. That trend comes from the bin of 2-4 Gyr, whose $h_Z$ is
-<MwMetric name="distmassHz24" /> on the distmass scale against
-<MwMetric name="apogeeHz24" /> on the astroNN scale, whereas its $\sigma_z$ changes by
-less (see the table of scale heights). Above 4 Gyr the ratios of the tracer on the distmass
-scale are <MwMetric name="distmassTracerOld" />. Bins of 2 Gyr mix their neighbors through the errors of the ages
-(see Limitations), so the membership of one bin, and with it its $h_Z$, can change with
-the age scale. Neither record says which scale places this bin better.
+The tracer also reproduces how $h_Z$ changes with age. Over 0-10 Gyr its trend is
+<MwMetric name="lamostTracerTrend0" /> with LAMOST, <MwMetric name="apogeeTracerTrend0" />
+with APOGEE on the astroNN scale and <MwMetric name="distmassTracerTrend0" /> on the
+distmass scale. The heights grow as $\sigma_z^\eta$ with $\eta = \beta_h/\beta_z$ of
+<MwMetric name="lamostEta" />, <MwMetric name="apogeeEta" /> and
+<MwMetric name="distmassEta" />, inside the range of the Auriga disks. Over 2-10 Gyr, with
+four bins, the trends are <MwMetric name="lamostTracerTrend2" />,
+<MwMetric name="apogeeTracerTrend2" /> and <MwMetric name="distmassTracerTrend2" />. The
+one departure from 0, on the distmass scale, comes from the bin of 2-4 Gyr, whose $h_Z$ is
+<MwMetric name="distmassHz24" /> on that scale against <MwMetric name="apogeeHz24" /> on
+the astroNN scale, whereas its $\sigma_z$ changes by less. Above 4 Gyr the ratios of the
+tracer on the distmass scale are <MwMetric name="distmassTracerOld" />. Bins of 2 Gyr mix
+their neighbors through the errors of the ages (see Limitations), so the membership of one
+bin, and with it its $h_Z$, can change with the age scale. Neither record says which scale
+places this bin better.
 
 ## The heights of Imig et al.
 
-Imig et al. (2025) fit every population of APOGEE DR17 in bins of
-$[\alpha/\mathrm{M}]$, $[\mathrm{M/H}]$ and age with an exponential vertical profile over
-the whole footprint of the survey, with its selection function, so their heights carry no
-window of $|z|$. Their model of a population is
-$\nu(R, z) = \nu_\odot \Sigma(R) \exp[-|z|/h_Z(R)]$, with $\Sigma$ a broken exponential in
-$R$ and a scale height that flares linearly,
+Imig et al. (2025) measure the same heights in a different way. They fit every population
+of APOGEE DR17, in bins of $[\alpha/\mathrm{M}]$, $[\mathrm{M/H}]$ and age, with a model of
+the whole footprint of the survey corrected for its selection function. Their model of a
+population is $\nu(R, z) = \nu_\odot \Sigma(R) \exp[-|z|/h_Z(R)]$, with $\Sigma$ a broken
+exponential in $R$ and a scale height that flares linearly,
 $h_Z(R) = h_{Z\odot} + A_\mathrm{flare}(R - R_\odot)$, around their Sun at
 $R_\odot = 8.3$ kpc (their Section III.3). Their normalization $\nu_\odot$ is the number
 density at $R_\odot$ of the giants of their sample, and their ages come from the distmass
-catalog. The grids of $h_Z(R)$ in their table pivot the flare at 8.122 kpc instead, whereas
-we follow the paper. Our counts lie around the Sun, so their model enters them averaged
-over the disk of our cylinder around their Sun and integrated over each slice of $|z|$,
-then goes through our counts as the tracer does (`experiments.mw_imig.cylinder_slices`).
+catalog. The grids of $h_Z(R)$ in their released table pivot the flare at 8.122 kpc, whereas
+we follow the text. Our counts lie around the Sun, so their model enters them averaged over
+the disk of our cylinder and integrated over each slice of $|z|$, then goes through our
+counts as the tracer does (`experiments.mw_imig.cylinder_slices`).
 
-In each of their age bins up to 10 Gyr we compare four heights, all through our counts, so
-that each difference between their measurement and ours can be removed in turn
-(`experiments.mw_imig`). The first two pool their low-$[\alpha/\mathrm{M}]$ populations
-with $[\mathrm{M/H}] > -0.6$: by the midplane mass density of each at $R_\odot$, and by its
-$\nu_\odot$, which is the analog of our counts of giants. The other two are our APOGEE
-counts of the same ages, on the astroNN and on the distmass scale. The $\sigma_z$ of the
-tracer comes from the APOGEE stars of the same ages on the distmass scale, theirs.
+Through our counts, their heights are thinner than ours above 4 Gyr, where our counts over
+their heights are <MwMetric name="imigGapOld" />, whereas below 4 Gyr they are
+<MwMetric name="imigGapYoung" />. Four heights per age bin, all through our counts, separate
+the ways in which the two measurements differ (`experiments.mw_imig`): their
+low-$[\alpha/\mathrm{M}]$ populations with $[\mathrm{M/H}] > -0.6$ pooled by the midplane
+mass density of each at $R_\odot$ and by its $\nu_\odot$, the analog of our counts of
+giants, and our APOGEE counts of the same ages on the astroNN and the distmass scale.
+Pooling their populations by counts rather than by mass changes their heights by factors of
+<MwMetric name="imigWeighting" />. Moving our counts from the astroNN to the distmass scale
+changes ours by factors of <MwMetric name="imigAgeScale" />. Neither the weighting nor the
+age scale therefore accounts for the difference. At <MwMetric name="imigAges7" />, for
+example, their heights are <MwMetric name="imigHz7" /> by mass and
+<MwMetric name="imigCountsHz7" /> by counts, whereas our counts on their age scale give
+<MwMetric name="countsDistmassHz7" />.
 
 <ImigTable />
 
-Pooling their populations by counts of giants at their Sun rather than by mass changes their
-heights by factors of <MwMetric name="imigWeighting" />, so the weighting does not explain
-the disagreement. Moving our counts from the astroNN to the distmass scale changes them by
-factors of <MwMetric name="imigAgeScale" /> (astroNN over distmass), which does not close
-the gap either. On the same age scale and with the same weighting, our
-counts over their heights are <MwMetric name="imigGapYoung" /> in the bins younger than
-4 Gyr and <MwMetric name="imigGapOld" /> in the older ones, so through our counts their
-pooled heights come close to ours below 4 Gyr, whereas the older bins keep the gap. At <MwMetric name="imigAges7" />, for
-example, their heights are <MwMetric name="imigHz7" /> by mass and <MwMetric name="imigCountsHz7" /> by
-counts, whereas our counts on their age scale give <MwMetric name="countsDistmassHz7" />.
+The tracer, with the $\sigma_z$ of the APOGEE stars of the same ages on the distmass scale,
+follows our counts on that scale, with ratios of <MwMetric name="countsDistmassRatio" /> and
+a trend of <MwMetric name="countsDistmassTrend" />, whereas over their heights its ratios
+are <MwMetric name="imigMassRatio" /> by mass and <MwMetric name="imigCountsRatio" /> by
+counts, with trends of <MwMetric name="imigMassTrend" /> and
+<MwMetric name="imigCountsTrend" />. The difference thus lies between two measurements of
+the vertical profile of the same populations, not in their ages or in how they are weighted.
+The sections below compare the two one population at a time and find that most of the
+difference is the estimator of the scale height, whereas the rest lies in how the heights
+grow with age.
 
 <ImigRatioTable />
 
-On the distmass scale, which the tracer of these bins shares, the tracer over our counts
-has ratios of <MwMetric name="countsDistmassRatio" /> and a trend of
-<MwMetric name="countsDistmassTrend" />. Over the counts on the astroNN scale, which mix the
-two age scales, the ratios are <MwMetric name="countsAstronnRatio" />, lowest in the
-youngest bin, with a trend of <MwMetric name="countsAstronnTrend" />. Over their heights
-the ratios are <MwMetric name="imigMassRatio" /> by mass and
-<MwMetric name="imigCountsRatio" /> by counts, with trends of
-<MwMetric name="imigMassTrend" /> and <MwMetric name="imigCountsTrend" />. The disagreement
-thus lies between two measurements of the vertical profile of the same populations, not in
-their ages or in how they are weighted. The sections below compare the two measurements one
-population at a time and locate the difference: most of it lies in the estimator of the
-scale height, and the rest in how the heights grow with age.
-
 ### One population at a time
 
-The pooled heights mix the bins of $[\mathrm{M/H}]$ of each age bin, and each side weights
-them in its own way. We remove the pooling by comparing every population of Imig et al.
+Population by population, our windowed counts remain thicker than the windowed heights of
+their model, by a median factor of <MwMetric name="cellsMedian" />, so the pooling over
+metallicity does not cause the difference. The pooled heights mix the bins of
+$[\mathrm{M/H}]$ of each age bin, which each side weights in its own way. We remove the pooling by comparing every population of Imig et al.
 with our counts of the same cell (`experiments.mw_imig_cells`): the APOGEE stars of the
 same ages on the distmass scale and of the same bin of the ASPCAP $[\mathrm{M/H}]$, below
 the $[\alpha/\mathrm{M}]$ that separates the two sequences in their Eq. (1). Their model of
@@ -223,9 +208,8 @@ counts ([Two estimators of the scale height](#two-estimators-of-the-scale-height
 
 <ImigCellTable />
 
-Over these cells our windowed counts are thicker than their model by a median factor of
-<MwMetric name="cellsMedian" />: <MwMetric name="cellsMetalPoor" /> below
-$[\mathrm{M/H}] = -0.1$, <MwMetric name="cellsMetalSolar" /> between $-0.1$ and $0.1$, and
+The median ratio is <MwMetric name="cellsMetalPoor" /> below $[\mathrm{M/H}] = -0.1$,
+<MwMetric name="cellsMetalSolar" /> between $-0.1$ and $0.1$, and
 <MwMetric name="cellsMetalRich" /> above $0.1$. At fixed age, the logarithm of the ratio
 changes by <MwMetric name="cellsTrend" /> per dex of $[\mathrm{M/H}]$, and at fixed
 $[\mathrm{M/H}]$ by <MwMetric name="cellsTrendAge" /> per ln age, with the age of a cell
@@ -233,13 +217,13 @@ the geometric mean of its edges. The populations of one age lie differently acro
 cylinder: the median gradient of the cells is <MwMetric name="gradientPoor" /> below
 $[\mathrm{M/H}] = -0.1$ and <MwMetric name="gradientRich" /> above $0.1$, the metal-rich
 populations being more common toward the Galactic center. Without the correction of the
-gradient (see Measurement), the fractions of the slices near the plane, where the matches
+gradient ([Star counts](#star-counts)), the fractions of the slices near the plane, where the matches
 lie toward the anticenter, would hold too many metal-poor stars and too few metal-rich ones,
 which makes the metal-poor populations thinner and the metal-rich ones thicker.
 
 ### Their model in our cylinder
 
-Their model lets us take the geometry of the two fits apart. Our cylinder spans 1.5 kpc on
+The geometry of the two fits does not explain the difference either. Our cylinder spans 1.5 kpc on
 each side of the Sun, across which their scale height flares and their midplane density
 changes, for the metal-rich populations across their break. Averaged over the disk of our
 cylinder, in the continuous window, their model changes their published heights by factors
@@ -251,7 +235,7 @@ closes the gap:
 
 ### Two estimators of the scale height
 
-Their $h_Z$ is the scale of the exponential that fits each population best, whereas ours is
+Most of the difference is one of definition. Their $h_Z$ is the scale of the exponential that fits each population best, whereas ours is
 the windowed $h_Z$ of the profile that the counts measure. The two agree for an
 exponential. An isothermal population is flat at the plane and falls more steeply with
 height, so the exponential that matches its mean $|z|$ is thinner than its windowed $h_Z$.
@@ -332,7 +316,7 @@ cell by cell, in age and in metallicity, within the errors of these trends.
 
 ### The targeting of APOGEE
 
-Our counts assume that the targeting does not depend on the population at a fixed position.
+The targeting limits of APOGEE do not change the cells. Our counts assume that the targeting does not depend on the population at a fixed position.
 The surveys select their targets by color, however. Because the colors of giants change
 with metallicity, a color limit that changes across the fields at different $|z|$ would
 bias the fraction of each metallicity in the slices. We test this with the targeting that APOGEE
@@ -354,16 +338,17 @@ With one selection in every field, the medians of our windowed counts over their
 from <MwMetric name="boxPoorA" /> and <MwMetric name="boxPoorB" /> for the metal-poor
 populations to <MwMetric name="boxRichA" /> and <MwMetric name="boxRichB" /> for the
 metal-rich ones. At fixed age, their logarithms change by <MwMetric name="boxTrendA" /> and
-<MwMetric name="boxTrendB" /> per dex of $[\mathrm{M/H}]$, as without the boxes. The
-targeting limits of APOGEE thus do not change the cells. A selection that the limits do not
-record remains: within a cohort, APOGEE spaces its targets evenly in apparent $H$ rather
+<MwMetric name="boxTrendB" /> per dex of $[\mathrm{M/H}]$, as without the boxes. A
+selection that the limits do not record remains: within a cohort, APOGEE spaces its targets evenly in apparent $H$ rather
 than drawing them at random (Zasowski et al. 2013, Section 4.4), so the chance that a star
 is targeted depends on its $H$ and, at a given distance, on its luminosity, which changes
 with the population.
 
 ### The counts of LAMOST
 
-The boxes leave the even spacing in $H$ untested, because no limit of a cohort records it.
+The counts of LAMOST, whose targeting, metallicities and ages are independent of those of
+APOGEE, change with metallicity at fixed age as the APOGEE counts do. The boxes leave the
+even spacing in $H$ untested, because no limit of a cohort records it.
 We test it, with every other part of the selection of APOGEE, by splitting the LAMOST
 counts into the same cells (`experiments.mw_imig_cells.lamost_metallicity_counts`). A cell
 then holds the LAMOST matches of its ages on the scale of Huang et al. (2020) and of its bin
@@ -438,7 +423,7 @@ our counts.
 ## Limitations
 
 Our heights are those that the counts measure, with the bias of the slices for thin
-populations (see Measurement). Every prediction goes through the same counts, so the ratios
+populations ([Star counts](#star-counts)). Every prediction goes through the same counts, so the ratios
 do not carry that bias, whereas the heights in the tables do.
 
 The fraction of a slice assumes that the spectroscopic targeting does not depend on the

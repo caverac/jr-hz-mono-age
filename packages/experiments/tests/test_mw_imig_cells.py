@@ -25,6 +25,7 @@ from experiments.mw_imig_cells import (
     CellSettings,
     CellTheirs,
     CellTrends,
+    DispersionSlopes,
     ImigCell,
     ImigCells,
     MetallicityCounts,
@@ -109,6 +110,11 @@ def test_cells_compare_each_population_with_its_counts(metals: Metals) -> None:
     assert all(np.isfinite([t.age.value, t.metallicity.value]).all() for t in (trends.counted, trends.exponential))
     slopes = cells.slopes
     assert all(np.isfinite(t.value) for t in (slopes.counts, slopes.counts_exponential, slopes.imig, slopes.imig_sun))
+    dispersion = cells.dispersion
+    assert all(
+        np.isfinite(t.value) and t.err > 0.0
+        for t in (dispersion.counts_exponential, dispersion.imig_exponential, dispersion.imig_sun)
+    )
 
 
 def test_cells_without_enough_matches_have_no_counts(metals: Metals) -> None:
@@ -132,6 +138,7 @@ def test_cells_without_enough_kinematic_stars_have_no_tracer(metals: Metals, mon
     assert measured and all(c.ours.windowed.value > 0.0 for c in measured)
     assert all(np.isnan(c.kinematics.sigma_z.value) and np.isnan(c.kinematics.tracer.value) for c in measured)
     assert np.isnan(cells.slopes.tracer.value) and np.isnan(cells.slopes.sigma_z.value)
+    assert np.isnan(cells.dispersion.counts_exponential.value) and np.isnan(cells.dispersion.imig_sun.value)
     assert np.isnan(cells.trends.tracer.age.value) and np.isfinite(cells.trends.counted.age.value)
 
 
@@ -157,12 +164,14 @@ def test_the_report_summarizes_each_metallicity_bin() -> None:
         1.3,
         CellTrends(ratio_trends, ratio_trends, ratio_trends),
         slopes,
+        DispersionSlopes(Trend(1.3, 0.1, 1.0), trend, Trend(0.9, 0.1, 1.0)),
     )
     lines = cell_lines(cells, "box")
     assert lines[0].startswith("box, 1,000 matches")
     assert lines[1].split()[-3:] == ["1.30", "1.00", "none"] and lines[2].split()[-3:] == ["none"] * 3
-    assert "2 cells: median 1.30" in lines[-2] and "counted +0.20+/-0.05 (+0.50+/-0.20)" in lines[-2]
-    assert "imig -1.00+/-0.10" in lines[-1]
+    assert "2 cells: median 1.30" in lines[-3] and "counted +0.20+/-0.05 (+0.50+/-0.20)" in lines[-3]
+    assert "imig -1.00+/-0.10" in lines[-2]
+    assert lines[-1].endswith("counts_exponential +1.30+/-0.10, imig_exponential -1.00+/-0.10, imig_sun +0.90+/-0.10")
 
 
 def test_a_targeting_box_keeps_the_stars_selected_alike_everywhere() -> None:

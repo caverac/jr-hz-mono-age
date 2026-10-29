@@ -53,17 +53,26 @@ export function Chips<T extends string>({
 
 const ALL = 'all'
 
+/** A group that a chart draws beside the halos, such as the Milky Way, with its color. */
+export interface OtherGroup {
+  readonly label: string
+  readonly color: string
+}
+
 interface HaloPickerProps {
-  /** The highlighted halo, or null for all. */
+  /** The highlighted halo or group, or null for all. */
   readonly selected: string | null
   readonly onSelect: (halo: string | null) => void
+  /** The groups listed after the halos. */
+  readonly others?: readonly OtherGroup[]
 }
 
 /** Buttons that highlight one halo in a chart, or none, each with the color of its halo. */
-export function HaloPicker({ selected, onSelect }: HaloPickerProps): ReactNode {
+export function HaloPicker({ selected, onSelect, others = [] }: HaloPickerProps): ReactNode {
   const options: readonly (readonly [string, string])[] = [
     [ALL, 'all'],
-    ...HALOS.map((halo) => [halo.label, halo.label] as const)
+    ...HALOS.map((halo) => [halo.label, halo.label] as const),
+    ...others.map((other) => [other.label, other.label] as const)
   ]
   return (
     <Chips
@@ -71,7 +80,11 @@ export function HaloPicker({ selected, onSelect }: HaloPickerProps): ReactNode {
       options={options}
       isPressed={(option) => (option === ALL ? selected === null : option === selected)}
       onToggle={(option) => onSelect(option === ALL || option === selected ? null : option)}
-      swatch={(option) => (option === ALL ? undefined : haloColor(option))}
+      swatch={(option) =>
+        option === ALL
+          ? undefined
+          : (others.find((other) => other.label === option)?.color ?? haloColor(option))
+      }
     />
   )
 }

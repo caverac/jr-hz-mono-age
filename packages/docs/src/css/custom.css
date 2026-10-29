@@ -69,3 +69,10 @@ figure.scientific.wide img {
 [data-theme='dark'] figure.scientific img {
   filter: invert(1) hue-rotate(180deg);
 }
+
+/* A display equation wider than the column scrolls on its own, so that it (and the hidden
+   MathML that KaTeX sets beside it) never widens the page on a phone. */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+}

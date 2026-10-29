@@ -30,8 +30,10 @@ import {
   type MwRange,
   type MwSurvey,
   parseMilkyWay,
-  type TargetedCells
+  type TargetedCells,
+  tracerGrowth
 } from '@site/src/components/status/milkyWay'
+import type { Trend } from '@site/src/components/status/record'
 import useRecord from '@site/src/components/status/useRecord'
 import React, { type ReactNode } from 'react'
 
@@ -59,6 +61,11 @@ function recordMetric<T, M extends Record<string, (data: T) => string>>(
       </span>
     )
   }
+}
+
+/** The growth of a height with sigma_z, h_Z proportional to sigma_z^slope, with its error. */
+function dispersionText(slope: Trend): string {
+  return `$\\sigma_z^{${slope.value.toFixed(2)} \\pm ${slope.err.toFixed(2)}}$`
 }
 
 function survey(data: MilkyWayData, name: string): MwSurvey {
@@ -194,30 +201,19 @@ const MW_METRICS = {
   distmassMatched: (d: MilkyWayData) => count(survey(d, 'apogee_distmass').nMatched),
   lamostTracer: (d: MilkyWayData) => ratioRange(d, 'lamost', 'ratioTracer'),
   apogeeTracer: (d: MilkyWayData) => ratioRange(d, 'apogee', 'ratioTracer'),
-  lamostSheet: (d: MilkyWayData) => ratioRange(d, 'lamost', 'ratioSheet'),
-  apogeeSheet: (d: MilkyWayData) => ratioRange(d, 'apogee', 'ratioSheet'),
   distmassTracer: (d: MilkyWayData) => ratioRange(d, 'apogee_distmass', 'ratioTracer'),
-  distmassSheet: (d: MilkyWayData) => ratioRange(d, 'apogee_distmass', 'ratioSheet'),
   lamostTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'lamost', 0).tracer),
   apogeeTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee', 0).tracer),
   lamostTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'lamost', 2).tracer),
   apogeeTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee', 2).tracer),
   distmassTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 0).tracer),
   distmassTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 2).tracer),
-  lamostSheetTrend0: (d: MilkyWayData) => trendText(range(d, 'lamost', 0).sheet),
-  apogeeSheetTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee', 0).sheet),
-  distmassSheetTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 0).sheet),
   lamostEta: (d: MilkyWayData) => fixed(range(d, 'lamost', 0).eta),
   apogeeEta: (d: MilkyWayData) => fixed(range(d, 'apogee', 0).eta),
   distmassEta: (d: MilkyWayData) => fixed(range(d, 'apogee_distmass', 0).eta),
   lamostWithin10: (d: MilkyWayData) => within10(d, 'lamost'),
   apogeeWithin10: (d: MilkyWayData) => within10(d, 'apogee'),
   distmassWithin10: (d: MilkyWayData) => within10(d, 'apogee_distmass'),
-  lamostSheetTrend2: (d: MilkyWayData) => trendText(range(d, 'lamost', 2).sheet),
-  apogeeSheetTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee', 2).sheet),
-  distmassSheetTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 2).sheet),
-  lamostHz68: (d: MilkyWayData) => countHeight(d, 'lamost', 6),
-  apogeeHz68: (d: MilkyWayData) => countHeight(d, 'apogee', 6),
   apogeeHz24: (d: MilkyWayData) => countHeight(d, 'apogee', 2),
   distmassFailed810: (d: MilkyWayData) => {
     const bin = survey(d, 'apogee_distmass').bins.find((b) => b.ageLo === 8)
@@ -237,11 +233,9 @@ const MW_METRICS = {
   imigGapOld: (d: MilkyWayData) => heightRatios(d, 'countsDistmass', 'imigCounts', 4),
   imigMassRatio: (d: MilkyWayData) => imigRatios(d, 'imigMass'),
   imigCountsRatio: (d: MilkyWayData) => imigRatios(d, 'imigCounts'),
-  countsAstronnRatio: (d: MilkyWayData) => imigRatios(d, 'countsAstronn'),
   countsDistmassRatio: (d: MilkyWayData) => imigRatios(d, 'countsDistmass'),
   imigMassTrend: (d: MilkyWayData) => trendText(d.imig.trends.imigMass),
   imigCountsTrend: (d: MilkyWayData) => trendText(d.imig.trends.imigCounts),
-  countsAstronnTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsAstronn),
   countsDistmassTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsDistmass),
   cellsMin: (d: MilkyWayData) => String(d.imigCells.minMatches),
   cellsMeasured: (d: MilkyWayData) => `${d.imigCells.nMeasured} of ${d.imigCells.cells.length}`,
@@ -307,6 +301,10 @@ const MW_METRICS = {
   estimatorRatios: (d: MilkyWayData) =>
     between(extent(d.estimators.map((e) => e.windowed / e.exponential))),
   estimatorSigmas: (d: MilkyWayData) => between(extent(d.estimators.map((e) => e.sigmaZ)), 0),
+  dispersionCounts: (d: MilkyWayData) => dispersionText(d.imigCells.dispersion.countsExponential),
+  dispersionImig: (d: MilkyWayData) => dispersionText(d.imigCells.dispersion.imigExponential),
+  dispersionSun: (d: MilkyWayData) => dispersionText(d.imigCells.dispersion.imigSun),
+  tracerGrowth: (d: MilkyWayData) => `$\\sigma_z^{${tracerGrowth(d.estimators).slope.toFixed(2)}}$`,
   estimatorWhole: (d: MilkyWayData) =>
     between(extent(d.estimators.map((e) => e.exponentialWhole / e.exponential))),
   gradientRange: (d: MilkyWayData) =>
@@ -349,7 +347,6 @@ const JR_METRICS = {
   jrRange: (d: JrRelationData) => between(extent(d.points.map((p) => p.jrW)), 1),
   hzPalicioRange: (d: JrRelationData) => between(extent(d.points.map((p) => p.hzPalicio))),
   hzScaledRange: (d: JrRelationData) => between(extent(d.points.map((p) => p.hzScaled))),
-  slopeRatio: (d: JrRelationData) => fixed(d.linePalicio.slope / d.palicioSlope),
   largestShifts: (d: JrRelationData) =>
     [...d.points]
       .sort((a, b) => b.hzPalicio / b.hzScaled - a.hzPalicio / a.hzScaled)

@@ -19,7 +19,9 @@ import {
   Legend,
   type LegendEntry,
   Marker,
-  type MarkerShape
+  type MarkerShape,
+  seriesColor,
+  Swatch
 } from '@site/src/components/viz/marks'
 import * as d3 from 'd3'
 import React, { type ReactNode, useState } from 'react'
@@ -32,6 +34,8 @@ const TOLERANCE = 0.1
 /** One series of the chart: a set of heights and a prediction, with its points (median age, ratio). */
 interface Series {
   readonly key: string
+  /** The color of its line, markers and button, from the slot of the series. */
+  readonly color: string
   readonly label: string
   readonly prediction: string
   readonly marker: MarkerShape
@@ -75,7 +79,7 @@ function seriesOf(data: MilkyWayData): readonly Series[] {
     }))
   )
   const imig = IMIG_HEIGHTS.filter((s) => IMIG_MARKERS[s.height] !== undefined).map(
-    (s): Series => ({
+    (s): Omit<Series, 'color'> => ({
       key: `${s.height}-tracer`,
       label: `${s.name}, tracer`,
       prediction: 'tracer',
@@ -91,10 +95,11 @@ function seriesOf(data: MilkyWayData): readonly Series[] {
         .filter((p) => Number.isFinite(p.ratio.value))
     })
   )
-  return [...surveys, ...imig]
+  return [...surveys, ...imig].map((s, i) => ({ ...s, color: seriesColor(i) }))
 }
 
 interface Hovered {
+  readonly color: string
   readonly label: string
   readonly prediction: string
   readonly ratio: Estimate
@@ -148,6 +153,7 @@ function Plot({
                 <path
                   d={linePath(s.points.map((p) => [x(p.age), y(p.ratio.value)] as const))}
                   className={`${dashClass(s.dash)} viz-line--thin`}
+                  style={{ stroke: s.color }}
                 />
                 {s.points.map((p) => (
                   <g key={p.label}>
@@ -157,14 +163,21 @@ function Plot({
                       y1={y(Math.max(p.ratio.value - p.ratio.err, domain[0]))}
                       y2={y(Math.min(p.ratio.value + p.ratio.err, domain[1]))}
                       className="viz-line viz-line--thin"
+                      style={{ stroke: s.color }}
                     />
                     <Marker
                       shape={s.marker}
                       open={s.open}
+                      color={s.color}
                       x={x(p.age)}
                       y={y(p.ratio.value)}
                       onMouseEnter={() =>
-                        onHover({ label: p.label, prediction: s.prediction, ratio: p.ratio })
+                        onHover({
+                          color: s.color,
+                          label: p.label,
+                          prediction: s.prediction,
+                          ratio: p.ratio
+                        })
                       }
                       onMouseLeave={() => onHover(null)}
                     />
@@ -200,7 +213,13 @@ export default function MilkyWayChart(): ReactNode {
   const all = seriesOf(value)
   const shown = all.filter((s) => !hidden.has(s.key))
   const entries: readonly LegendEntry[] = [
-    ...shown.map((s) => ({ label: s.label, marker: s.marker, open: s.open, dash: s.dash })),
+    ...shown.map((s) => ({
+      label: s.label,
+      marker: s.marker,
+      open: s.open,
+      dash: s.dash,
+      color: s.color
+    })),
     { label: `$|h_\\mathrm{pred}/h_Z - 1| \\le ${TOLERANCE}$`, band: true }
   ]
   return (
@@ -213,15 +232,19 @@ export default function MilkyWayChart(): ReactNode {
           options={all.map((s) => [s.key, s.label] as const)}
           isPressed={(key) => !hidden.has(key)}
           onToggle={(key) => setHidden((current) => toggled(current, key))}
+          swatch={(key) => all.find((s) => s.key === key)?.color}
         />
       </div>
       <p className="viz-note">
         {hovered === null ? (
           'Point at a population to read its ratio.'
         ) : (
-          <MathLabel
-            label={`${hovered.label}, ${hovered.prediction}: $${hovered.ratio.value.toFixed(2)} \\pm ${hovered.ratio.err.toFixed(2)}$.`}
-          />
+          <>
+            <Swatch color={hovered.color} />
+            <MathLabel
+              label={`${hovered.label}, ${hovered.prediction}: $${hovered.ratio.value.toFixed(2)} \\pm ${hovered.ratio.err.toFixed(2)}$.`}
+            />
+          </>
         )}
       </p>
     </div>

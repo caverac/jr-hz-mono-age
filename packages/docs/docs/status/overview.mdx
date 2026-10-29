@@ -2,17 +2,35 @@
 title: Overview
 ---
 
-import Claim from '@site/src/components/status/Claim'
+import DiscrepancyChart from '@site/src/components/status/DiscrepancyChart'
+import FlareChart from '@site/src/components/status/FlareChart'
 import Metric from '@site/src/components/status/Metric'
+import PredictionChart from '@site/src/components/status/PredictionChart'
 import { JrMetric, MwMetric } from '@site/src/components/status/RecordMetric'
+import ScalingChart from '@site/src/components/status/ScalingChart'
 
 # Overview
 
-This section records how far the analysis in this repository supports the central claim
-of the paper, and which parts of the claim remain untested. Every result quoted on these
-pages is computed in the browser from the records that the Python package writes under
-`assets/data/`. A result that the package has not produced is therefore not quoted,
-whatever other evidence for it may exist.
+We test whether the mono-age populations of a disk galaxy are isothermal tracers of the
+total gravitational potential. A population of one age holds a small part of the mass of
+its disk, so its vertical profile should be set by the whole potential it moves in, as
+$\rho \propto \exp(-\Delta\Phi/\sigma_z^2)$, rather than by its own gravity, as in a
+self-gravitating sheet. In the seven Auriga halos of Palicio et al. (2025), the tracer
+predicts the scale height $h_Z$ of <Metric name="tracerWithin10" /> of the
+<Metric name="populations" /> mono-age populations within 10 percent and reproduces how
+$h_Z$ changes with age in every halo. Star counts of Gaia giants in the solar
+neighborhood, split into populations by the ages of LAMOST and APOGEE, give the same answer
+for the Milky Way. Summed over the populations of
+each disk, the tracers also predict the thickness of the whole disk, and with it the heights
+of the relation between radial action and scale height that Palicio et al. (2025) find
+across galaxies. The one open question concerns the published heights of Imig et al.
+(2025), which grow more slowly with age than our star counts of the same stars, for reasons
+that our data cannot reach.
+
+Every number on these pages is computed in the browser from the records that the Python
+package writes under `assets/data/`, so the prose cannot drift from the data. A result that
+the package has not produced is not quoted, whatever other evidence for it may exist. Where
+a check was made only with code outside the package, the text says so and gives no number.
 
 ## The claim
 
@@ -34,394 +52,261 @@ one. Because the slope $a = J_{R,\mathrm{med}}/h_Z$ of the $J_R$-$h_Z$ relation 
 et al. 2025) divides by $h_Z$, the two pictures also predict different age dependences of
 $a$.
 
-We test the claim on the seven Auriga halos of Table 1 of Palicio et al. (2025) at
-$z = 0$ ([why these seven](../explorations/rendered-disks#why-these-seven-halos)), with the star particles of the annulus $7.5 < R < 9$ kpc split into ten bins of
-1 Gyr in age, from 0 to 10 Gyr. [Tracer or sheet](./tracer-vs-sheet) describes the
-measurement and the two predictions, whereas [Fixed-window bias](./window-bias) tests the
-estimator of $h_Z$ on profiles of known shape.
+We write $h_\mathrm{pred}$ for the scale height that a model of the vertical structure
+predicts for a population from its own $\sigma_z$, whether the tracer, the sheet or the
+vertical Jeans equation. Each model gives a profile in $|z|$, which we fit with the same
+estimator as the stars, so that $h_\mathrm{pred}/h_Z$ compares two heights measured the same
+way. None of the predictions uses the $J_R$-$h_Z$ relation, whose slope $a$ we measure
+population by population rather than assume.
 
-## Is the claim supported?
+## Results
 
-For the Auriga populations over 0-10 Gyr, the answer is yes. The tracer predicts $h_Z$
-within 10 percent in <Metric name="tracerWithin10" /> of the <Metric name="populations" />
-populations, whereas the sheet does so in <Metric name="sheetWithin10" />. The tracer also
-reproduces how $h_Z$, and hence $a$, changes with age: the trend of $h_\mathrm{tracer}/h_Z$
-with age lies within <Metric name="trendMax0" /> standard errors of 0 in every halo,
-whereas that of the sheet lies at least <Metric name="sheetTrendMin" /> standard errors
-from 0 in every halo and range of ages.
+### Auriga populations are isothermal tracers
 
-Over 2-10 Gyr, the trend of the tracer is negative in <Metric name="trendNegative2" />
-halos, and more than 2 standard errors from 0 in <Metric name="trendOutside2" />. The
-vertical Jeans equation removes that pattern when each population enters with the second
-moment of its velocities measured at every height, rather than as one isothermal component
-with a clipped midplane dispersion.
-
-In the Milky Way, star counts of Gaia giants split into ages by LAMOST, and by APOGEE on
-the astroNN and the distmass age scales, give the same answer. The tracer predicts $h_Z$
-with ratios of <MwMetric name="lamostTracer" />, <MwMetric name="apogeeTracer" /> and
-<MwMetric name="distmassTracer" />, and its trend with age over 0-10 Gyr is
-<MwMetric name="lamostTracerTrend0" />, <MwMetric name="apogeeTracerTrend0" /> and
-<MwMetric name="distmassTracerTrend0" />, whereas that of the sheet is
-<MwMetric name="lamostSheetTrend0" />, <MwMetric name="apogeeSheetTrend0" /> and
-<MwMetric name="distmassSheetTrend0" />.
-
-The old populations of Au19, whose tracer heights fall short of the measured ones, are held
-up by the tilt term of the vertical Jeans equation, which the tracer leaves out by
-construction. With it, their Jeans heights are <Metric name="au19JeansTiltOld" /> times the
-measured ones. Summed over rings and ages, the tracers of the populations predict
-<Metric name="sumMixtureScaled" /> of the whole-disk $h_Z$ of each halo in the
-self-consistent window. With these heights, the slope of $J_{R,w}$ against $h_Z$ across the
-halos is <JrMetric name="slopeScaledMixture" />, against <JrMetric name="slopeScaled" /> with
-the measured ones, so the heights of the relation across galaxies follow from the tracers
-within each disk, although its radial actions do not.
-
-One part of the claim is not yet established. The heights of Imig et al. (2025) are the
-scales of the exponentials that fit their populations best, which for an isothermal
-population are thinner than its windowed $h_Z$, by factors of
-<MwMetric name="estimatorRatios" /> in the potential of McMillan (2017). Fit the same way
-and through the same counts, our star counts over their model have a median of
-<MwMetric name="cellsExpMedian" /> population by population, and the logarithm of this
-ratio changes by <MwMetric name="cellsExpTrend" /> per dex of $[\mathrm{M/H}]$ at fixed age,
-so the two measurements agree in level and in metallicity. The tracer of each population's
-own $\sigma_z$ follows our windowed counts in both, with trends of
-<MwMetric name="cellsTracerTrendAge" /> per ln age and <MwMetric name="cellsTracerTrend" />
-per dex. The two measurements disagree in how the heights grow with age: at fixed
-$[\mathrm{M/H}]$, our exponential fits over theirs change by
-<MwMetric name="cellsExpTrendAge" /> per ln age. Over their pooled heights the tracer has a
-trend of <MwMetric name="imigMassTrend" />, against <MwMetric name="countsDistmassTrend" />
-over our counts. In the Milky Way the claim thus
-holds against the star counts, whereas against the heights of Imig et al. it depends on why
-their heights grow more slowly with age (open issue below).
-
-## Status board
-
-Each statement below carries one of three labels:
-
-- reproduced by this package: a command of the Python package writes the record that the
-  statement is computed from, and that record is in the repository;
-- preliminary: the statement was checked only with code that is not part of the package,
-  so no number from that check appears here;
-- open: the statement has not been tested.
-
-### Supported
-
-<Claim
-  status="reproduced"
-  title="The tracer predicts the scale height of each population"
-  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
->
-
-The tracer in the fitted potential predicts $h_Z$ within 5 percent in
+We split the star particles of the annulus $7.5 < R < 9$ kpc of the seven halos of Table 1
+of Palicio et al. (2025) at $z = 0$ into ten bins of 1 Gyr in age
+([why these seven](../explorations/rendered-disks#why-these-seven-halos)), and fit $h_Z$ of
+each in a window that scales with the population, $|z| < 2h_Z$. The tracer, in a potential
+fitted to all the particles of each snapshot, predicts $h_Z$ within 5 percent in
 <Metric name="tracerWithin5" />, within 10 percent in <Metric name="tracerWithin10" /> and
-within 15 percent in <Metric name="tracerWithin15" /> of the <Metric name="populations" />
-populations, with ratios to the measured $h_Z$ from <Metric name="tracerRange" /> and a
-median of <Metric name="tracerMedian" />. The sheet reaches 10 percent in
-<Metric name="sheetWithin10" /> populations, with ratios from <Metric name="sheetRange" />.
-See [Tracer or sheet](./tracer-vs-sheet#scale-heights).
+within 15 percent in <Metric name="tracerWithin15" /> of the
+<Metric name="populations" /> populations, with ratios from
+<Metric name="tracerRange" /> and a median of <Metric name="tracerMedian" /> (Figure 1).
 
-</Claim>
+<PredictionChart />
 
-<Claim
-  status="reproduced"
-  title="Over 0-10 Gyr, the tracer reproduces the age dependence of $h_Z$"
-  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
->
+_Figure 1. The $h_Z$ that the isothermal tracer predicts for every mono-age population of
+the seven Auriga halos, against the $h_Z$ measured in the self-consistent window, with
+horizontal bars for the error of the measurement. The solid line marks equality, inside a
+gray band of agreement within 10 percent. Colors identify the halos, as on the buttons. The
+other buttons switch to the tracer in the potential of the snapshot, to the vertical Jeans
+equation with the measured $\sigma_z(z)$, without and with the tilt term, or to the sheet,
+and move every population to the height that prediction gives._
 
-The trend of $h_\mathrm{tracer}/h_Z$ with age, which equals the measured minus the
-predicted age exponent of $a$ when both are fitted with the same weights, lies within
-<Metric name="trendMax0" /> standard errors of 0 in every halo over 0-10 Gyr, with values
-from <Metric name="trendRange0" />. Its errors come from one bootstrap of the stars of each
-bin for both heights, in which $J_{R,\mathrm{med}}$ cancels, and are multiplied by
-$\sqrt{\chi^2_\nu}$ where the ratios scatter about a power law by more than their errors.
-See [Tracer or sheet](./tracer-vs-sheet#age-dependence).
+The measured heights grow as $\sigma_z^\eta$ with $\eta$ of <Metric name="etaRange" />, in
+the lower half of the range from 1 to 2 that a tracer allows, because near the plane the
+potential is close to harmonic (Figure 2). A sheet ties every height to the mass of the
+layer instead, and makes $h_Z$ grow as $\sigma_z^2$
+([Tracer or sheet](./tracer-vs-sheet#scale-heights)).
 
-</Claim>
+<ScalingChart />
 
-<Claim
-  status="reproduced"
-  title="The sheet cannot describe the age dependence of $a$"
-  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
->
+_Figure 2. The measured $h_Z$ of every mono-age population against its $\sigma_z$, on
+logarithmic axes, for the seven Auriga halos (circles, colored as on the buttons) and for
+the Milky Way with LAMOST (squares) and with APOGEE on the astroNN (triangles) and the
+distmass (diamonds) age scales. The solid lines join the heights that the tracer predicts
+for the same populations, in order of $\sigma_z$. The gray lines, with the slopes
+$\eta = 1$ (dotted) and $\eta = 2$ (dashed), pass through the median Auriga population.
+Picking a galaxy gives its $\eta$ over 0-10 Gyr._
 
-Over 0-10 Gyr, the trend of $h_\mathrm{sheet}/h_Z$ with age is
-<Metric name="sheetTrendRange" /> in the seven halos, at least
-<Metric name="sheetTrendMin" /> standard errors from 0 in every halo and in both ranges of
-age. Population by population, the sheet is too thin for the youngest population of every
-halo, with ratios of <Metric name="sheetYoung" />, and too thick for the oldest, with
-ratios of <Metric name="sheetOld" />. See
-[Tracer or sheet](./tracer-vs-sheet#age-dependence).
+The tracer also reproduces how the slope $a = J_{R,\mathrm{med}}/h_Z$ changes with age. We
+test this with the trend of $h_\mathrm{pred}/h_Z$ with age, in which $J_{R,\mathrm{med}}$
+cancels and which equals the measured minus the predicted age exponent of $a$. Over
+0-10 Gyr, the trend of the tracer lies within <Metric name="trendMax0" /> standard errors of
+0 in every halo, with values of <Metric name="trendRange0" />
+([Tracer or sheet](./tracer-vs-sheet#age-dependence)).
 
-</Claim>
+A small residual remains over 2-10 Gyr, where the trend of the tracer is negative in
+<Metric name="trendNegative2" /> halos, a split of signs with a probability of
+<Metric name="trendSignTest2" /> under symmetric scatter. It comes from the isothermal
+assumption itself, because a bin of 1 Gyr mixes stars of several dispersions, whose
+$\sigma_z$ grows with height, whereas the tracer takes one clipped dispersion from the
+plane. The vertical Jeans equation,
+integrated with the full second moment of $v_z$ measured at every height, removes the
+pattern, with <Metric name="jeansSigmaNegative2" /> trends over 2-10 Gyr negative and
+<Metric name="jeansSigmaWithin2" /> of its 14 trends within 2 standard errors of 0. The old
+populations of Au19 need one more term, the tilt term of the Jeans equation: their Jeans
+heights are <Metric name="au19JeansOld" /> of the measured ones without it and
+<Metric name="au19JeansTiltOld" /> with it. Their mean vertical motions, with
+thickening rates of <Metric name="au19ThickeningOld" /> per Gyr, show no more departure from
+a steady state than those of the other halos
+([The vertical Jeans equation](./tracer-vs-sheet#the-vertical-jeans-equation)).
 
-<Claim
-  status="reproduced"
-  title="The analysis recovers a galaxy of known potential"
-  command="uv run experiments auriga mock-check"
->
+### The analysis recovers a known galaxy
 
-On a mock snapshot of a known axisymmetric galaxy, written in the units and the file
-layout of Auriga, tilted, moving, and close to two faces of the periodic box, the analysis
+On a mock snapshot of a known axisymmetric galaxy, written in the units and the file layout
+of Auriga and tilted, moving and close to two faces of the periodic box, the analysis
 recovers the spin axis within <Metric name="mockSpin" /> degrees and the circular velocity
-at the annulus within <Metric name="mockVc" />. It recovers $\Delta\Phi$ at the median
+of the annulus within <Metric name="mockVc" />. It recovers $\Delta\Phi$ at the median
 radius within <Metric name="mockPhi" /> over $0.05 < z \le 1.5$ kpc, and $h_Z$ and
 $J_{R,\mathrm{med}}$ of every age bin within <Metric name="mockHz" /> and
-<Metric name="mockJr" /> of the truth.
-
-</Claim>
-
-<Claim
-  status="reproduced"
-  title="The sheet overpredicts the thickness of the whole disk"
-  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
->
-
-For all the stars over the radial range of Palicio et al. (2025, Sect. 3.4), the sheet
-predicts <Metric name="wholeSheet" /> times the $h_Z$ fitted in the self-consistent
-window. One tracer for all the stars predicts <Metric name="wholeTracer" /> times that
-$h_Z$, a larger error than for single populations, because a whole disk mixes populations
-of different $\sigma_z$, which no single isothermal tracer describes: summed over rings and
-ages, the tracers of its populations predict <Metric name="sumMixtureScaled" /> times it
-([Across galaxies](./across-galaxies#the-whole-disk-as-a-sum-of-tracers)). The fixed
-windows of Palicio et al. give <Metric name="wholePalicio" /> times the self-consistent
-$h_Z$.
-
-</Claim>
-
-<Claim
-  status="reproduced"
-  title="A fixed window biases $h_Z$ of profiles that are not exponential"
-  command="uv run experiments window-injection"
->
-
-In <Metric name="injectionDraws" /> draws of <Metric name="injectionStars" /> heights per
-profile, the fixed window recovers exponentials within
-<Metric name="exponentialFixedBias" /> of their scale up to $h_Z = 3\,Z_\mathrm{lim}$. It
-returns <Metric name="sech2Thin" /> times the self-consistent $h_Z$ of a $\mathrm{sech}^2$
-layer with $h_Z \approx 0.2\,Z_\mathrm{lim}$, and <Metric name="sech2Window" /> times that
-of a layer with $h_Z \approx Z_\mathrm{lim}$. The self-consistent window recovers every
-injected profile within <Metric name="selfConsistentBias" />. See
-[Fixed-window bias](./window-bias#the-injection-test).
-
-</Claim>
-
-<Claim
-  status="reproduced"
-  title="Below $h_Z = Z_\mathrm{lim}$, the Auriga populations follow the $\mathrm{sech}^2$ curve"
->
-
-This comparison is computed on the page from the records of the two commands above. For
-populations with $h_Z < 0.5\,Z_\mathrm{lim}$, the median ratio of the fixed-window to the
-self-consistent $h_Z$ is <Metric name="windowLowHalos" />, against
-<Metric name="windowLowSech2" /> on the $\mathrm{sech}^2$ curve and
-<Metric name="windowLowExponential" /> on the exponential one. For
-$0.5 \le h_Z/Z_\mathrm{lim} < 1$, the three medians are <Metric name="windowMidHalos" />,
-<Metric name="windowMidSech2" /> and <Metric name="windowMidExponential" />. See
-[Fixed-window bias](./window-bias#the-auriga-populations).
-
-</Claim>
-
-<Claim
-  status="reproduced"
-  title="Averaged over azimuth, the snapshot's potential agrees with the fit"
-  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
->
-
-At the median radius of each annulus, the potential of the snapshot minus that of the
-axisymmetric fit, averaged over eight equal sectors of azimuth, changes by
+<Metric name="mockJr" /> of the truth. In the real snapshots, the potential averaged over
+eight sectors of azimuth differs from the axisymmetric fit by
 <Metric name="residualRange" /> $(\mathrm{km\,s^{-1}})^2$ between the plane and
-$z = 1$ kpc in the seven halos. The tracer in the snapshot's potential is therefore
-<Metric name="snapshotRange" /> times the tracer in the fit, in every population. The
-median over all the stars of a slice, which an earlier version of the package used, weights
-each azimuth by its number of stars, which the bar of Au23 makes depend on height.
+$z = 1$ kpc, so the tracer in the snapshot's potential is <Metric name="snapshotRange" />
+times the tracer in the fit, even with the bar of Au23.
 
-</Claim>
+### The window of the fit
 
-<Claim
-  status="reproduced"
-  title="With a proxy for their radial action, the window sets the slope across galaxies"
-  command="uv run experiments auriga jr-relation 2 3 16 19 23 24 27"
->
+The scale height of a profile that is not exponential depends on the window of $|z|$ it is
+fit in, which is why we fit every population in a window that scales with it. Injected
+profiles of known shape show how much the choice matters. In
+<Metric name="injectionDraws" /> draws of <Metric name="injectionStars" /> heights, a fixed
+window recovers exponentials within <Metric name="exponentialFixedBias" /> of their scale,
+as the maximum-likelihood estimate of an exponential should. It returns
+<Metric name="sech2Thin" /> times the self-consistent $h_Z$ of a $\mathrm{sech}^2$ layer that
+is thin against the window and <Metric name="sech2Window" /> times that of one as thick as
+the window, whereas the self-consistent window recovers every profile within
+<Metric name="selfConsistentBias" />. A profile that is flat near the plane has no single
+scale, so a window narrower than the profile reads its flat core as a large scale. The
+Auriga populations follow the $\mathrm{sech}^2$ curve: below $h_Z = 0.5\,Z_\mathrm{lim}$
+their median ratio is <Metric name="windowLowHalos" />, against
+<Metric name="windowLowSech2" /> for $\mathrm{sech}^2$ and
+<Metric name="windowLowExponential" /> for an exponential, as expected of tracers in a
+potential that is harmonic near the plane ([Fixed-window bias](./window-bias)). The
+heights in the self-consistent window are therefore the ones the tracer is tested with,
+here and in the comparison across galaxies below.
 
-Palicio et al. (2025) read their $J_{R,w}$ from a map of each galaxy without a stated rule,
-so we measure a proxy that follows the construction of their maps. Across the seven halos,
-the slope of the proxy against the whole-disk $h_Z$ is <JrMetric name="slopePalicio" />
-with $h_Z$ in their windows and <JrMetric name="slopeScaled" /> in the self-consistent
-window, against their <JrMetric name="palicioSlope" /> km/s. See
-[Across galaxies](./across-galaxies).
+### The tracers predict the heights of the relation across galaxies
 
-</Claim>
+The relation of Palicio et al. (2025) uses the $h_Z$ of all the stars of a disk, which mixes
+populations of every age. One isothermal component for the whole disk predicts
+<Metric name="wholeTracer" /> times its self-consistent $h_Z$, because no single dispersion
+describes a mixture. Summed over rings of 1 kpc and ages of 1 Gyr, the tracers of the
+populations predict <Metric name="sumMixtureScaled" /> of it. Ring by ring, the sum comes
+within 10 percent of the measured $h_Z$ in <Metric name="sumRingsWithin10" /> radial ranges
+of the seven disks, with ratios of <Metric name="sumRingsScaled" />, and so follows the
+flare of each disk (Figure 3). Across the seven halos, the slope of a proxy for their
+radial action $J_{R,w}$ against these predicted heights is
+<JrMetric name="slopeScaledMixture" />, against <JrMetric name="slopeScaled" /> with the
+measured heights and <JrMetric name="palicioSlope" /> km/s in Palicio et al. The heights of
+the relation thus follow from the tracers of each disk, whereas its radial actions do not,
+because the tracer says nothing about $J_R$. The slope depends on the window in which the
+heights are measured: with fixed windows, which give <Metric name="wholePalicio" /> times
+the self-consistent $h_Z$, it is <JrMetric name="slopePalicio" />
+([Across galaxies](./across-galaxies)).
 
-<Claim
-  status="reproduced"
-  title="The tracers of the populations predict the heights of the relation across galaxies"
-  command="uv run experiments auriga tracer-sum 2 3 16 19 23 24 27"
->
+<FlareChart />
 
-Summed over rings of 1 kpc and age bins of 1 Gyr, the tracers of the populations of each
-disk predict <Metric name="sumMixtureScaled" /> of its whole-disk $h_Z$ in the
-self-consistent window, whereas one tracer per ring predicts
-<Metric name="sumSingleScaled" />. With the predicted heights, the slope of $J_{R,w}$
-against $h_Z$ across the seven halos is <JrMetric name="slopeScaledMixture" />, against
-<JrMetric name="slopeScaled" /> with the measured ones. The heights of the relation across
-galaxies therefore follow from the tracers within each disk. Its radial actions do not,
-because the tracer says nothing about $J_R$. In the windows of Palicio et al., the
-predictions are <Metric name="sumMixturePalicio" /> of the measured $h_Z$, because a window
-much narrower than $h_Z$ measures the curvature of the profile near the plane. See
-[Across galaxies](./across-galaxies#the-whole-disk-as-a-sum-of-tracers).
+_Figure 3. Top: the $h_Z$ of all the star particles of each halo in its radial ranges,
+measured in the self-consistent window (open circles, with bars that span the range), and
+the $h_Z$ of the sum of the isothermal tracers of its rings of 1 kpc and ages of 1 Gyr
+(lines). Bottom: the sum over the measured $h_Z$, inside a gray band of agreement within 10
+percent. Colors identify the halos, as on the buttons._
 
-</Claim>
+### The Milky Way
 
-<Claim
-  status="reproduced"
-  title="The age trend of the tracer comes from treating each population as one isothermal component"
-  command="uv run experiments auriga analyze 2 3 16 19 23 24 27"
->
+We count the Gaia DR3 giants of a cylinder of radius 1.5 kpc around the Sun, within
+$|z| < 1.2$ kpc, and split each slice of $|z|$ into populations with the ages of their
+LAMOST and APOGEE matches. The tracer, in the potential of McMillan (2017) with the
+$\sigma_z$ of the same populations, goes through the same counts. It predicts $h_Z$ with
+ratios of <MwMetric name="lamostTracer" /> with LAMOST, <MwMetric name="apogeeTracer" />
+with APOGEE on the astroNN age scale and <MwMetric name="distmassTracer" /> on the distmass
+scale. Its trend with age over 0-10 Gyr is <MwMetric name="lamostTracerTrend0" />,
+<MwMetric name="apogeeTracerTrend0" /> and <MwMetric name="distmassTracerTrend0" />. The
+heights grow as $\sigma_z^\eta$ with $\eta$ of <MwMetric name="lamostEta" />,
+<MwMetric name="apogeeEta" /> and <MwMetric name="distmassEta" />, inside the range of the
+Auriga disks, so the Milky Way behaves as the simulations do (Figure 2;
+[Milky Way](./milky-way#the-tracer-predicts-the-star-counts)).
 
-Over 2-10 Gyr, the trend of the isothermal tracer is negative in
-<Metric name="trendNegative2" /> halos, a split of signs that would occur with a probability
-of <Metric name="trendSignTest2" /> if the trends scattered symmetrically about 0. The
-vertical Jeans equation, integrated in the fitted potential with the variance of $v_z$ of
-each population measured at every height, removes that pattern:
-<Metric name="jeansSigmaNegative2" /> of its trends over 2-10 Gyr are negative, and
-<Metric name="jeansSigmaWithin2" /> of its 14 trends lie within 2 standard errors of 0. Its
-heights match the measured ones within 10 percent in <Metric name="jeansSigmaWithin10" /> of
-the <Metric name="populations" /> populations, with a median ratio of
-<Metric name="jeansSigmaMedian" />. The Jeans heights differ from the tracer in two ways,
-the change of the dispersion with height and the full rather than the clipped second
-moment, which the records do not separate. See
-[Tracer or sheet](./tracer-vs-sheet#the-vertical-jeans-equation).
+### The heights of Imig et al.
 
-</Claim>
+Imig et al. (2025) measure the same heights from APOGEE alone, fitting every population
+with a model of the whole disk corrected for the selection function of the survey, and
+find them thinner than our counts. To compare the two population by population, we split
+our counts into their cells of age and $[\mathrm{M/H}]$, with the APOGEE matches of each
+cell on their age scale, and put their model of each population through the same cylinder
+and counts. Our counts measure <MwMetric name="cellsMeasured" /> cells (Figure 4).
 
-<Claim
-  status="reproduced"
-  title="The tilt term holds up the old populations of Au19"
-  command="uv run experiments auriga equilibrium 2 3 16 19 23 24 27"
->
+Most of the difference is one of definition. Their $h_Z$ is the scale of the exponential
+that fits a population best, which for an isothermal profile, flat at the plane and steeper
+with height, is thinner than its windowed $h_Z$ by factors of
+<MwMetric name="estimatorRatios" />. Fit with the same exponential and through the same
+counts, our counts over their model have a median of <MwMetric name="cellsExpMedian" />,
+with a change of <MwMetric name="cellsExpTrend" /> per dex of metallicity at fixed age. The
+two measurements thus agree in level and in how the heights depend on metallicity.
 
-Without the tilt term, the Jeans heights of the Au19 populations older than 5 Gyr are
-<Metric name="au19JeansOld" /> times their measured $h_Z$, as short as the tracer, whose
-ratios are <Metric name="au19Old" />. These populations are thick, with $h_Z$ of
-<Metric name="au19HzOld" /> kpc. Measured in slices of $|z|$ up to
-12 kpc, with the tilt term taken from rings over $6 < R < 10.5$ kpc, their Jeans heights are
-<Metric name="au19JeansTiltOld" /> times the measured ones, and those of all the populations
-lie within 10 percent in <Metric name="jeansWithin10" /> of the
-<Metric name="populations" /> populations. Their mean vertical motions show no departure from a steady
-state larger than in the other halos: their thickening rates are
-<Metric name="au19ThickeningOld" /> per Gyr. With the tilt term, however,
-<Metric name="jeansPositive2" /> trends over 2-10 Gyr are positive, a split with a
-probability of <Metric name="jeansSignTest2" /> under symmetric scatter. See
-[Tracer or sheet](./tracer-vs-sheet#the-vertical-jeans-equation).
+They disagree in how the heights grow with age. At fixed metallicity, our exponential fits
+over theirs change by <MwMetric name="cellsExpTrendAge" /> per ln age, from
+<MwMetric name="cellsExpYoung" /> below 2.51 Gyr to <MwMetric name="cellsExpOld" /> above
+5.01 Gyr (Figure 4, middle). Against the $\sigma_z$ of the giants of each cell near the
+plane, our exponential heights grow as <MwMetric name="dispersionCounts" /> at fixed
+metallicity, whereas their published heights grow as <MwMetric name="dispersionSun" />
+(<MwMetric name="dispersionImig" /> for their model through our counts), consistent with
+$h_Z \propto \sigma_z$, the growth of an isothermal population in a harmonic potential. The
+exponential fit to the tracer in the potential of McMillan (2017) grows as
+<MwMetric name="tracerGrowth" /> from <MwMetric name="estimatorSigmas" /> km/s, faster than
+$\sigma_z$ because the hotter populations reach heights where the potential is no longer
+harmonic. The tracer of each cell's own $\sigma_z$ follows our counts, with trends of
+<MwMetric name="cellsTracerTrendAge" /> per ln age and <MwMetric name="cellsTracerTrend" />
+per dex (Figure 4, bottom). Pooled over metallicity, the tracer has a trend with age of
+<MwMetric name="imigMassTrend" /> over their heights, against
+<MwMetric name="countsDistmassTrend" /> over our counts
+([Milky Way](./milky-way#the-heights-of-imig-et-al)).
 
-</Claim>
+<DiscrepancyChart />
 
-<Claim
-  status="reproduced"
-  title="In the Milky Way, the tracer predicts the star-count $h_Z$ of the mono-age populations"
-  command="uv run experiments milky-way analyze"
->
+_Figure 4. The cells of age and $[\mathrm{M/H}]$ of Imig et al. (2025) with at least
+<MwMetric name="cellsMin" /> APOGEE matches and a $\sigma_z$, against the $\sigma_z$ of
+their giants near the plane. Top: the exponential fit to our counts below $|z| = 1.2$ kpc
+(filled) and their published $h_Z$ at $R_\odot$ (open), with the exponential fit to the
+tracer in the potential of McMillan (2017) (thick line), power laws with the slopes of the
+two sets at fixed $[\mathrm{M/H}]$ through their weighted means (dashed and dash-dotted),
+and a segment with the slope $h_Z \propto \sigma_z$ of a harmonic potential (dotted).
+Middle: our exponential fit over theirs, $h_\mathrm{exp}/h_\mathrm{exp,I}$, both through the
+same cylinder and counts. Bottom: the tracer of each cell's $\sigma_z$ over our windowed
+$h_Z$. Colors and markers mark three ranges of $[\mathrm{M/H}]$, as on the buttons. The
+first buttons move the cells to their ages, where the cells of each age bin, shaded
+alternately, run from metal-poor on the left to metal-rich on the right, around a thick
+line that joins the medians of the bins._
 
-Gaia DR3 giants in a cylinder of radius 1.5 kpc around the Sun, split into ages by the
-LAMOST red clump and by APOGEE DR17 on the astroNN and the distmass age scales, give the
-star-count $h_Z$ of five populations of 2 Gyr. The tracer in McMillan (2017) predicts it
-within 10 percent in <MwMetric name="lamostWithin10" /> bins with LAMOST,
-<MwMetric name="apogeeWithin10" /> with APOGEE on the astroNN scale and
-<MwMetric name="distmassWithin10" /> on the distmass scale, and its trend with age over
-0-10 Gyr is <MwMetric name="lamostTracerTrend0" />, <MwMetric name="apogeeTracerTrend0" />
-and <MwMetric name="distmassTracerTrend0" />. The sheet's trend is
-<MwMetric name="lamostSheetTrend0" />, <MwMetric name="apogeeSheetTrend0" /> and
-<MwMetric name="distmassSheetTrend0" />. Over 2-10 Gyr on the distmass scale, the trend of
-the tracer is <MwMetric name="distmassTracerTrend2" />, set by its bin of 2-4 Gyr. Both
-predictions go through the slices and the window of the counts, which make an exponential
-of 0.20 kpc <MwMetric name="biasApogee20" /> times thicker, and the fraction of each
-population is corrected for its gradient across the cylinder. See [Milky Way](./milky-way).
+We have not found the cause in our data. Checks outside the package rule out the causes
+that our data can reach: the young populations hold almost no stars above our counts and
+are already thinner than their model below 0.6 kpc, the trend is the same on both sides of
+our cylinder, and the giants of their selection differ from ours in dispersion by the same
+few percent at every age. The different ranges of the two fits account for at most a fifth
+of it, since the exponential fit to the whole profile of a tracer is
+<MwMetric name="estimatorWhole" /> times the fit below 1.2 kpc. What remains presumably
+lies in their global fit, which ties the heights at the Sun to the rest of the disk through
+one exponential in $|z|$ with a linear flare, or in their selection function near the
+plane, neither of which we can test without refitting their model
+([How their heights grow with age](./milky-way#how-their-heights-grow-with-age)).
 
-</Claim>
+## Open questions
 
-<Claim
-  status="reproduced"
-  title="Through our counts, the heights of Imig et al. are thinner than the star counts above 4 Gyr"
-  command="uv run experiments milky-way analyze"
->
+The heights of Imig et al. (2025) still grow more slowly with age and with $\sigma_z$ than
+our counts, for reasons that our data cannot reach
+([The heights of Imig et al.](#the-heights-of-imig-et-al)). Because the tracer agrees with
+the counts, the claim holds in the Milky Way unless the counts, rather than their fit,
+misplace how the heights grow with age.
 
-In each age bin of Imig et al. (2025) up to 10 Gyr, their model goes through our cylinder
-and counts. Pooling their populations by counts of giants at their Sun rather than by mass
-changes their heights by factors of <MwMetric name="imigWeighting" />, whereas moving our
-APOGEE counts to their distmass ages changes the counts by factors of
-<MwMetric name="imigAgeScale" />. On the same age scale and with the same weighting, our
-counts over their heights are <MwMetric name="imigGapYoung" /> below 4 Gyr and
-<MwMetric name="imigGapOld" /> above. The tracer, with the $\sigma_z$ of the same ages,
-gives ratios of <MwMetric name="countsDistmassRatio" /> over these counts, with a trend of
-<MwMetric name="countsDistmassTrend" />, against ratios of <MwMetric name="imigMassRatio" />
-and a trend of <MwMetric name="imigMassTrend" /> over their heights pooled by mass. Compared
-one population at a time, in the <MwMetric name="cellsMeasured" /> cells of age and
-$[\mathrm{M/H}]$ with <MwMetric name="cellsMin" /> matched stars, our windowed counts exceed
-the windowed heights of their model by a median factor of <MwMetric name="cellsMedian" />.
-See [Milky Way](./milky-way#one-population-at-a-time).
+Two parts of the picture lie outside these tests. Every Auriga population comes from one
+annulus per halo, so we do not yet know how $\eta$ depends on radius. The tracer also says
+nothing about the radial action: we measure the slope $a = J_{R,\mathrm{med}}/h_Z$
+population by population, and hence the ratio of radial to vertical heating, but do not
+explain it.
 
-</Claim>
+## Conclusions
 
-<Claim
-  status="reproduced"
-  title="Fit as Imig et al. fit, the star counts reproduce their heights and how they change with metallicity"
-  command="uv run experiments milky-way analyze"
->
+1. In the seven Auriga halos, the isothermal tracer predicts the scale height of
+   <Metric name="tracerWithin10" /> of the <Metric name="populations" /> mono-age
+   populations within 10 percent, because each population moves in the whole potential of
+   its disk rather than in its own.
+2. The tracer reproduces how $h_Z$, and hence the slope $a$ of the $J_R$-$h_Z$ relation,
+   changes with age, within <Metric name="trendMax0" /> standard errors in every halo over
+   0-10 Gyr. The residual over 2-10 Gyr comes from treating each population as a single
+   isothermal component, and the tilt term holds up the old populations of Au19.
+3. The populations are flat near the plane, so their heights depend on the window of the
+   fit. The self-consistent window recovers every injected profile within
+   <Metric name="selfConsistentBias" />.
+4. Summed over rings and ages, the tracers predict <Metric name="sumMixtureScaled" /> of the
+   whole-disk heights, and the slope across galaxies that follows from them,
+   <JrMetric name="slopeScaledMixture" />, agrees within its error with that of Palicio et
+   al. (2025).
+5. In the Milky Way, the tracer predicts the star counts of Gaia giants on every age scale
+   we tried, with no trend with age.
+6. The heights of Imig et al. (2025) agree with our counts in level and in their dependence
+   on metallicity once both are fit the same way, but grow more slowly with age and with
+   $\sigma_z$, at a rate consistent with $h_Z \propto \sigma_z$, for reasons that lie beyond
+   the reach of our data.
 
-Their $h_Z$ is the scale of the exponential that fits a population best, which for the
-tracer of $\sigma_z$ from <MwMetric name="estimatorSigmas" /> km s$^{-1}$ is thinner than its
-windowed $h_Z$ by factors of <MwMetric name="estimatorRatios" />. Fit with the same
-exponential below $|z| = 1.2$ kpc, and through the same counts, our counts over their model
-have a median of <MwMetric name="cellsExpMedian" />, with
-<MwMetric name="cellsExpPoor" />, <MwMetric name="cellsExpSolar" /> and
-<MwMetric name="cellsExpRich" /> for the metal-poor, near-solar and metal-rich populations.
-At fixed age the slope of $\ln h_Z$ per dex of $[\mathrm{M/H}]$ is
-<MwMetric name="slopeExpApogee" /> for these fits, against
-<MwMetric name="slopeSunApogee" /> for their published heights. The counts correct the
-fraction of each population for its gradient across the cylinder, which has opposite signs
-for the metal-poor and metal-rich populations of one age, with medians of
-<MwMetric name="gradientPoor" /> and <MwMetric name="gradientRich" />. See
-[Milky Way](./milky-way#two-estimators-of-the-scale-height).
+## Reproducing the results
 
-</Claim>
-
-<Claim
-  status="reproduced"
-  title="Population by population, the tracer of each cell's own $\sigma_z$ predicts its star counts"
-  command="uv run experiments milky-way analyze"
->
-
-In the cells of Imig et al., $\ln \sigma_z$ falls by <MwMetric name="slopeSigmaApogee" /> per
-dex of $[\mathrm{M/H}]$ at fixed age, the slope that Sharma et al. (2021, Table 2) find at
-solar metallicity for LAMOST and GALAH stars, $\gamma_{[\mathrm{Fe/H}]} = -0.52 \pm 0.01$.
-The tracer of each cell's $\sigma_z$ over our windowed counts has medians of
-<MwMetric name="cellsTracerPoor" />, <MwMetric name="cellsTracerSolar" /> and
-<MwMetric name="cellsTracerRich" /> for the metal-poor, near-solar and metal-rich
-populations. Its logarithm changes by <MwMetric name="cellsTracerTrendAge" /> per ln age and
-by <MwMetric name="cellsTracerTrend" /> per dex. See
-[Milky Way](./milky-way#the-kinematics-of-each-cell).
-
-</Claim>
-
-### Open
-
-<Claim status="open" title="Why the heights of Imig et al. grow more slowly with age than the star counts">
-
-Fit with the same exponential and through the same counts, our counts over the model of
-Imig et al. change by <MwMetric name="cellsExpTrendAge" /> per ln age at fixed
-$[\mathrm{M/H}]$, from <MwMetric name="cellsExpYoung" /> below 2.51 Gyr to
-<MwMetric name="cellsExpOld" /> above 5.01 Gyr, whereas the tracer over our counts changes by
-<MwMetric name="cellsTracerTrendAge" />. The LAMOST counts, with their own targeting and
-ages, give <MwMetric name="lamostExpTrendAge" />. Their fit reaches heights beyond the edge
-of our counts at $|z| = 1.2$ kpc. For the tracer, the exponential fit to the whole profile
-is <MwMetric name="estimatorWhole" /> times the fit below 1.2 kpc, which would account for
-part of the excess of the old cells but not for the young cells, where our fits are the
-thinner.
-Two departures from their model could make their young heights thicker than ours, neither
-of them tested: a young population whose profile at the Sun differs from the one that their
-model, with one exponential at every radius and a linear flare, ties to the other radii,
-and stars of older ages, mixed into a young bin by the errors of the ages, that reach
-heights beyond our counts. Because the tracer agrees with the counts, the claim holds in the
-Milky Way unless the counts, rather than their fit, misplace how the heights grow with age.
-See [Milky Way](./milky-way#how-their-heights-grow-with-age).
-
-</Claim>
+| Result | Command | Page |
+|---|---|---|
+| Auriga heights, trends and Jeans heights | `uv run experiments auriga analyze 2 3 16 19 23 24 27` | [Tracer or sheet](./tracer-vs-sheet) |
+| Vertical motions of the Auriga populations | `uv run experiments auriga equilibrium 2 3 16 19 23 24 27` | [Tracer or sheet](./tracer-vs-sheet#the-steady-state) |
+| Mock galaxy of known potential | `uv run experiments auriga mock-check` | this page |
+| Injected profiles | `uv run experiments window-injection` | [Fixed-window bias](./window-bias) |
+| Whole disks and the relation across galaxies | `uv run experiments auriga tracer-sum`, `jr-map` and `jr-relation` with the seven halos | [Across galaxies](./across-galaxies) |
+| Milky Way star counts and Imig et al. | `uv run experiments milky-way fetch`, `check` and `analyze` | [Milky Way](./milky-way) |
