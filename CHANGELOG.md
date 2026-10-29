@@ -1,3 +1,16 @@
+# [1.4.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.3.0...v1.4.0) (2026-10-29)
+
+### Features
+
+- add the Jeans diagnostic, the J_R,w proxy and the Milky Way test ([5a52840](https://github.com/caverac/jr-hz-mono-age/commit/5a528405b414fcaccac23b9c112a3b4326bf0cd9))
+- add the results of the open issues to the status docs ([2d0b2e1](https://github.com/caverac/jr-hz-mono-age/commit/2d0b2e175fb78a7b8a82661eed0911c5fbf92179))
+- close the Au19 and cross-galaxy issues and narrow the Imig one ([6a4a968](https://github.com/caverac/jr-hz-mono-age/commit/6a4a9684842e1c48b7a2960c0b2603b75ab9eb4a))
+- correct the counts for population gradients and compare Imig et al. like for like ([2242781](https://github.com/caverac/jr-hz-mono-age/commit/2242781bd3bc5f4d1629a37e5f890b9576e46305))
+- cross-check the Imig gap with the LAMOST counts by metallicity ([4f72cc4](https://github.com/caverac/jr-hz-mono-age/commit/4f72cc477dcf1507d36fcd0243ae850f27f27589))
+- put every Milky Way prediction through the star counts ([191a77d](https://github.com/caverac/jr-hz-mono-age/commit/191a77dcc392f6a30a1e659ca2a325eab4671357))
+- speed up the count bootstrap and compare Imig populations by [M/H] ([b42322a](https://github.com/caverac/jr-hz-mono-age/commit/b42322a97c9f0f78ecb402c435aafd635172860e))
+- test the APOGEE targeting limits against the Imig gap ([4c96104](https://github.com/caverac/jr-hz-mono-age/commit/4c96104bd72c5b8737091dbdc8982b7946859dc2))
+
 # [1.3.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.2.0...v1.3.0) (2026-10-27)
 
 ### Features
