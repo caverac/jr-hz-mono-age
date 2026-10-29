@@ -1,5 +1,13 @@
 import MathLabel from '@site/src/components/MathLabel'
-import type { Predictor, StatusData, Trend } from '@site/src/components/status/data'
+import type {
+  AgeBin,
+  CheckRange,
+  CheckSet,
+  HaloRecord,
+  Predictor,
+  StatusData,
+  Trend
+} from '@site/src/components/status/data'
 import type { MotionBin } from '@site/src/components/status/equilibrium'
 import {
   between,
@@ -36,6 +44,7 @@ import {
   worstFailure
 } from '@site/src/components/status/metrics'
 import useStatusData from '@site/src/components/status/useStatusData'
+import * as d3 from 'd3'
 import React, { type ReactNode } from 'react'
 
 /** The comparisons of the exponents over the range of ages that starts at `lo` Gyr. */
@@ -100,6 +109,111 @@ function windowRow(d: StatusData, lo: number) {
   }
   return row
 }
+
+/** Populations hotter than this (km/s) reach the heights of a spheroid rather than a disk. */
+const SPHEROID_SIGMA_Z = 60
+/** Populations thinner than this (kpc) sit where the potential is close to harmonic. */
+const COLD_HZ = 1
+/** Populations thicker than these (kpc) reach where it is not. */
+const HOT_HZ = 1.5
+const HOTTEST_HZ = 2.5
+
+/** The ratios of `predictor` over the populations that `keep` selects. */
+function ratiosWhere(
+  d: StatusData,
+  predictor: Predictor,
+  keep: (bin: AgeBin) => boolean
+): readonly number[] {
+  return populations(d)
+    .filter(keep)
+    .map((bin) => ratio(bin, predictor))
+    .filter(Number.isFinite)
+}
+
+/** How many of `values` lie within 10 percent of 1, out of how many. */
+function within10Of(values: readonly number[]): string {
+  return `${values.filter((r) => Math.abs(r - 1) <= 0.1).length} of ${values.length}`
+}
+
+/** The root mean square of `values` - 1. */
+function rms(values: readonly number[]): number {
+  return Math.sqrt(values.reduce((sum, r) => sum + (r - 1) ** 2, 0) / values.length)
+}
+
+/** The point of the tracer curve of `halo` nearest `sigmaZ` (km/s). */
+function curveAt(
+  halo: HaloRecord,
+  sigmaZ: number
+): { readonly sigmaZ: number; readonly eta: number } {
+  const curve = halo.tracerCurve
+  const i = d3.minIndex(curve.sigmaZ, (s) => Math.abs(Math.log(s / sigmaZ)))
+  return { sigmaZ: curve.sigmaZ[i], eta: curve.eta[i] }
+}
+
+/** The smallest sigma_z (km/s) of the curve at which the window finds no scale; NaN if it always does. */
+function firstWithoutScale(halo: HaloRecord): number {
+  const curve = halo.tracerCurve
+  return curve.sigmaZ.find((_, i) => !Number.isFinite(curve.hz[i])) ?? Number.NaN
+}
+
+/** ln h_Z of the tracer curve of `halo` at `sigmaZ` (km/s), interpolated linearly in ln sigma_z. */
+function curveLogHeight(halo: HaloRecord, sigmaZ: number): number {
+  const { sigmaZ: grid, hz } = halo.tracerCurve
+  const i = Math.min(Math.max(d3.bisectRight(grid, sigmaZ), 1), grid.length - 1)
+  const t = Math.log(sigmaZ / grid[i - 1]) / Math.log(grid[i] / grid[i - 1])
+  return (1 - t) * Math.log(hz[i - 1]) + t * Math.log(hz[i])
+}
+
+/**
+ * The mean local slope of the tracer curve of `halo` over the sigma_z of its populations of
+ * 0-10 Gyr: the slope of the chord of ln h_Z against ln sigma_z between their extremes.
+ */
+function chord(halo: HaloRecord): number {
+  const [lo, hi] = extent(halo.bins.filter((b) => b.ageHi <= 10).map((b) => b.sigmaZ.value))
+  return (curveLogHeight(halo, hi) - curveLogHeight(halo, lo)) / Math.log(hi / lo)
+}
+
+/** The trend of a range of ages that a halo does not have. */
+const NO_TREND: Trend = { value: Number.NaN, err: Number.NaN, chi2Dof: Number.NaN }
+
+/** eta over 0-10 Gyr of `halo`. */
+function eta010(halo: HaloRecord): Trend {
+  return ageRange(halo, 0, 10)?.eta ?? NO_TREND
+}
+
+/** The values of `values` that are finite. */
+function finite(values: readonly number[]): readonly number[] {
+  return values.filter(Number.isFinite)
+}
+
+/** The range of the check `set` over [lo, 10] Gyr. */
+function checkRange(set: CheckSet, lo: number): CheckRange {
+  const found = set.ranges.find((r) => r.lo === lo && r.hi === 10)
+  if (found === undefined) {
+    throw new Error(`no range of a check over ${lo}-10 Gyr`)
+  }
+  return found
+}
+
+/** The largest |trend| / error of the tracer ratio of the check `of` over [lo, 10] Gyr across the halos. */
+function maxSignificance(d: StatusData, of: (h: HaloRecord) => CheckSet, lo: number): number {
+  return Math.max(
+    ...d.halos.map((h) => {
+      const t = checkRange(of(h), lo).tracer
+      return Math.abs(t.value) / t.err
+    })
+  )
+}
+
+/** How many of the halos have a negative trend `of`, out of how many. */
+function negativeOf(d: StatusData, of: (h: HaloRecord) => Trend): string {
+  return `${d.halos.filter((h) => of(h).value < 0).length} of ${d.halos.length}`
+}
+
+const isCold = (bin: AgeBin) => bin.measured.value < COLD_HZ
+const isHot = (bin: AgeBin) => bin.measured.value > HOT_HZ
+const isHottest = (bin: AgeBin) => bin.measured.value > HOTTEST_HZ
+const isDisk = (bin: AgeBin) => bin.sigmaZ.value <= SPHEROID_SIGMA_Z
 
 /** The numbers that the prose of the status pages quotes, by name. */
 const METRICS = {
@@ -172,6 +286,142 @@ const METRICS = {
     fixed(Math.min(...exponentComparisons(d).map((c) => Math.abs(significance(c.sheetTrend)))), 0),
   exponentShift: (d: StatusData) => between(extent(exponentShifts(d))),
   etaRange: (d: StatusData) => between(extent(etas(d))),
+  halfMassTracerWithin10: (d: StatusData) =>
+    within10Of(populations(d).map((b) => b.halfMassRatios.tracer.value)),
+  halfMassJeansWithin10: (d: StatusData) =>
+    within10Of(populations(d).map((b) => b.halfMassRatios.jeans.value)),
+  halfMassSheetWithin10: (d: StatusData) =>
+    within10Of(populations(d).map((b) => b.halfMassRatios.sheet.value)),
+  halfMassTracerRange: (d: StatusData) =>
+    between(extent(populations(d).map((b) => b.halfMassRatios.tracer.value))),
+  halfMassTracerMedian: (d: StatusData) =>
+    fixed(median(populations(d).map((b) => b.halfMassRatios.tracer.value))),
+  halfMassTracerRms: (d: StatusData) =>
+    percent(rms(populations(d).map((b) => b.halfMassRatios.tracer.value))),
+  halfMassTrendMax0: (d: StatusData) =>
+    fixed(
+      Math.max(
+        ...d.halos.map((h) => {
+          const t = ageRange(h, 0, 10)?.halfMassTrends.tracer
+          return t === undefined ? Number.NaN : Math.abs(t.value) / t.err
+        })
+      ),
+      1
+    ),
+  etaHalfMassRange: (d: StatusData) =>
+    between(extent(d.halos.map((h) => ageRange(h, 0, 10)?.etaHalfMass.value ?? Number.NaN))),
+  curveEtaAt10: (d: StatusData) => between(extent(d.halos.map((h) => curveAt(h, 10).eta))),
+  curveEtaAt40: (d: StatusData) => between(extent(d.halos.map((h) => curveAt(h, 40).eta))),
+  curveNoScale: (d: StatusData) => between(extent(d.halos.map((h) => firstWithoutScale(h))), 0),
+  diskMassRange: (d: StatusData) =>
+    between(extent(d.halos.flatMap((h) => h.checks.disk.bins.map((b) => b.massFraction)))),
+  diskWithin10: (d: StatusData) =>
+    within10Of(finite(d.halos.flatMap((h) => h.checks.disk.bins.map((b) => b.tracer.value)))),
+  diskTrendMax0: (d: StatusData) =>
+    fixed(
+      maxSignificance(d, (h) => h.checks.disk, 0),
+      1
+    ),
+  diskTrendRange0: (d: StatusData) =>
+    between(extent(d.halos.map((h) => checkRange(h.checks.disk, 0).tracer.value)), 3),
+  diskTrendNegative2: (d: StatusData) => negativeOf(d, (h) => checkRange(h.checks.disk, 2).tracer),
+  fineWithin10: (d: StatusData) =>
+    within10Of(finite(d.halos.flatMap((h) => h.checks.fine.bins.map((b) => b.tracer.value)))),
+  fineTrendRange2: (d: StatusData) =>
+    between(extent(d.halos.map((h) => checkRange(h.checks.fine, 2).tracer.value)), 3),
+  fineTrendNegative2: (d: StatusData) => negativeOf(d, (h) => checkRange(h.checks.fine, 2).tracer),
+  fineTrendMax2: (d: StatusData) =>
+    fixed(
+      maxSignificance(d, (h) => h.checks.fine, 2),
+      1
+    ),
+  unclippedShift: (d: StatusData) =>
+    `${between(
+      extent(
+        d.halos.flatMap((h) =>
+          h.checks.allStars.bins.map((b) => 100 * (b.tracerUnclipped.value / b.tracer.value - 1))
+        )
+      ),
+      0
+    )} percent`,
+  unclippedTrendRange2: (d: StatusData) =>
+    between(extent(d.halos.map((h) => checkRange(h.checks.allStars, 2).tracerUnclipped.value)), 3),
+  unclippedTrendNegative2: (d: StatusData) =>
+    negativeOf(d, (h) => checkRange(h.checks.allStars, 2).tracerUnclipped),
+  etaErrRange: (d: StatusData) => between(extent(d.halos.map((h) => eta010(h).err))),
+  curveEtaMax: (d: StatusData) =>
+    between(extent(d.halos.map((h) => Math.max(...finite(h.tracerCurve.eta))))),
+  curveNoScaleCount: (d: StatusData) =>
+    `${d.halos.filter((h) => Number.isFinite(firstWithoutScale(h))).length} of ${d.halos.length}`,
+  noScaleMargin: (d: StatusData) =>
+    fixed(
+      Math.min(
+        ...d.halos.flatMap((h) => {
+          const limit = firstWithoutScale(h)
+          const hottest = Math.max(...h.bins.map((b) => b.sigmaZ.value))
+          return Number.isFinite(limit) ? [limit / hottest] : []
+        })
+      ),
+      1
+    ),
+  etaChordDiff: (d: StatusData) => between(extent(d.halos.map((h) => eta010(h).value - chord(h)))),
+  etaChordWithin2: (d: StatusData) => {
+    const close = d.halos.filter((h) => Math.abs(eta010(h).value - chord(h)) <= 2 * eta010(h).err)
+    return `${close.length} of ${d.halos.length}`
+  },
+  au19Eta: (d: StatusData) => {
+    const e = eta010(haloRecord(d, 'Au19'))
+    return plusMinus(e.value, e.err, 2, false)
+  },
+  au19Chord: (d: StatusData) => fixed(chord(haloRecord(d, 'Au19'))),
+  halfMassTracerAbove1: (d: StatusData) => {
+    const values = populations(d).map((b) => b.halfMassRatios.tracer.value)
+    return `${values.filter((r) => r > 1).length} of ${values.length}`
+  },
+  halfMassJeansSigmaWithin10: (d: StatusData) =>
+    within10Of(populations(d).map((b) => b.halfMassRatios.jeansSigma.value)),
+  halfMassJeansRms: (d: StatusData) =>
+    percent(rms(populations(d).map((b) => b.halfMassRatios.jeans.value))),
+  halfMassSheetMedian: (d: StatusData) =>
+    fixed(median(populations(d).map((b) => b.halfMassRatios.sheet.value))),
+  halfMassTrendNegative2: (d: StatusData) =>
+    negativeOf(d, (h) => ageRange(h, 2, 10)?.halfMassTrends.tracer ?? NO_TREND),
+  halfMassTrendMax2: (d: StatusData) =>
+    fixed(
+      Math.max(
+        ...d.halos.map((h) => {
+          const t = ageRange(h, 2, 10)?.halfMassTrends.tracer
+          return t === undefined ? Number.NaN : Math.abs(t.value) / t.err
+        })
+      ),
+      1
+    ),
+  unclippedWithin10: (d: StatusData) =>
+    within10Of(
+      finite(d.halos.flatMap((h) => h.checks.allStars.bins.map((b) => b.tracerUnclipped.value)))
+    ),
+  unclippedMedian: (d: StatusData) =>
+    fixed(
+      median(
+        finite(d.halos.flatMap((h) => h.checks.allStars.bins.map((b) => b.tracerUnclipped.value)))
+      )
+    ),
+  etaAllRanges: (d: StatusData) =>
+    between(extent(d.halos.flatMap((h) => h.ranges.map((r) => r.eta.value)))),
+  tracerRms: (d: StatusData) => percent(rms(ratios(d, 'tracer'))),
+  jeansRms: (d: StatusData) => percent(rms(ratios(d, 'jeans'))),
+  jeansRange: (d: StatusData) => between(extent(ratios(d, 'jeans'))),
+  coldTracer: (d: StatusData) => within10Of(ratiosWhere(d, 'tracer', isCold)),
+  coldTracerRms: (d: StatusData) => percent(rms(ratiosWhere(d, 'tracer', isCold))),
+  hotTracer: (d: StatusData) => within10Of(ratiosWhere(d, 'tracer', isHot)),
+  hotJeans: (d: StatusData) => within10Of(ratiosWhere(d, 'jeans', isHot)),
+  hottestTracerRms: (d: StatusData) => percent(rms(ratiosWhere(d, 'tracer', isHottest))),
+  hottestJeansRms: (d: StatusData) => percent(rms(ratiosWhere(d, 'jeans', isHottest))),
+  diskTracer: (d: StatusData) => within10Of(ratiosWhere(d, 'tracer', isDisk)),
+  diskTracerRms: (d: StatusData) => percent(rms(ratiosWhere(d, 'tracer', isDisk))),
+  spheroidTracer: (d: StatusData) => within10Of(ratiosWhere(d, 'tracer', (bin) => !isDisk(bin))),
+  sigmaZMax: (d: StatusData) => fixed(Math.max(...populations(d).map((b) => b.sigmaZ.value)), 0),
+  hzMax: (d: StatusData) => fixed(Math.max(...populations(d).map((b) => b.measured.value)), 1),
   wholeTracer: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.tracer))),
   wholePalicio: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.palicio))),
   mockSpin: (d: StatusData) => fixed(d.mock.spinErrorDeg, 3),

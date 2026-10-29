@@ -42,6 +42,14 @@ export function num(value: unknown, key: string): number {
   return item
 }
 
+export function bool(value: unknown, key: string): boolean {
+  const item = field(value, key)
+  if (typeof item !== 'boolean') {
+    throw new RecordError(`"${key}" is not a boolean`)
+  }
+  return item
+}
+
 export function str(value: unknown, key: string): string {
   const item = field(value, key)
   if (typeof item !== 'string') {

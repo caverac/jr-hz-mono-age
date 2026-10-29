@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from conftest import MOCK_SNAPSHOT, MockRun
 
-from experiments.analysis import prepare_halo
+from experiments.analysis import CURVE_SIGMA_Z, prepare_halo
 from experiments.commands._report import report_lines, write_json
 from experiments.heights import Z_GRID
 from experiments.mock import BOX, CENTER, COSMOLOGY, POTENTIAL_OFFSET, check_mock, rotation_matrix, to_box
@@ -68,8 +68,21 @@ def test_report_and_record(mock_run: MockRun, tmp_path: Path) -> None:
     assert any("whole disk, 4 <= R < 20 kpc" in line for line in lines)
     path = write_json(mock_run.analysis, tmp_path / "out" / "record.json")
     record = json.loads(path.read_text())
-    assert set(record) == {"snapshot", "annulus", "potential_check", "residual", "mono_age", "whole_disk"}
+    assert set(record) == {
+        "snapshot", "annulus", "potential_check", "residual", "mono_age", "whole_disk", "tracer_curve", "checks"
+    }  # fmt: skip
+    assert set(record["checks"]) == {"all_stars", "disk", "fine"}
     assert len(record["mono_age"]["bins"]) == len(AGE_BINS)
+    assert len(record["tracer_curve"]["sigma_z"]) == len(CURVE_SIGMA_Z)
+
+
+def test_tracer_curve_of_the_mock(mock_run: MockRun) -> None:
+    """The tracer heights grow with sigma_z, with eta of at least 1 wherever the window finds a scale."""
+    curve = mock_run.analysis.tracer_curve
+    hz, eta = np.array(curve.hz), np.array(curve.eta)
+    finite = np.isfinite(hz)
+    assert finite[0] and np.all(np.diff(hz[finite]) > 0.0)
+    assert np.all(eta[np.isfinite(eta)] > 0.95)
 
 
 def test_prepare_halo_needs_z_0(mock_run: MockRun, tmp_path: Path) -> None:

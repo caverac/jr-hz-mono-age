@@ -142,9 +142,9 @@ export function signTest(values: readonly number[]): number {
   return Math.min(1, (2 * tail) / 2 ** n)
 }
 
-/** The ratio of eta, d ln h_Z / d ln sigma_z, over 0-10 Gyr, in every halo. */
+/** eta = d ln h_Z / d ln sigma_z over 0-10 Gyr, in every halo. */
 export function etas(data: StatusData): readonly number[] {
-  return data.halos.map((halo) => ageRange(halo, 0, 10)?.eta ?? Number.NaN)
+  return data.halos.map((halo) => ageRange(halo, 0, 10)?.eta.value ?? Number.NaN)
 }
 
 /**
@@ -196,7 +196,7 @@ export interface HaloSummary {
   readonly tracerMedian: number
   readonly snapshotMedian: number
   readonly sheetMedian: number
-  readonly eta: number
+  readonly eta: Trend
 }
 
 /** The populations of every halo, summarized. */
@@ -215,7 +215,11 @@ export function haloSummaries(data: StatusData): readonly HaloSummary[] {
       tracerMedian: median(of('tracer')),
       snapshotMedian: median(of('tracerSnapshot')),
       sheetMedian: median(of('sheet')),
-      eta: ageRange(record, 0, 10)?.eta ?? Number.NaN
+      eta: ageRange(record, 0, 10)?.eta ?? {
+        value: Number.NaN,
+        err: Number.NaN,
+        chi2Dof: Number.NaN
+      }
     }
   })
 }

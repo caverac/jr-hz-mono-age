@@ -16,13 +16,16 @@ from experiments.heights import (
     N_MIN_HALF_WINDOW,
     Z_GRID,
     exponential_profile_hz,
+    half_mass_height,
     particle_hz,
+    profile_half_mass,
     profile_hz,
     scaled_particle_hz,
     scaled_profile_hz,
     self_consistent_window,
     sheet_hz,
     sheet_profile,
+    tracer_curve,
     tracer_profile,
     truncated_exp_scale,
 )
@@ -146,3 +149,30 @@ def test_the_exponential_fit_of_a_profile(limit: float, ratio: float) -> None:
     assert exponential_profile_hz(np.exp(-Z_GRID / 0.3), limit) == pytest.approx(0.3, rel=1e-3)
     sech2 = np.cosh(Z_GRID / 0.4) ** -2
     assert exponential_profile_hz(sech2, limit) / scaled_profile_hz(sech2, 2.0)[0] == pytest.approx(ratio, abs=0.002)
+
+
+def test_half_mass_height_weights_the_heights() -> None:
+    """Half of the weight lies below the weighted median of the heights."""
+    absz = np.array([1.0, 2.0, 3.0, 4.0])
+    assert half_mass_height(absz, np.ones(4)) == 2.0
+    assert half_mass_height(absz, np.array([1.0, 1.0, 1.0, 5.0])) == 4.0
+
+
+@pytest.mark.parametrize("scale", [0.2, 0.5, 1.0])
+def test_profile_half_mass_of_an_exponential(scale: float) -> None:
+    """An exponential well inside the grid holds half of its mass below scale ln 2."""
+    assert profile_half_mass(np.exp(-Z_GRID / scale)) == pytest.approx(scale * np.log(2.0), rel=1e-3)
+
+
+def test_tracer_curve_slopes_of_a_harmonic_and_a_linear_potential() -> None:
+    """The slope eta is 1 in a harmonic potential and 2 in a linear one; a profile without a scale has none."""
+    sigma_z = np.geomspace(10.0, 40.0, 9)
+    harmonic = tracer_curve(0.5 * 2500.0 * Z_GRID**2, sigma_z, 2.0)
+    linear = tracer_curve(1000.0 * Z_GRID, sigma_z, 2.0)
+    np.testing.assert_allclose(harmonic.eta, 1.0, atol=0.01)
+    np.testing.assert_allclose(linear.eta, 2.0, atol=0.01)
+    # The thinnest profile, 0.1 kpc, spans 20 steps of the 5 pc grid, which resolves it to 0.4 percent.
+    np.testing.assert_allclose(linear.hz, sigma_z**2 / 1000.0, rtol=0.004)
+    assert linear.half_mass == pytest.approx(list(np.log(2.0) * sigma_z**2 / 1000.0), rel=0.004)
+    flat = tracer_curve(10.0 * np.log1p(Z_GRID**2), np.array([5.0, 50.0, 500.0]), 2.0)
+    assert np.isfinite(flat.hz[0]) and np.isnan(flat.hz[-1]) and np.isnan(flat.eta[-1])

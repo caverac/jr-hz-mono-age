@@ -8,6 +8,7 @@
 
 import { median } from '@site/src/components/status/metrics'
 import {
+  bool,
   type Estimate,
   estimate,
   field,
@@ -55,6 +56,25 @@ export interface MwBin {
   readonly tracer: number
   readonly ratioTracer: Estimate
   readonly ratioSheet: Estimate
+  /** h_Z (kpc) of the vertical Jeans equation with the measured sigma_z(z), through the same counts. */
+  readonly jeans: number
+  readonly ratioJeans: Estimate
+  /** The tracer over h_Z in each potential of the family, in the order of `family`. */
+  readonly ratioFamily: readonly number[]
+}
+
+/** One potential around McMillan (2017): its changes, rho_0 (Msun/pc^3), Sigma_1.1 (Msun/pc^2) and v_c (km/s). */
+export interface FamilyMember {
+  readonly thinFactor: number
+  readonly thinHeight: number
+  readonly haloFactor: number
+  readonly rho0: number
+  readonly sigma11: number
+  readonly vCirc: number
+  readonly admissible: boolean
+  /** d ln h / d ln sigma_z of the exponential fit to the tracer, below 1.2 kpc and over the whole profile. */
+  readonly growthWindow: number
+  readonly growthWhole: number
 }
 
 export interface MwRange {
@@ -63,7 +83,9 @@ export interface MwRange {
   readonly nBins: number
   readonly tracer: Trend
   readonly sheet: Trend
-  readonly eta: number
+  readonly jeans: Trend
+  /** eta = d ln h_Z / d ln sigma_z, fitted across the bins with the errors of both. */
+  readonly eta: Trend
 }
 
 /** What the counts of a survey give exponentials of known scales (kpc), over each scale. */
@@ -259,6 +281,8 @@ export interface MilkyWayData {
   /** The cells with the LAMOST counts, whose ages are not on the scale of Imig et al. */
   readonly imigCellsLamost: ImigCells
   readonly estimators: readonly TracerEstimator[]
+  /** The potentials around McMillan (2017) whose tracers every bin also carries. */
+  readonly family: readonly FamilyMember[]
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -299,7 +323,10 @@ function parseBin(bin: unknown): MwBin {
     sheet: num(predictions, 'sheet'),
     tracer: num(predictions, 'tracer'),
     ratioTracer: estimate(ratios, 'tracer'),
-    ratioSheet: estimate(ratios, 'sheet')
+    ratioSheet: estimate(ratios, 'sheet'),
+    jeans: num(predictions, 'jeans'),
+    ratioJeans: estimate(ratios, 'jeans'),
+    ratioFamily: numbers(ratios, 'family')
   }
 }
 
@@ -311,7 +338,8 @@ function parseRange(range: unknown): MwRange {
     nBins: num(range, 'n_bins'),
     tracer: trend(trends, 'tracer'),
     sheet: trend(trends, 'sheet'),
-    eta: num(range, 'eta')
+    jeans: trend(trends, 'jeans'),
+    eta: trend(range, 'eta')
   }
 }
 
@@ -510,6 +538,21 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
       windowed: num(e, 'windowed'),
       exponential: num(e, 'exponential'),
       exponentialWhole: num(e, 'exponential_whole')
-    }))
+    })),
+    family: list(record, 'family').map((member) => {
+      const params = field(member, 'params')
+      const growth = field(member, 'growth')
+      return {
+        thinFactor: num(params, 'thin_factor'),
+        thinHeight: num(params, 'thin_height_kpc'),
+        haloFactor: num(params, 'halo_factor'),
+        rho0: num(member, 'rho0'),
+        sigma11: num(member, 'sigma_11'),
+        vCirc: num(member, 'v_circ'),
+        admissible: bool(member, 'admissible'),
+        growthWindow: num(growth, 'window'),
+        growthWhole: num(growth, 'whole')
+      }
+    })
   }
 }

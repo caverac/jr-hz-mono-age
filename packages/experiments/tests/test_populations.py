@@ -30,6 +30,7 @@ from experiments.populations import (
     Method,
     MonoAge,
     VerticalModel,
+    fit_eta,
     fit_grouped_log_slope,
     fit_log_slope,
     fit_power_law,
@@ -127,15 +128,20 @@ def test_bins_recover_the_populations(measured: MonoAge) -> None:
         assert b.ratios.sheet.value == pytest.approx(b.predictions.sheet / b.heights.measured.value)
         assert 0.0 < b.slopes.measured.err < b.slopes.measured.value
         assert 0.0 < b.ratios.tracer.err < b.ratios.tracer.value
+        assert abs(b.half_mass.measured.value - np.log(2.0) * scale_height(mid)) < 3.0 * b.half_mass.measured.err
+        assert 0.0 < b.half_mass.ratios.tracer.err < b.half_mass.ratios.tracer.value
         assert kin.n_mid < kin.n_jr < N_PER_BIN
 
 
 def test_ranges_fit_the_age_exponents(measured: MonoAge) -> None:
-    """Over each age range, eta and 2 (beta_R - beta_z) follow from the exponents."""
+    """Over each age range, eta is the fit of the heights against sigma_z, and 2 (beta_R - beta_z) follows."""
     assert [(r.lo, r.hi) for r in measured.ranges] == list(AGE_RANGES)
     for r in measured.ranges:
         exp = r.exponents
-        assert r.eta == pytest.approx(exp["hz"].value / exp["sigma_z"].value)
+        chosen = [b for b in measured.bins if b.age_lo >= r.lo and b.age_hi <= r.hi]
+        sigma_z = [b.kinematics.sigma_z for b in chosen]
+        assert r.eta == fit_eta(sigma_z, [b.heights.measured for b in chosen])
+        assert r.eta_half_mass == fit_eta(sigma_z, [b.half_mass.measured for b in chosen])
         assert r.sheet_exponent == pytest.approx(2.0 * (exp["sigma_r"].value - exp["sigma_z"].value))
     whole = measured.ranges[0].exponents
     assert whole["sigma_r"].value == pytest.approx(whole["sigma_z"].value, abs=0.05)
@@ -172,7 +178,10 @@ def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge)
     more than 5 errors.
     """
     for r in measured.ranges:
-        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans"}
+        assert set(r.trends) == {
+            "sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans",
+            "half_mass_sheet", "half_mass_tracer", "half_mass_jeans",
+        }  # fmt: skip
         trend = r.trends["tracer"]
         if r.lo == 0.0:
             assert trend.value > 5.0 * trend.err
@@ -183,8 +192,10 @@ def test_trend_vanishes_when_the_tracer_is_right() -> None:
     exact = measure(synthetic_sample(tracer_height))
     for b in exact.bins:
         assert b.ratios.tracer.value == pytest.approx(1.0, abs=4.0 * b.ratios.tracer.err)
+        assert b.half_mass.ratios.tracer.value == pytest.approx(1.0, abs=4.0 * b.half_mass.ratios.tracer.err)
     for r in exact.ranges:
         assert abs(r.trends["tracer"].value) < 3.0 * r.trends["tracer"].err
+        assert abs(r.trends["half_mass_tracer"].value) < 3.0 * r.trends["half_mass_tracer"].err
 
 
 def test_jeans_heights_follow_the_tracer_of_an_isothermal_untilted_population() -> None:
@@ -270,6 +281,35 @@ def test_fit_trend_widens_its_error_by_the_scatter() -> None:
     scattered = fit_trend(x, y, 0.05 * y)
     assert scattered.chi2_dof > 1.0
     assert scattered.err == pytest.approx(fit_power_law(x, y, 0.05 * y).err * np.sqrt(scattered.chi2_dof))
+
+
+def test_fit_eta_recovers_the_slope_of_an_exact_power_law() -> None:
+    """Heights h = 0.02 sigma^1.3 give eta = 1.3 with no scatter, whatever the errors of sigma."""
+    sigma = np.array([10.0, 15.0, 25.0, 40.0, 70.0])
+    height = 0.02 * sigma**1.3
+    rel = np.array([0.02, 0.04, 0.03, 0.05, 0.08])
+    fit = fit_eta([Estimate(s, r * s) for s, r in zip(sigma, rel)], [Estimate(h, 0.03 * h) for h in height])
+    assert fit.value == pytest.approx(1.3) and fit.chi2_dof == pytest.approx(0.0, abs=1e-20)
+
+
+def test_fit_eta_weights_by_the_errors_of_both_coordinates() -> None:
+    """The fit is the weighted line of ln h on ln sigma with variances (dh/h)^2 + eta^2 (dsigma/sigma)^2 at its eta."""
+    rng = np.random.default_rng(12)
+    sigma = np.geomspace(10.0, 90.0, 8)
+    height = 0.02 * sigma**1.2 * rng.lognormal(0.0, 0.05, 8)
+    rel_s, rel_h = rng.uniform(0.02, 0.1, 8), rng.uniform(0.02, 0.06, 8)
+    fit = fit_eta(
+        [Estimate(s, r * s) for s, r in zip(sigma, rel_s)], [Estimate(h, r * h) for h, r in zip(height, rel_h)]
+    )
+    w = 1.0 / (rel_h**2 + fit.value**2 * rel_s**2)
+    design = np.column_stack([np.ones(8), np.log(sigma)])
+    cov = np.linalg.inv(design.T @ (design * w[:, None]))
+    coef = cov @ (design.T @ (w * np.log(height)))
+    chi2_dof = float(np.sum(w * (np.log(height) - design @ coef) ** 2)) / 6
+    assert fit.value == pytest.approx(coef[1], rel=1e-8) and fit.chi2_dof == pytest.approx(chi2_dof, rel=1e-6)
+    assert fit.err == pytest.approx(np.sqrt(cov[1, 1] * max(1.0, chi2_dof)), rel=1e-6)
+    alone = fit_eta([Estimate(s, 1.0e-12 * s) for s in sigma], [Estimate(h, r * h) for h, r in zip(height, rel_h)])
+    assert alone.value == pytest.approx(fit_power_law(sigma, height, rel_h * height).value, rel=1e-8)
 
 
 def test_fit_power_law_recovers_an_exponent() -> None:

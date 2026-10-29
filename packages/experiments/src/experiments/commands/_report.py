@@ -13,8 +13,12 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from experiments.analysis import HaloAnalysis
+from experiments.heights import TracerCurve
 from experiments.populations import AgeBin, AgeRange, ScanRow
+from experiments.robustness import Checks, CheckSet
 from experiments.whole_disk import Ring
 
 if TYPE_CHECKING:
@@ -22,8 +26,9 @@ if TYPE_CHECKING:
 
 BIN_HEADER = (
     "    age   med  N_win    sR    sz  J_R,med       h_Z(k h_Z)    window  h_Z(Z_lim)  "
-    "sheet  tracer  snapshot        a"
+    "sheet  tracer  snapshot        a     z50  z50 tracer/z50"
 )
+CURVE_SIGMAS_KMS = (10.0, 20.0, 40.0, 80.0)  # the dispersions at which the report quotes the tracer's eta
 RING_HEADER = "         R (kpc)    sz   Sigma  h_Z(Z_lim)  h_Z(k h_Z)  window   sheet  tracer"
 
 
@@ -35,7 +40,8 @@ def _bin_line(b: AgeBin) -> str:
         f"{kin.sigma_z.value:5.1f} {kin.jr_median.value:6.1f}+/-{kin.jr_median.err:4.1f} "
         f"{hts.measured.value:6.3f}+/-{hts.measured.err:.3f} {hts.window:6.2f} {hts.fixed:11.3f} "
         f"{pred.sheet:6.3f} {pred.tracer:7.3f} {pred.tracer_snapshot:9.3f} "
-        f"{b.slopes.measured.value:6.1f}+/-{b.slopes.measured.err:4.1f}"
+        f"{b.slopes.measured.value:6.1f}+/-{b.slopes.measured.err:4.1f} "
+        f"{b.half_mass.measured.value:6.3f} {b.half_mass.ratios.tracer.value:6.2f}"
     )
 
 
@@ -46,9 +52,40 @@ def _range_line(r: AgeRange) -> str:
         f"{name} {t.value:+.3f}+/-{t.err:.3f} (chi2/dof {t.chi2_dof:.1f})" for name, t in r.trends.items()
     )
     return (
-        f"  {r.lo:g}-{r.hi:g} Gyr: {fits}; eta {r.eta:.2f}, 2(beta_R - beta_z) {r.sheet_exponent:+.3f}\n"
+        f"  {r.lo:g}-{r.hi:g} Gyr: {fits}; eta {r.eta.value:.2f}+/-{r.eta.err:.2f} "
+        f"(half-mass {r.eta_half_mass.value:.2f}+/-{r.eta_half_mass.err:.2f}), "
+        f"2(beta_R - beta_z) {r.sheet_exponent:+.3f}\n"
         f"    trends of h_pred / h_Z: {trends}"
     )
+
+
+def _curve_line(curve: TracerCurve) -> str:
+    """Return the tracer's h_Z and eta at the grid dispersions nearest ``CURVE_SIGMAS_KMS``."""
+    sigma = np.array(curve.sigma_z)
+    picks = [int(np.argmin(np.abs(sigma - s))) for s in CURVE_SIGMAS_KMS]
+    return "  tracer curve, sigma_z: h_Z (eta): " + ", ".join(
+        f"{sigma[i]:.0f} km/s: {curve.hz[i]:.3f} kpc ({curve.eta[i]:.2f})" for i in picks
+    )
+
+
+def _check_line(label: str, check: CheckSet) -> str:
+    """Return the trends of the tracer ratios of one check, clipped and unclipped, over each of its ranges."""
+    ranges = "; ".join(
+        f"{r.lo:g}-{r.hi:g} Gyr {r.tracer.value:+.3f}+/-{r.tracer.err:.3f} "
+        f"(unclipped {r.tracer_unclipped.value:+.3f}+/-{r.tracer_unclipped.err:.3f})"
+        for r in check.ranges
+    )
+    fractions = [b.mass_fraction for b in check.bins]
+    return f"  check {label}: trends of tracer / h_Z {ranges}; kept mass {min(fractions):.2f}-{max(fractions):.2f}"
+
+
+def _checks_lines(checks: Checks) -> list[str]:
+    """Return the lines of the three checks."""
+    return [
+        _check_line("all stars, 1 Gyr", checks.all_stars),
+        _check_line("disk stars, 1 Gyr", checks.disk),
+        _check_line("all stars, fine bins", checks.fine),
+    ]
 
 
 def _scan_line(label: str, rows: list[ScanRow]) -> str:
@@ -84,6 +121,8 @@ def report_lines(analysis: HaloAnalysis) -> list[str]:
         *(_range_line(r) for r in mono.ranges),
         _scan_line("k", mono.k_scan),
         _scan_line("Z_lim", mono.window_scan),
+        _curve_line(analysis.tracer_curve),
+        *_checks_lines(analysis.checks),
         f"  whole disk, {0.2 * window.l_kpc:g} <= R < {window.l_kpc:g} kpc:",
         RING_HEADER,
         *(_ring_line(ring) for ring in (*disk.rings, disk.whole)),

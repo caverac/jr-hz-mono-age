@@ -98,6 +98,23 @@ def circular_velocity(pot: agama.Potential, radius: float) -> float:
     return float(np.sqrt(-radius * pot.force(np.array([[radius, 0.0, 0.0]]))[0, 0]))
 
 
+def circularity(pot: agama.Potential, pos: FloatArray, vel: FloatArray) -> FloatArray:
+    """Return L_z / L_c(E) of particles in the disk frame; NaN for an unbound one.
+
+    L_c(E) is the angular momentum of the circular orbit in the plane with the particle's
+    energy, so a disk star on a circular orbit has 1 and a star without net rotation 0.
+    """
+    energy = pot.potential(pos) + 0.5 * np.sum(vel**2, axis=1)
+    lz = pos[:, 0] * vel[:, 1] - pos[:, 1] * vel[:, 0]
+    bound = energy < 0.0
+    r_c = np.asarray(pot.Rcirc(E=energy[bound]), dtype=np.float64)
+    in_plane = np.column_stack([r_c, np.zeros_like(r_c), np.zeros_like(r_c)])
+    l_c = r_c * np.sqrt(-r_c * pot.force(in_plane)[:, 0])
+    out = np.full(energy.size, np.nan)
+    out[bound] = lz[bound] / l_c
+    return out
+
+
 def radial_actions(pot: agama.Potential, pos: FloatArray, vel: FloatArray) -> FloatArray:
     """Return J_R (kpc km/s) with AGAMA's Staeckel fudge; NaN for unbound orbits."""
     finder = agama.ActionFinder(pot, interp=False)

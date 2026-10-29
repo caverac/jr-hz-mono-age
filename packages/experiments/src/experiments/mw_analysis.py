@@ -15,8 +15,13 @@ For each survey (:mod:`experiments.mw_catalogs`) and each age bin of ``AGE_EDGES
   |z| < 1.1 kpc at R_0, as for the Auriga disks, goes through the same counts with its
   profile sech^2(|z| / z_0) (:func:`experiments.heights.sheet_profile`), whose windowed h_Z
   at k = 2 is that scale;
+- the vertical Jeans equation in McMillan (2017), with sigma_z^2 measured in the slices of
+  |z| of ``JEANS_SLICES_KPC`` and no tilt term, goes through the same counts; it drops the
+  tracer's assumption that sigma_z does not change with height;
 - the ratios h_pred / h_Z carry the errors of one bootstrap that resamples, in each draw,
-  the Gaia stars, their spectroscopic matches and the kinematic stars of the bin.
+  the Gaia stars, their spectroscopic matches and the kinematic stars of the bin;
+- the tracer in each potential of a family (:mod:`experiments.mw_potentials`) goes through
+  the counts once, without resampling, which shows how the ratios move with the potential.
 
 Over each range of ``AGE_RANGES``, the trend of a ratio with age tests whether the
 prediction reproduces the age dependence of h_Z (:func:`experiments.populations.fit_trend`).
@@ -31,7 +36,8 @@ import agama
 import numpy as np
 from numpy.typing import NDArray
 
-from experiments.heights import sheet_profile, tracer_profile
+from experiments.heights import Z_GRID, sheet_profile, tracer_profile
+from experiments.jeans import JeansProfile, jeans_density
 from experiments.mw_catalogs import KinematicStars
 from experiments.mw_counts import (
     CountBias,
@@ -48,6 +54,7 @@ from experiments.populations import (
     Z_MID_MAX_KPC,
     Estimate,
     Trend,
+    fit_eta,
     fit_power_law,
     fit_trend,
 )
@@ -56,6 +63,8 @@ from experiments.stats import deconvolved_dispersion, half_width
 FloatArray = NDArray[np.float64]
 
 AGE_EDGES_GYR = (0.0, 2.0, 4.0, 6.0, 8.0, 10.0)
+JEANS_SLICES_KPC = (0.0, 0.3, 0.6, 1.0, 1.5)  # |z| slices of sigma_z^2 for the Jeans equation
+N_MIN_JEANS_SLICE = 30  # kinematic stars in a slice for its sigma_z
 AGE_RANGES = ((0.0, 10.0), (2.0, 10.0))
 N_BOOTSTRAP = 300
 SEED = 20261028
@@ -108,18 +117,21 @@ class MwHeights:
 
 @dataclass(frozen=True)
 class MwPredictions:
-    """h_Z (kpc) of one age bin predicted by the sheet and by the isothermal tracer, as the counts measure them."""
+    """h_Z (kpc) of one age bin predicted by the sheet, the tracer and the Jeans equation, through the counts."""
 
     sheet: float
     tracer: float
+    jeans: float
 
 
 @dataclass(frozen=True)
 class MwRatios:
-    """Each predicted h_Z of one age bin over the measured h_Z."""
+    """Each predicted h_Z of one age bin over the measured h_Z; ``family`` holds the tracer of each family member."""
 
     sheet: Estimate
     tracer: Estimate
+    jeans: Estimate
+    family: list[float]
 
 
 @dataclass(frozen=True)
@@ -144,7 +156,7 @@ class MwRange:
     n_bins: int
     exponents: dict[str, Estimate]
     trends: dict[str, Trend]
-    eta: float
+    eta: Trend  # d ln h_Z / d ln sigma_z across the bins (experiments.populations.fit_eta)
 
 
 @dataclass(frozen=True)
@@ -171,6 +183,23 @@ class _Values:  # pylint: disable=too-many-instance-attributes
     jr_median: float
     sheet: float
     tracer: float
+    jeans: float
+
+
+def jeans_slices(kin: KinematicStars) -> JeansProfile:
+    """Return sigma_z^2 of the stars *kin* in each slice of ``JEANS_SLICES_KPC`` with enough of them, at its median |z|.
+
+    The dispersions are clipped and their velocity errors removed, as near the plane; the
+    tilt term is not measured.
+    """
+    absz = np.abs(kin.phase.z)
+    z, sigma2 = [], []
+    for lo, hi in zip(JEANS_SLICES_KPC[:-1], JEANS_SLICES_KPC[1:], strict=True):
+        rows = (absz >= lo) & (absz < hi)
+        if np.count_nonzero(rows) >= N_MIN_JEANS_SLICE:
+            z.append(float(np.median(absz[rows])))
+            sigma2.append(deconvolved_dispersion(kin.phase.v_z[rows], kin.v_z_err[rows]) ** 2)
+    return JeansProfile(tuple(z), tuple(sigma2), tuple(float("nan") for _ in z))
 
 
 def _values(
@@ -195,18 +224,34 @@ def _values(
         jr_median=float(np.median(jr[jr_rows])),
         sheet=predicted_hz(counts, profile_slices(sheet_profile(sigma_z, model.sigma_surf)), model.k)[0],
         tracer=predicted_hz(counts, profile_slices(tracer_profile(model.phi, sigma_z)), model.k)[0],
+        jeans=predicted_hz(
+            counts, profile_slices(jeans_density(model.phi, jeans_slices(kin), Z_GRID, with_tilt=False)), model.k
+        )[0],
     )
 
 
-def measure_bin(
-    survey: Survey, bounds: tuple[float, float], model: SolarModel, rng: np.random.Generator, n_bootstrap: int
-) -> MwBin:
-    """Return the measurement and the predictions of the age bin *bounds* (Gyr) of *survey*, with bootstrap errors."""
+@dataclass(frozen=True)
+class BinSetting:
+    """What every bin is measured with: the model, the generator and size of the bootstrap, and the family."""
+
+    model: SolarModel
+    rng: np.random.Generator
+    n_bootstrap: int
+    family: tuple[SolarModel, ...] = ()
+
+
+def measure_bin(survey: Survey, bounds: tuple[float, float], setting: BinSetting) -> MwBin:
+    """Return the measurement and the predictions of the age bin *bounds* (Gyr) of *survey*, with bootstrap errors.
+
+    The tracer in each model of the family of *setting* goes through the counts once, with
+    the sigma_z of the point estimate.
+    """
+    model, rng = setting.model, setting.rng
     in_age = (survey.kinematics.age >= bounds[0]) & (survey.kinematics.age < bounds[1])
     kin, jr = survey.kinematics.select(in_age), survey.jr[in_age]
     point = _values(survey.counts, kin, jr, bounds, model)
     draws = []
-    for _ in range(n_bootstrap):
+    for _ in range(setting.n_bootstrap):
         rows = rng.integers(0, jr.size, jr.size)
         draws.append(_values(survey.counts.resampled(rng), kin.select(rows), jr[rows], bounds, model))
 
@@ -233,9 +278,21 @@ def measure_bin(
             float(np.mean([not np.isfinite(d.hz) for d in draws])),
             point.gradient,
         ),
-        predictions=MwPredictions(point.sheet, point.tracer),
-        ratios=MwRatios(spread(lambda v: v.sheet / v.hz), spread(lambda v: v.tracer / v.hz)),
+        predictions=MwPredictions(point.sheet, point.tracer, point.jeans),
+        ratios=MwRatios(
+            spread(lambda v: v.sheet / v.hz),
+            spread(lambda v: v.tracer / v.hz),
+            spread(lambda v: v.jeans / v.hz),
+            _family_ratios(survey.counts, point, setting.family),
+        ),
     )
+
+
+def _family_ratios(counts: CountSample, point: _Values, family: tuple[SolarModel, ...]) -> list[float]:
+    """Return the tracer of the sigma_z of *point* in each model of *family* over the h_Z of *point*."""
+    return [
+        predicted_hz(counts, profile_slices(tracer_profile(m.phi, point.sigma_z)), m.k)[0] / point.hz for m in family
+    ]
 
 
 def measure_range(bins: list[MwBin], lo: float, hi: float) -> MwRange:
@@ -263,19 +320,23 @@ def measure_range(bins: list[MwBin], lo: float, hi: float) -> MwRange:
         trends={
             "sheet": fit_trend(age, *column(lambda b: b.ratios.sheet)),
             "tracer": fit_trend(age, *column(lambda b: b.ratios.tracer)),
+            "jeans": fit_trend(age, *column(lambda b: b.ratios.jeans)),
         },
-        eta=exponents["hz"].value / exponents["sigma_z"].value,
+        eta=fit_eta([b.kinematics.sigma_z for b in chosen], [b.heights.measured for b in chosen]),
     )
 
 
 def measure_survey(
-    survey: Survey, model: SolarModel, rng: np.random.Generator, n_bootstrap: int = N_BOOTSTRAP
+    survey: Survey,
+    model: SolarModel,
+    rng: np.random.Generator,
+    n_bootstrap: int = N_BOOTSTRAP,
+    family: tuple[SolarModel, ...] = (),
 ) -> MwSurvey:
     """Return the test with *survey*: every age bin of ``AGE_EDGES_GYR`` and every range of ``AGE_RANGES``."""
     edges = AGE_EDGES_GYR
-    bins = [
-        measure_bin(survey, (lo, hi), model, rng, n_bootstrap) for lo, hi in zip(edges[:-1], edges[1:], strict=True)
-    ]
+    setting = BinSetting(model, rng, n_bootstrap, family)
+    bins = [measure_bin(survey, (lo, hi), setting) for lo, hi in zip(edges[:-1], edges[1:], strict=True)]
     return MwSurvey(
         name=survey.name,
         n_gaia=int(survey.counts.gaia_absz.size),

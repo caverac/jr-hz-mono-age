@@ -19,15 +19,23 @@ Two predictions of h_Z come from the midplane dispersion sigma_z:
   which the window L = 2 h_Z returns, so that the scale is compared with the windowed fit;
 - the isothermal tracer of the total potential, rho(z) ~ exp(-Delta Phi(z) / sigma_z^2),
   whose profile goes through the same window as the particles.
+
+The half-mass height, below which half of the mass within |z| < ``Z_GRID[-1]`` lies, needs
+no window, so it measures the same profiles without the choice of one. Over a grid of
+dispersions, the tracer's h_Z gives the local slope eta = d ln h_Z / d ln sigma_z of a
+potential (:func:`tracer_curve`).
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import brentq
+
+from experiments.stats import weighted_median
 
 FloatArray = NDArray[np.float64]
 
@@ -35,7 +43,10 @@ G_PC = 4.30091e-3  # gravitational constant, pc Msun^-1 (km/s)^2
 Z_GRID = np.linspace(0.0, 12.0, 2401)  # kpc, the heights of a profile
 WINDOW_GRID = np.geomspace(0.05, 12.0, 40)  # kpc, the trial windows of the self-consistent search
 BISECTION_STEPS = 30
-N_MIN_HALF_WINDOW = 20  # particles inside L / 2 for a windowed fit
+# Particles inside L / 2 for a windowed fit. With fewer, a hot population is flat inside a
+# small window, and the noise of the fitted 1 / h gives a spurious smallest root of L = k h(L):
+# at 20, about one in a hundred draws of 300 stars from an exponential of h = 3 kpc did.
+N_MIN_HALF_WINDOW = 100
 SCALE_BRACKET_KPC = (1.0e-4, 1.0e3)
 MAX_EXPONENT = 700.0  # keeps exp(L / h) finite for the smallest trial scales
 
@@ -159,3 +170,41 @@ def sheet_profile(sigma_z: float, sigma_surf: float, z_grid: FloatArray = Z_GRID
     """
     decay = np.exp(-2.0 * np.abs(z_grid) / sheet_hz(sigma_z, sigma_surf))
     return np.asarray(4.0 * decay / (1.0 + decay) ** 2, dtype=np.float64)
+
+
+def half_mass_height(absz: FloatArray, weight: FloatArray) -> float:
+    """Return the height below which half of the *weight* of the particle heights *absz* lies."""
+    return weighted_median(absz, weight)
+
+
+def profile_half_mass(rho: FloatArray, z_grid: FloatArray = Z_GRID) -> float:
+    """Return the height below which half of the mass of the profile *rho* on *z_grid* lies."""
+    cumulative = np.concatenate([[0.0], np.cumsum(0.5 * (rho[1:] + rho[:-1]) * np.diff(z_grid))])
+    return float(np.interp(0.5 * cumulative[-1], cumulative, z_grid))
+
+
+@dataclass(frozen=True)
+class TracerCurve:
+    """The tracer of one potential over a grid of dispersions (km/s): h_Z (kpc), its half-mass height and eta.
+
+    ``eta`` is the local slope d ln h_Z / d ln sigma_z by central differences, NaN where
+    h_Z or a neighbor is NaN, which happens when the self-consistent window finds no root.
+    """
+
+    sigma_z: list[float]
+    hz: list[float]
+    half_mass: list[float]
+    eta: list[float]
+
+
+def tracer_curve(phi_z: FloatArray, sigma_z: FloatArray, k: float, z_grid: FloatArray = Z_GRID) -> TracerCurve:
+    """Return the tracer of the vertical potential *phi_z* ((km/s)^2) at every dispersion of *sigma_z*."""
+    profiles = [tracer_profile(phi_z, float(s)) for s in sigma_z]
+    hz = np.array([scaled_profile_hz(rho, k, z_grid)[0] for rho in profiles])
+    eta = np.gradient(np.log(hz), np.log(sigma_z))
+    return TracerCurve(
+        sigma_z=[float(s) for s in sigma_z],
+        hz=[float(h) for h in hz],
+        half_mass=[profile_half_mass(rho, z_grid) for rho in profiles],
+        eta=[float(e) for e in eta],
+    )

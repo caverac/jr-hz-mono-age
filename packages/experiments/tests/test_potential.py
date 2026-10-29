@@ -19,6 +19,7 @@ from experiments.potential import (
     RESIDUAL_MIN_PER_SECTOR,
     RESIDUAL_SECTORS,
     circular_velocity,
+    circularity,
     fit_potential,
     potential_check,
     radial_actions,
@@ -93,6 +94,16 @@ def test_radial_actions(truth: agama.Potential) -> None:
     assert jr[0] == pytest.approx(0.0, abs=1e-6)
     assert jr[1] > 10.0
     assert np.isnan(jr[2])
+
+
+def test_circularity(truth: agama.Potential) -> None:
+    """A circular orbit has 1, a radial one 0, a counter-rotating circular one -1, and an unbound one NaN."""
+    v_c = circular_velocity(truth, 8.0)
+    pos = np.array([[8.0, 0.0, 0.0]] * 4)
+    vel = np.array([[0.0, v_c, 0.0], [v_c, 0.0, 0.0], [0.0, -v_c, 0.0], [0.0, 2000.0, 0.0]])
+    eps = circularity(truth, pos, vel)
+    assert eps[:3] == pytest.approx([1.0, 0.0, -1.0], abs=1e-3)
+    assert np.isnan(eps[3])
 
 
 def test_potential_check_compares_slices(galaxy: Galaxy, truth: agama.Potential) -> None:

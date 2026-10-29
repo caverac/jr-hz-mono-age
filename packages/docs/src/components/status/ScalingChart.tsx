@@ -237,12 +237,12 @@ function etaText(galaxy: string, auriga: StatusData, milkyWay: MilkyWayData): st
   if (galaxy === MILKY_WAY) {
     const parts = milkyWay.surveys.map((survey) => {
       const range = survey.ranges.find((r) => r.lo === lo && r.hi === hi)
-      return `$${(range?.eta ?? Number.NaN).toFixed(2)}$ with ${surveyName(survey.name)}`
+      return `$${(range?.eta.value ?? Number.NaN).toFixed(2)}$ with ${surveyName(survey.name)}`
     })
     return `${MILKY_WAY}: $\\eta$ of ${parts.join(', ')} over ${lo}-${hi} Gyr.`
   }
   const halo = auriga.halos.find((h) => h.label === galaxy)
-  const eta = halo === undefined ? Number.NaN : (ageRange(halo, lo, hi)?.eta ?? Number.NaN)
+  const eta = halo === undefined ? Number.NaN : (ageRange(halo, lo, hi)?.eta.value ?? Number.NaN)
   return `${galaxy}: $\\eta = ${eta.toFixed(2)}$ over ${lo}-${hi} Gyr.`
 }
 

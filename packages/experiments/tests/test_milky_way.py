@@ -15,7 +15,7 @@ from mw_fixtures import RC_PEAK, scale_height, write_world
 from experiments import mw_counts
 from experiments.commands import milky_way
 from experiments.heights import Z_GRID, particle_hz, scaled_particle_hz, truncated_exp_scale
-from experiments.mw_analysis import SolarModel, Survey, measure_bin, solar_model
+from experiments.mw_analysis import BinSetting, SolarModel, Survey, measure_bin, solar_model
 from experiments.mw_catalogs import (
     apogee_age_tracers,
     apogee_kinematics,
@@ -372,7 +372,9 @@ def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
         young = survey.bins[0]
         assert young.heights.measured.value == pytest.approx(scale_height(np.array(1.0))[()], rel=0.3)
         assert np.isfinite(young.ratios.tracer.value) and young.kinematics.n_kin > 0
-        assert set(survey.ranges[0].trends) == {"sheet", "tracer"}
+        assert set(survey.ranges[0].trends) == {"sheet", "tracer", "jeans"}
+        assert np.isfinite(young.ratios.jeans.value)
+        assert len(young.ratios.family) == len(result.family) == 36
     assert len(result.imig.bins) == 4
     assert set(result.imig.trends) == {"imig_mass", "imig_counts", "counts_astronn", "counts_distmass"}
     first = result.imig.bins[0]
@@ -397,7 +399,7 @@ def test_a_bin_without_matches_has_no_median_age(world_root: Path) -> None:
     kin = apogee_kinematics(apogee)
     survey = Survey("apogee", apogee_count_sample(gaia, apogee_age_tracers(apogee)), kin, np.full(kin.age.size, 10.0))
     model = SolarModel(np.asarray(900.0 * Z_GRID), 50.0)
-    empty = measure_bin(survey, (20.0, 30.0), model, np.random.default_rng(3), 2)
+    empty = measure_bin(survey, (20.0, 30.0), BinSetting(model, np.random.default_rng(3), 2))
     assert np.isnan(empty.age_median) and empty.heights.n_matched == 0
 
 

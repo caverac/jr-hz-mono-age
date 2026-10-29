@@ -49,6 +49,7 @@ from experiments.mw_imig_cells import (
     metallicity_counts,
     tracer_estimators,
 )
+from experiments.mw_potentials import FamilyMember, potential_family
 from experiments.mw_sources import FILE_SOURCES, GAIA_PATH
 
 FloatArray = NDArray[np.float64]
@@ -68,6 +69,8 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     ``imig_cells_targeting`` the same with the matches of each targeting box, and
     ``imig_cells_lamost`` with the LAMOST counts, whose ages are not on the scale of Imig et al.
     ``estimators`` holds the windowed h_Z of the tracer against the exponential fit to it.
+    ``family`` holds the potentials around McMillan (2017) whose tracers every bin also
+    carries (:mod:`experiments.mw_potentials`).
     """
 
     r0_kpc: float
@@ -82,6 +85,7 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     imig_cells_targeting: list[TargetedCells]
     imig_cells_lamost: ImigCells
     estimators: list[TracerEstimator]
+    family: list[FamilyMember]
 
 
 def source_path(root: Path, name: str) -> Path:
@@ -116,6 +120,8 @@ def analyze_milky_way(  # pylint: disable=too-many-locals
     rng = np.random.default_rng(SEED)
     pot = mcmillan17()
     model = solar_model(pot)
+    family = potential_family()
+    family_models = tuple(member_model for _, member_model in family)
     gaia = read_gaia(root / GAIA_PATH)
     apogee = read_apogee(source_path(root, "astronn"), source_path(root, "allstar"))
     lamost_catalog = read_lamost(source_path(root, "lamost"))
@@ -139,7 +145,7 @@ def analyze_milky_way(  # pylint: disable=too-many-locals
 
     surveys = []
     for survey in (lamost, astronn, distmass):
-        surveys.append(measure_survey(survey, model, rng, n_bootstrap))
+        surveys.append(measure_survey(survey, model, rng, n_bootstrap, family_models))
         tracer = [b.ratios.tracer.value for b in surveys[-1].bins]
         progress(f"{survey.name}: {len(tracer)} age bins, tracer over h_Z {min(tracer):.2f} to {max(tracer):.2f}")
     imig = measure_imig(
@@ -168,4 +174,5 @@ def analyze_milky_way(  # pylint: disable=too-many-locals
         imig_cells_targeting=targeting,
         imig_cells_lamost=lamost_cells,
         estimators=tracer_estimators(model),
+        family=[member for member, _ in family],
     )

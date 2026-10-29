@@ -21,13 +21,25 @@ whole-disk heights of Palicio et al. (2025, Sect. 3.4), whose fixed windows have
 $Z_\mathrm{lim}$ from <Metric name="zLimRange" /> kpc in the seven halos (their Table 1)
 ([Across galaxies](./across-galaxies)).
 
+That the fitted height of a disk depends on the window is known. A $\mathrm{sech}^2$ layer
+is close to a Gaussian at the plane and to an exponential above it (van der Kruit & Searle
+1981); in edge-on galaxies, fits over different ranges of height differ by up to about 30
+percent, which de Grijs & van der Kruit (1996) attribute to dust and a thick disk; fits to
+simulated mono-age populations are restricted to heights above 200 pc because their profiles
+flatten near the plane (Martig, Minchev & Flynn 2014a); and isothermal mono-abundance
+populations are expected to have larger heights near the plane (Bovy et al. 2016). Heights
+at which half of the mass lies avoid the window altogether (Ludlow et al. 2021; Martig et
+al. 2026). What this page adds is the size of the bias as a function of the window, and a
+window that scales with each population.
+
 ## Why the shape matters
 
 Within a window $[0, L]$, the estimator of [Tracer or sheet](./tracer-vs-sheet#measurement)
 returns the scale of the exponential truncated at $L$ whose mean height matches that of
-the stars. For an exponential profile this is the maximum-likelihood estimate of its
-scale (Deemer & Votaw 1955), which is consistent whatever the window, although its
-scatter grows as the window shrinks relative to the scale. For any other profile the
+the stars. For an exponential profile, the inverse of that scale is the maximum-likelihood
+estimate of its rate, which exists when the mean height lies below $L/2$ (Deemer & Votaw
+1955, Sect. 3) and is consistent whatever the window, although its scatter grows as the
+window shrinks relative to the scale. For any other profile the
 result depends on the window, so there is no single true scale height to recover. We
 therefore define the reference $h_\mathrm{ref}$ of a profile as its self-consistent
 $h_Z$, the quantity that both the measurements and the predictions of this analysis use,
@@ -59,7 +71,7 @@ uv run experiments window-injection
 
 <WindowBiasChart />
 
-_Figure 8. Top: the fixed-window $h_Z$ over the self-consistent one, against
+_Figure 9. Top: the fixed-window $h_Z$ over the self-consistent one, against
 $h_Z/Z_\mathrm{lim}$. For the injected profiles, $h_Z$ stands for $h_\mathrm{ref}$. Lines
 with open squares are the medians over the draws, with gray bands spanning their 16th to
 84th percentiles. Filled circles are the Auriga populations, each with the

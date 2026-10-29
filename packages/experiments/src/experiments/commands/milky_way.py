@@ -71,18 +71,20 @@ def survey_lines(survey: MwSurvey) -> list[str]:
     """Return the printed table of one survey."""
     lines = [
         f"{survey.name}: {survey.n_gaia:,} Gaia stars, {survey.n_matched:,} matches",
-        "    ages     med  N_pop  N_kin      sigma_z          h_Z   tracer/h_Z    sheet/h_Z",
+        "    ages     med  N_pop  N_kin      sigma_z          h_Z   tracer/h_Z    sheet/h_Z    jeans/h_Z",
     ]
     for b in survey.bins:
         h, kin, r = b.heights, b.kinematics, b.ratios
         lines.append(
             f"  {b.age_lo:3.0f}-{b.age_hi:<3.0f} {b.age_median:5.2f} {h.n_matched:6d} {kin.n_kin:6d} "
             f"{kin.sigma_z.value:6.1f}+/-{kin.sigma_z.err:4.1f} {h.measured.value:6.3f}+/-{h.measured.err:.3f} "
-            f"{r.tracer.value:5.2f}+/-{r.tracer.err:.2f} {r.sheet.value:5.2f}+/-{r.sheet.err:.2f}"
+            f"{r.tracer.value:5.2f}+/-{r.tracer.err:.2f} {r.sheet.value:5.2f}+/-{r.sheet.err:.2f} "
+            f"{r.jeans.value:5.2f}+/-{r.jeans.err:.2f}"
         )
     for rng in survey.ranges:
         trends = ", ".join(f"{k} {t.value:+.3f}+/-{t.err:.3f}" for k, t in rng.trends.items())
-        lines.append(f"  {rng.lo:g}-{rng.hi:g} Gyr ({rng.n_bins} bins): trends {trends}; eta {rng.eta:.2f}")
+        eta = f"{rng.eta.value:.2f}+/-{rng.eta.err:.2f}"
+        lines.append(f"  {rng.lo:g}-{rng.hi:g} Gyr ({rng.n_bins} bins): trends {trends}; eta {eta}")
     bias = ", ".join(f"{h:.2f} {r:.3f}" for h, r in zip(survey.bias.scales, survey.bias.ratios, strict=True))
     lines.append(f"  counts of an exponential over its scale (kpc): {bias}")
     gradients = ", ".join(f"{b.age_lo:g}-{b.age_hi:g} {b.heights.gradient:+.2f}" for b in survey.bins)
@@ -171,6 +173,26 @@ def report_lines(result: MilkyWay) -> list[str]:
         for e in result.estimators
     )
     lines.append(f"tracer, windowed h_Z over the exponential fit to |z| < 1.2 kpc (to the whole profile): {estimators}")
+    lines.extend(family_lines(result))
+    return lines
+
+
+def family_lines(result: MilkyWay) -> list[str]:
+    """Return the admissible potentials of the family and the median tracer ratio of each survey in each."""
+    lines = ["potentials around McMillan (2017) within one error of rho_0 and Sigma_1.1:"]
+    for i, member in enumerate(result.family):
+        if not member.admissible:
+            continue
+        p = member.params
+        medians = ", ".join(
+            f"{s.name} {np.median([b.ratios.family[i] for b in s.bins if np.isfinite(b.ratios.family[i])]):.2f}"
+            for s in result.surveys
+        )
+        lines.append(
+            f"  thin x{p.thin_factor:g}, h {p.thin_height_kpc:g} kpc, halo x{p.halo_factor:g}: "
+            f"rho_0 {member.rho0:.3f}, Sigma_1.1 {member.sigma_11:.1f}, v_c {member.v_circ:.0f}; "
+            f"tracer/h_Z median {medians}; exponential growth {member.growth.window:.2f} ({member.growth.whole:.2f})"
+        )
     return lines
 
 

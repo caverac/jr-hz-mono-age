@@ -10,6 +10,7 @@ import {
 import {
   JR_RELATION_PATH,
   type JrRelationData,
+  type LeftOut,
   type Line,
   parseJrRelation
 } from '@site/src/components/status/jrRelation'
@@ -26,6 +27,7 @@ import {
   isMeasured,
   measuredIn,
   MILKY_WAY_PATH,
+  type FamilyMember,
   type MilkyWayData,
   type MwRange,
   type MwSurvey,
@@ -36,6 +38,12 @@ import {
 import type { Trend } from '@site/src/components/status/record'
 import useRecord from '@site/src/components/status/useRecord'
 import React, { type ReactNode } from 'react'
+
+/** The halo whose removal moves the slope with the self-consistent heights the most. */
+function mostInfluential(d: JrRelationData): LeftOut {
+  const shift = (left: LeftOut) => Math.abs(left.lines.lineScaled.slope - d.lineScaled.slope)
+  return d.leaveOneOut.reduce((best, left) => (shift(left) > shift(best) ? left : best))
+}
 
 function lineText(line: Line): string {
   return `${plusMinus(line.slope, line.slopeErr, 0, false)} km/s`
@@ -66,6 +74,30 @@ function recordMetric<T, M extends Record<string, (data: T) => string>>(
 /** The growth of a height with sigma_z, h_Z proportional to sigma_z^slope, with its error. */
 function dispersionText(slope: Trend): string {
   return `$\\sigma_z^{${slope.value.toFixed(2)} \\pm ${slope.err.toFixed(2)}}$`
+}
+
+/** The surveys, in the order in which the prose names them: LAMOST, APOGEE on the astroNN and the distmass scale. */
+const MW_SURVEYS = ['lamost', 'apogee', 'apogee_distmass'] as const
+
+/** eta with its error, as a fit of the heights against sigma_z gives it. */
+function etaText(eta: Trend): string {
+  return plusMinus(eta.value, eta.err, 2, false)
+}
+
+/** The potentials of the family within one error of the measured rho_0 and Sigma_1.1. */
+function admissible(data: MilkyWayData): readonly FamilyMember[] {
+  return data.family.filter((m) => m.admissible)
+}
+
+/** The member of the family without changes, which is McMillan (2017) itself. */
+function mcmillan(data: MilkyWayData): FamilyMember {
+  const found = data.family.find(
+    (m) => m.thinFactor === 1 && m.thinHeight === 0.3 && m.haloFactor === 1
+  )
+  if (found === undefined) {
+    throw new Error('the family has no member without changes')
+  }
+  return found
 }
 
 function survey(data: MilkyWayData, name: string): MwSurvey {
@@ -200,6 +232,53 @@ const MW_METRICS = {
   apogeeMatched: (d: MilkyWayData) => count(survey(d, 'apogee').nMatched),
   distmassMatched: (d: MilkyWayData) => count(survey(d, 'apogee_distmass').nMatched),
   lamostTracer: (d: MilkyWayData) => ratioRange(d, 'lamost', 'ratioTracer'),
+  jeansRatios: (d: MilkyWayData) =>
+    between(
+      extent(MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.ratioJeans.value)))
+    ),
+  jeansMedians: (d: MilkyWayData) =>
+    between(
+      extent(MW_SURVEYS.map((name) => median(survey(d, name).bins.map((b) => b.ratioJeans.value))))
+    ),
+  jeansBelowOne: (d: MilkyWayData) => {
+    const ratios = MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.ratioJeans.value))
+    return `${ratios.filter((r) => r < 1).length} of ${ratios.length}`
+  },
+  jeansTrends0: (d: MilkyWayData) =>
+    MW_SURVEYS.map((name) => trendText(range(d, name, 0).jeans)).join(', '),
+  familyAdmissible: (d: MilkyWayData) =>
+    `${d.family.filter((m) => m.admissible).length} of ${d.family.length}`,
+  familyRho0: (d: MilkyWayData) => between(extent(admissible(d).map((m) => m.rho0)), 3),
+  familySigma11: (d: MilkyWayData) => between(extent(admissible(d).map((m) => m.sigma11)), 1),
+  familyVCirc: (d: MilkyWayData) => between(extent(admissible(d).map((m) => m.vCirc)), 0),
+  mcmillanRho0: (d: MilkyWayData) => fixed(mcmillan(d).rho0, 3),
+  mcmillanSigma11: (d: MilkyWayData) => fixed(mcmillan(d).sigma11, 1),
+  mcmillanVCirc: (d: MilkyWayData) => fixed(mcmillan(d).vCirc, 0),
+  familyTracerMedians: (d: MilkyWayData) =>
+    between(
+      extent(
+        d.family.flatMap((m, i) =>
+          m.admissible
+            ? MW_SURVEYS.map((name) => median(survey(d, name).bins.map((b) => b.ratioFamily[i])))
+            : []
+        )
+      )
+    ),
+  familyGrowthWindow: (d: MilkyWayData) =>
+    between(extent(admissible(d).map((m) => m.growthWindow))),
+  familyGrowthWhole: (d: MilkyWayData) => between(extent(admissible(d).map((m) => m.growthWhole))),
+  tracerMedians: (d: MilkyWayData) => {
+    const [lo, hi] = extent(
+      MW_SURVEYS.map((name) => median(survey(d, name).bins.map((b) => b.ratioTracer.value)))
+    )
+    return between([lo, hi])
+  },
+  tracerBelowOne: (d: MilkyWayData) => {
+    const ratios = MW_SURVEYS.flatMap((name) =>
+      survey(d, name).bins.map((b) => b.ratioTracer.value)
+    )
+    return `${ratios.filter((r) => r < 1).length} of ${ratios.length}`
+  },
   apogeeTracer: (d: MilkyWayData) => ratioRange(d, 'apogee', 'ratioTracer'),
   distmassTracer: (d: MilkyWayData) => ratioRange(d, 'apogee_distmass', 'ratioTracer'),
   lamostTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'lamost', 0).tracer),
@@ -208,9 +287,9 @@ const MW_METRICS = {
   apogeeTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee', 2).tracer),
   distmassTracerTrend0: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 0).tracer),
   distmassTracerTrend2: (d: MilkyWayData) => trendText(range(d, 'apogee_distmass', 2).tracer),
-  lamostEta: (d: MilkyWayData) => fixed(range(d, 'lamost', 0).eta),
-  apogeeEta: (d: MilkyWayData) => fixed(range(d, 'apogee', 0).eta),
-  distmassEta: (d: MilkyWayData) => fixed(range(d, 'apogee_distmass', 0).eta),
+  lamostEta: (d: MilkyWayData) => etaText(range(d, 'lamost', 0).eta),
+  apogeeEta: (d: MilkyWayData) => etaText(range(d, 'apogee', 0).eta),
+  distmassEta: (d: MilkyWayData) => etaText(range(d, 'apogee_distmass', 0).eta),
   lamostWithin10: (d: MilkyWayData) => within10(d, 'lamost'),
   apogeeWithin10: (d: MilkyWayData) => within10(d, 'apogee'),
   distmassWithin10: (d: MilkyWayData) => within10(d, 'apogee_distmass'),
@@ -362,7 +441,33 @@ const JR_METRICS = {
   scaledMixtureShift: (d: JrRelationData) =>
     fixed(Math.abs(d.lineScaledMixture.slope - d.lineScaled.slope) / d.lineScaled.slopeErr, 1),
   scaledMixtureDeviation: (d: JrRelationData) =>
-    fixed(Math.abs(d.lineScaledMixture.slope - d.palicioSlope) / d.lineScaledMixture.slopeErr, 1)
+    fixed(Math.abs(d.lineScaledMixture.slope - d.palicioSlope) / d.lineScaledMixture.slopeErr, 1),
+  palicioIntercept: (d: JrRelationData) => fixed(d.palicioIntercept, 1),
+  leaveOneOutRange: (d: JrRelationData) =>
+    between(extent(d.leaveOneOut.map((left) => left.lines.lineScaled.slope)), 0),
+  influentialHalo: (d: JrRelationData) => mostInfluential(d).halo,
+  influentialJr: (d: JrRelationData) => {
+    const halo = mostInfluential(d).halo
+    return fixed(d.points.find((p) => p.halo === halo)?.jrW ?? Number.NaN, 1)
+  },
+  otherJrMax: (d: JrRelationData) => {
+    const halo = mostInfluential(d).halo
+    return fixed(Math.max(...d.points.filter((p) => p.halo !== halo).map((p) => p.jrW)), 1)
+  },
+  withoutInfluentialScaled: (d: JrRelationData) => lineText(mostInfluential(d).lines.lineScaled),
+  withoutInfluentialMixture: (d: JrRelationData) =>
+    lineText(mostInfluential(d).lines.lineScaledMixture),
+  leaveOneOutMixtureShift: (d: JrRelationData) =>
+    fixed(
+      Math.max(
+        ...d.leaveOneOut.map(
+          ({ lines }) =>
+            Math.abs(lines.lineScaledMixture.slope - lines.lineScaled.slope) /
+            lines.lineScaled.slopeErr
+        )
+      ),
+      1
+    )
 } satisfies Record<string, (d: JrRelationData) => string>
 
 /** A number of the Milky Way page, computed from its record. */
