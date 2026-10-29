@@ -1,3 +1,9 @@
+# [1.5.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.4.0...v1.5.0) (2026-10-29)
+
+### Features
+
+- rewrite the status pages results first, with d3 figures and the Imig et al. sigma_z slopes ([5250d38](https://github.com/caverac/jr-hz-mono-age/commit/5250d387d6cc2c23f548f32c4ee5c7cdf1b8fc00))
+
 # [1.4.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.3.0...v1.4.0) (2026-10-29)
 
 ### Features
