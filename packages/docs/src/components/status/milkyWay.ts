@@ -47,6 +47,8 @@ export interface MwBin {
   readonly nMatched: number
   /** The fraction of bootstrap draws without an h_Z. */
   readonly failed: number
+  /** The gradient b (1/kpc) of the population fraction exp(b x) toward the Galactic center. */
+  readonly gradient: number
   /** h_Z (kpc) of an exponential of the scale of the sheet, through the same counts. */
   readonly sheet: number
   /** h_Z (kpc) of the tracer profile, through the same counts. */
@@ -107,7 +109,7 @@ export interface ImigBin {
   readonly ratios: Readonly<Record<ImigHeight, Estimate>>
 }
 
-/** One population of Imig et al. against our counts of its ages and [M/H]: their h_Z (kpc), ours, the ratio. */
+/** One population of Imig et al. against our counts and kinematic stars of its ages and [M/H] (kpc, km/s). */
 export interface ImigCell {
   readonly ageLo: number
   readonly ageHi: number
@@ -117,30 +119,87 @@ export interface ImigCell {
   readonly nStars: number
   /** Our matched stars in the cell. */
   readonly nMatched: number
-  /** Their h_Z at their Sun, as published. */
-  readonly imigSun: Estimate
-  /** Their model over the disk of our cylinder, in the continuous window. */
-  readonly imigWindow: number
-  /** Their model through our cylinder and counts; NaN with fewer than `minMatches` matches. */
-  readonly imig: Estimate
-  /** NaN with fewer than `minMatches` matches. */
-  readonly counts: Estimate
-  /** Our counts over their model through our counts. */
-  readonly ratio: Estimate
-  /** Our counts over their model in each slice of |z|, each normalized to its sum; empty without the minimum. */
-  readonly shape: readonly number[]
+  readonly theirs: {
+    /** Their h_Z at their Sun, as published. */
+    readonly sun: Estimate
+    /** Their model over the disk of our cylinder, in the continuous window. */
+    readonly window: number
+    /** Their model through our cylinder and counts; NaN with fewer than `minMatches` matches. */
+    readonly counted: Estimate
+    /** The exponential fit to their model through our cylinder and counts, as ours is fit. */
+    readonly exponential: Estimate
+  }
+  /** Our counts; NaN, and an empty shape, with fewer than `minMatches` matches. */
+  readonly ours: {
+    readonly windowed: Estimate
+    /** The exponential fit to our counts below the edge of the counts, without a window. */
+    readonly exponential: Estimate
+    readonly gradient: number
+    /** Our counts over their model in each slice of |z|, each normalized to its sum. */
+    readonly shape: readonly number[]
+  }
+  /** The kinematic stars of the cell near the plane, and the tracer of their sigma_z through our counts. */
+  readonly kinematics: {
+    readonly nKin: number
+    readonly sigmaZ: Estimate
+    readonly tracer: Estimate
+  }
+  readonly ratios: {
+    /** Our windowed h_Z over their model through our counts. */
+    readonly counted: Estimate
+    /** Our exponential fit over theirs, both through our counts. */
+    readonly exponential: Estimate
+    /** The tracer over our windowed h_Z. */
+    readonly tracer: Estimate
+  }
 }
 
 /**
- * The slope of ln h_Z per dex of [M/H] at fixed age, one intercept per age bin, in the same
- * cells: of our counts, and of their model through our counts.
+ * The slope of ln h_Z (ln sigma_z) per dex of [M/H] at fixed age, one intercept per age bin,
+ * in the same cells.
  */
 export interface MetallicitySlopes {
+  /** Our windowed h_Z. */
   readonly counts: Trend
+  readonly countsExponential: Trend
+  /** Their model through our counts. */
   readonly imig: Trend
+  readonly imigSun: Trend
+  readonly tracer: Trend
+  readonly sigmaZ: Trend
 }
 
-/** Every cell and, over the measured ones, the median ratio, the slope of its logarithm and those of the heights. */
+/**
+ * The windowed h_Z of the tracer of `sigmaZ`, the exponential fit to it below the edge of the
+ * counts, and the exponential fit to the whole profile.
+ */
+export interface TracerEstimator {
+  readonly sigmaZ: number
+  readonly windowed: number
+  readonly exponential: number
+  readonly exponentialWhole: number
+}
+
+/**
+ * The slope of the logarithm of a ratio of the cells per ln age at fixed [M/H], and per dex
+ * of [M/H] at fixed age, each with one intercept per bin of the other.
+ */
+export interface RatioTrends {
+  readonly age: Trend
+  readonly metallicity: Trend
+}
+
+/** The trends of the three ratios of a cell. */
+export interface CellTrends {
+  readonly counted: RatioTrends
+  readonly exponential: RatioTrends
+  readonly tracer: RatioTrends
+}
+
+/** The ratios of a cell, by the names of `CellTrends`. */
+export type CellRatio = keyof CellTrends
+
+/** Every cell and, over the measured ones, the median ratio, the trends of the ratios and the slopes of the heights. */
 export interface ImigCells {
   /** The matched stars that split the counts into populations. */
   readonly nMatches: number
@@ -148,7 +207,7 @@ export interface ImigCells {
   readonly cells: readonly ImigCell[]
   readonly nMeasured: number
   readonly medianRatio: number
-  readonly trend: Trend
+  readonly trends: CellTrends
   readonly slopes: MetallicitySlopes
 }
 
@@ -185,6 +244,7 @@ export interface MilkyWayData {
   readonly imigCellsTargeting: readonly TargetedCells[]
   /** The cells with the LAMOST counts, whose ages are not on the scale of Imig et al. */
   readonly imigCellsLamost: ImigCells
+  readonly estimators: readonly TracerEstimator[]
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -221,6 +281,7 @@ function parseBin(bin: unknown): MwBin {
     window: num(heights, 'window'),
     nMatched: num(heights, 'n_matched'),
     failed: num(heights, 'failed'),
+    gradient: num(heights, 'gradient'),
     sheet: num(predictions, 'sheet'),
     tracer: num(predictions, 'tracer'),
     ratioTracer: estimate(ratios, 'tracer'),
@@ -262,26 +323,58 @@ function parseImigCell(cell: unknown): ImigCell {
     mhHi: num(cell, 'm_h_hi'),
     nStars: num(cell, 'n_stars'),
     nMatched: num(cell, 'n_matched'),
-    imigSun: estimate(cell, 'imig_sun'),
-    imigWindow: num(cell, 'imig_window'),
-    imig: estimate(cell, 'imig'),
-    counts: estimate(cell, 'counts'),
-    ratio: estimate(cell, 'ratio'),
-    shape: numbers(cell, 'shape')
+    theirs: {
+      sun: estimate(field(cell, 'theirs'), 'sun'),
+      window: num(field(cell, 'theirs'), 'window'),
+      counted: estimate(field(cell, 'theirs'), 'counted'),
+      exponential: estimate(field(cell, 'theirs'), 'exponential')
+    },
+    ours: {
+      windowed: estimate(field(cell, 'ours'), 'windowed'),
+      exponential: estimate(field(cell, 'ours'), 'exponential'),
+      gradient: num(field(cell, 'ours'), 'gradient'),
+      shape: numbers(field(cell, 'ours'), 'shape')
+    },
+    kinematics: {
+      nKin: num(field(cell, 'kinematics'), 'n_kin'),
+      sigmaZ: estimate(field(cell, 'kinematics'), 'sigma_z'),
+      tracer: estimate(field(cell, 'kinematics'), 'tracer')
+    },
+    ratios: {
+      counted: estimate(field(cell, 'ratios'), 'counted'),
+      exponential: estimate(field(cell, 'ratios'), 'exponential'),
+      tracer: estimate(field(cell, 'ratios'), 'tracer')
+    }
+  }
+}
+
+function parseRatioTrends(trends: unknown, key: string): RatioTrends {
+  return {
+    age: trend(field(trends, key), 'age'),
+    metallicity: trend(field(trends, key), 'metallicity')
   }
 }
 
 function parseImigCells(cells: unknown): ImigCells {
+  const trends = field(cells, 'trends')
   return {
     nMatches: num(cells, 'n_matches'),
     minMatches: num(cells, 'min_matches'),
     cells: list(cells, 'cells').map(parseImigCell),
     nMeasured: num(cells, 'n_measured'),
     medianRatio: num(cells, 'median_ratio'),
-    trend: trend(cells, 'trend'),
+    trends: {
+      counted: parseRatioTrends(trends, 'counted'),
+      exponential: parseRatioTrends(trends, 'exponential'),
+      tracer: parseRatioTrends(trends, 'tracer')
+    },
     slopes: {
       counts: trend(field(cells, 'slopes'), 'counts'),
-      imig: trend(field(cells, 'slopes'), 'imig')
+      countsExponential: trend(field(cells, 'slopes'), 'counts_exponential'),
+      imig: trend(field(cells, 'slopes'), 'imig'),
+      imigSun: trend(field(cells, 'slopes'), 'imig_sun'),
+      tracer: trend(field(cells, 'slopes'), 'tracer'),
+      sigmaZ: trend(field(cells, 'slopes'), 'sigma_z')
     }
   }
 }
@@ -299,13 +392,19 @@ export function measuredIn(cells: ImigCells, lo: number, hi: number): readonly I
     .filter((c) => 0.5 * (c.mhLo + c.mhHi) >= lo && 0.5 * (c.mhLo + c.mhHi) < hi)
 }
 
-/** The median ratio of the measured cells whose [M/H] center lies in [lo, hi), and their number. */
+/**
+ * The median of the ratio `ratio` over the measured cells whose [M/H] center lies in [lo, hi)
+ * and where it is finite, and their number.
+ */
 export function cellMedian(
   cells: ImigCells,
   lo: number,
-  hi: number
+  hi: number,
+  ratio: CellRatio = 'counted'
 ): { median: number; n: number } {
-  const ratios = measuredIn(cells, lo, hi).map((c) => c.ratio.value)
+  const ratios = measuredIn(cells, lo, hi)
+    .map((c) => c.ratios[ratio].value)
+    .filter((r) => Number.isFinite(r))
   return { median: median(ratios), n: ratios.length }
 }
 
@@ -325,7 +424,7 @@ export const METALLICITY_LABELS: readonly string[] = [
 
 /** Whether `cell` has enough matches for our h_Z, and a finite ratio. */
 export function isMeasured(cells: ImigCells, cell: ImigCell): boolean {
-  return cell.nMatched >= cells.minMatches && Number.isFinite(cell.ratio.value)
+  return cell.nMatched >= cells.minMatches && Number.isFinite(cell.ratios.counted.value)
 }
 
 /** Check and read the record of the Milky Way test. */
@@ -365,6 +464,12 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
         cells: parseImigCells(field(targeted, 'cells'))
       }
     }),
-    imigCellsLamost: parseImigCells(field(record, 'imig_cells_lamost'))
+    imigCellsLamost: parseImigCells(field(record, 'imig_cells_lamost')),
+    estimators: list(record, 'estimators').map((e) => ({
+      sigmaZ: num(e, 'sigma_z'),
+      windowed: num(e, 'windowed'),
+      exponential: num(e, 'exponential'),
+      exponentialWhole: num(e, 'exponential_whole')
+    }))
   }
 }

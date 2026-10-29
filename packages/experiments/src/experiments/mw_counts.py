@@ -5,13 +5,20 @@ survey cannot give without its selection function. A complete photometric sample
 the Gaia DR3 giants of a cylinder of radius ``R_CYL_KPC`` around the Sun, within
 |z| < ``Z_MAX_KPC``, whose reddening-free Wesenheit absolute magnitude
 M_W = G - 1.9 (BP - RP) + 5 log10(parallax / mas) - 10 lies in a window. Gaia DR3 is
-complete for them, so their counts per unit |z| follow the density. Each slice of |z|
-(``SLICE_EDGES_KPC``) is split into ages with the fraction of the matched spectroscopic
-stars of the slice that belong to the population:
+complete for them, so their counts per unit |z| follow the density. The counts are split
+into ages with the fraction of the matched spectroscopic stars that belong to the
+population, at the position of each Gaia star:
 
-    rho_pop(z) = n_Gaia(z) P(pop | z),
+    rho_pop(x, z) = n_Gaia(x, z) P(pop | x, z),    P = A(z) exp(b x),
 
-with P interpolated between the centers of the slices. Two surveys give the ages
+with x = d cos b cos l toward the Galactic center, A of each slice of |z|
+(``SLICE_EDGES_KPC``) interpolated between the slice centers, and one gradient b per
+population, fit to all its matches (:func:`population_counts`). The matches of both surveys
+sit toward the anticenter near the plane and spread over the cylinder higher up, so a
+fraction taken over a whole slice would weight its inner and outer parts by where the
+survey observed rather than by where the Gaia stars are. For a population concentrated
+toward the center that thickens its profile, and it thins one concentrated outward. Two
+surveys give the ages
 (:mod:`experiments.mw_catalogs`):
 
 - LAMOST red clump: the Gaia stars inside +/- ``RC_HALF_WIDTH`` mag of the red-clump peak
@@ -21,8 +28,8 @@ with P interpolated between the centers of the slices. Two surveys give the ages
 - APOGEE: the Gaia giants of the box ``APOGEE_BOX`` of M_W, matched by source_id.
 
 The targeting of both surveys depends on magnitude and color, not on age at a fixed
-position, so the fraction of a slice is unbiased although the completeness of the survey
-changes with z. h_Z is fitted to the weighted counts as to the star particles of the
+position, so the fraction at a position is unbiased although the completeness of the
+survey changes with position. h_Z is fitted to the weighted counts as to the star particles of the
 Auriga disks (:func:`experiments.heights.particle_hz`), in the self-consistent window
 L = k h_Z. The counts stop at ``Z_MAX_KPC``, so a window beyond it has no h_Z.
 
@@ -32,7 +39,8 @@ exponential of 0.20 kpc comes out about 9 percent thicker and one of 0.15 kpc ab
 percent; above 0.4 kpc the bias is below 1.5 percent. A predicted profile is therefore
 compared with the counts after it goes through the same slices, interpolation and window
 (:func:`predicted_hz`): its mass in each slice, over the Gaia stars of the slice, is its
-fraction.
+fraction, the same across the slice. With the gradient fit to such a population, the
+counts give the same h_Z, so the correction does not need to be applied to a prediction.
 
 A sample keeps its Gaia stars in ascending |z| (:func:`count_sample`), and a bootstrap
 draw enters each star with its multiplicity instead of copying it. The windows of the
@@ -49,7 +57,7 @@ from functools import cached_property
 import astropy.coordinates as coord
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import minimize
+from scipy.optimize import brentq, minimize
 
 from experiments.heights import N_MIN_HALF_WINDOW, Z_GRID, self_consistent_window, truncated_exp_scale
 from experiments.mw_catalogs import AgeTracers, GaiaStars
@@ -76,6 +84,9 @@ MATCH_MAX_DG = 0.05
 # the wings of the red clump in some slices; the bounds hold every component to the shape
 # it has where the fit is unambiguous.
 SHAPE_BOUNDS = ((-1.95, -1.55), (0.05, 0.20), (-1.5, -1.0), (0.08, 0.25), (-1.0, 3.0))
+# |b| of a population fraction exp(b x), per kpc, beyond which the fit stops: the cells of the
+# Milky Way have |b| < 1.3 per kpc, and the bound keeps a population of few matches finite.
+GRADIENT_BOUND_PER_KPC = 5.0
 _EDGES = np.asarray(SLICE_EDGES_KPC)
 _CENTERS = 0.5 * (_EDGES[1:] + _EDGES[:-1])
 
@@ -99,22 +110,23 @@ class CountMoments:
     """The Gaia heights of a sample in ascending order, with the running sums that the fit of any population needs.
 
     A population weights each star by the fraction of its slice, interpolated between the
-    slice centers (:func:`_segments`), so the weight is a + b |z| on each segment. The
-    weight and the weight times |z| inside a window are then sums over the segments of the
-    running sums of the multiplicity c, of c |z| and of c z^2, which entry i of ``c0``,
-    ``c1`` and ``c2`` totals over the first i stars. ``bounds`` holds the first star of each
-    segment and the number of stars, so that a window costs one binary search whatever the
-    fraction.
+    slice centers (:func:`_segments`), so the weight is a + b |z| on each segment, times a
+    weight of its own w (by default 1). The weight and the weight times |z| inside a window
+    are then sums over the segments of the running sums of c w, c w |z| and c w z^2, with c
+    the multiplicity, which entry i of ``c0``, ``c1`` and ``c2`` totals over the first i
+    stars; ``count`` totals c. ``bounds`` holds the first star of each segment and the
+    number of stars, so that a window costs one binary search whatever the fraction.
     """
 
     absz: FloatArray
+    count: FloatArray
     c0: FloatArray
     c1: FloatArray
     c2: FloatArray
     bounds: NDArray[np.int64]
 
     @classmethod
-    def of(cls, absz: FloatArray, multiplicity: FloatArray) -> CountMoments:
+    def of(cls, absz: FloatArray, multiplicity: FloatArray, weight: FloatArray | None = None) -> CountMoments:
         """Return the running sums of heights *absz* in ascending order, entering *multiplicity* times each."""
         if np.any(np.diff(absz) < 0.0):
             raise ValueError("the heights are not in ascending order")
@@ -124,29 +136,39 @@ class CountMoments:
 
         knots = np.searchsorted(absz, _CENTERS, side="right")
         bounds = np.concatenate(([0], knots, [absz.size])).astype(np.int64)
-        return cls(absz, running(multiplicity), running(multiplicity * absz), running(multiplicity * absz**2), bounds)
+        mass = multiplicity if weight is None else multiplicity * weight
+        return cls(absz, running(multiplicity), running(mass), running(mass * absz), running(mass * absz**2), bounds)
 
     def per_slice(self) -> FloatArray:
         """Return the stars of each slice of ``SLICE_EDGES_KPC``, each entered with its multiplicity."""
-        return np.asarray(np.diff(self.c0[np.searchsorted(self.absz, _EDGES, side="left")]), dtype=np.float64)
+        return np.asarray(np.diff(self.count[np.searchsorted(self.absz, _EDGES, side="left")]), dtype=np.float64)
+
+    def _sums(self, fraction: FloatArray, limit: float) -> tuple[float, float]:
+        """Return the weight and the weight times |z| of the stars with |z| <= *limit*, for *fraction*."""
+        a, b = _segments(fraction)
+        ends = np.minimum(self.bounds, np.searchsorted(self.absz, limit, side="right"))
+        d0, d1, d2 = (np.diff(c[ends]) for c in (self.c0, self.c1, self.c2))
+        return float(a @ d0 + b @ d1), float(a @ d1 + b @ d2)
+
+    def exponential(self, fraction: FloatArray, limit: float) -> float:
+        """Return the scale of the exponential on [0, *limit*] with the mean |z| of the weighted stars, or NaN."""
+        weight, moment = self._sums(fraction, limit)
+        return truncated_exp_scale(moment / weight, limit) if weight > 0.0 else float("nan")
+
+    def below(self, fraction: FloatArray, limits: FloatArray) -> FloatArray:
+        """Return the weight of the stars with |z| at or below each of *limits*."""
+        return np.array([self._sums(fraction, float(limit))[0] for limit in limits])
 
     def hz(self, fraction: FloatArray, window: float) -> float:
         """Return the windowed h_Z of the stars weighted by *fraction* of their slices; NaN if *window* cannot fit it.
 
         This is :func:`experiments.heights.particle_hz` of the stars, each entered with its
-        multiplicity and weighted by ``np.interp(absz, slice centers, fraction)``.
+        multiplicity and weighted by ``np.interp(absz, slice centers, fraction)`` and its own
+        weight.
         """
-        if self.c0[np.searchsorted(self.absz, 0.5 * window, side="right")] < N_MIN_HALF_WINDOW:
+        if self.count[np.searchsorted(self.absz, 0.5 * window, side="right")] < N_MIN_HALF_WINDOW:
             return float("nan")
-        a, b = _segments(fraction)
-        scales = []
-        for limit in (window, 0.5 * window):
-            ends = np.minimum(self.bounds, np.searchsorted(self.absz, limit, side="right"))
-            d0, d1, d2 = (np.diff(c[ends]) for c in (self.c0, self.c1, self.c2))
-            weight = float(a @ d0 + b @ d1)
-            if weight <= 0.0:
-                return float("nan")
-            scales.append(truncated_exp_scale(float(a @ d1 + b @ d2) / weight, limit))
+        scales = [self.exponential(fraction, limit) for limit in (window, 0.5 * window)]
         return float(np.mean(scales))
 
     def fit(self, fraction: FloatArray, k: float) -> tuple[float, float]:
@@ -158,12 +180,13 @@ class CountMoments:
 
 
 @dataclass(frozen=True)
-class CountSample:
-    """|z| (kpc) of the Gaia stars of a window with their multiplicities, and the |z|, age and population of matches.
+class CountSample:  # pylint: disable=too-many-instance-attributes
+    """|z| and x (kpc) of the Gaia stars of a window with multiplicities, and the |z|, x, age and population of matches.
 
     ``gaia_absz`` is in ascending order, and ``gaia_rank`` gives the position in it of each
     row of the catalog. ``gaia_count`` is the number of times each star enters the sample:
-    1 in the catalog, and its multiplicity in a bootstrap draw.
+    1 in the catalog, and its multiplicity in a bootstrap draw. x = d cos b cos l points to
+    the Galactic center.
     """
 
     gaia_absz: FloatArray
@@ -172,6 +195,8 @@ class CountSample:
     tracer_absz: FloatArray
     tracer_age: FloatArray
     tracer_in_disk: BoolArray
+    gaia_x: FloatArray  # kpc toward the Galactic center, in the order of gaia_absz
+    tracer_x: FloatArray
 
     @cached_property
     def moments(self) -> CountMoments:
@@ -196,26 +221,41 @@ class CountSample:
             self.tracer_absz[t],
             self.tracer_age[t],
             self.tracer_in_disk[t],
+            self.gaia_x,
+            self.tracer_x[t],
         )
 
 
-def count_sample(
-    gaia_absz: FloatArray, tracer_absz: FloatArray, tracer_age: FloatArray, tracer_in_disk: BoolArray
-) -> CountSample:
-    """Return the counts of the Gaia stars at heights *gaia_absz*, each entered once, with their matches."""
-    order = np.argsort(gaia_absz)
+@dataclass(frozen=True)
+class Positions:
+    """|z| and x (kpc) of a set of stars, x = d cos b cos l toward the Galactic center."""
+
+    absz: FloatArray
+    x: FloatArray
+
+
+def count_sample(gaia: Positions, tracers: Positions, tracer_age: FloatArray, tracer_in_disk: BoolArray) -> CountSample:
+    """Return the counts of the Gaia stars at *gaia*, each entered once, with their matches at *tracers*."""
+    order = np.argsort(gaia.absz)
     rank = np.empty_like(order)
     rank[order] = np.arange(order.size)
-    return CountSample(gaia_absz[order], rank, np.ones(order.size), tracer_absz, tracer_age, tracer_in_disk)
+    return CountSample(
+        gaia.absz[order], rank, np.ones(order.size), tracers.absz, tracer_age, tracer_in_disk, gaia.x[order], tracers.x
+    )
 
 
 @dataclass(frozen=True)
 class GaiaCylinder:
-    """The Gaia stars of the cylinder that pass the quality cuts: their row in the catalog, |z| (kpc) and M_W."""
+    """The Gaia stars of the cylinder that pass the quality cuts: their row in the catalog, |z| and x (kpc), and M_W."""
 
     rows: NDArray[np.int64]
     absz: FloatArray
     m_w: FloatArray
+    x: FloatArray
+
+    def at(self, index: NDArray[np.int64] | BoolArray) -> Positions:
+        """Return the positions of the stars *index* of the cylinder."""
+        return Positions(self.absz[index], self.x[index])
 
 
 def gaia_cylinder(gaia: GaiaStars, m_w_range: tuple[float, float]) -> GaiaCylinder:
@@ -232,7 +272,8 @@ def gaia_cylinder(gaia: GaiaStars, m_w_range: tuple[float, float]) -> GaiaCylind
             & (gaia.g < G_MAX) & (gaia.bp_rp > BP_RP_MIN)
         )  # fmt: skip
     rows = np.flatnonzero(keep)
-    return GaiaCylinder(rows, absz[rows], m_w[rows])
+    x = distance[rows] * np.cos(lat[rows]) * np.cos(np.radians(gaia.l[rows]))
+    return GaiaCylinder(rows, absz[rows], m_w[rows], x)
 
 
 def slice_of(absz: FloatArray) -> NDArray[np.int64]:
@@ -365,10 +406,7 @@ def lamost_count_sample(gaia: GaiaStars, tracers: AgeTracers) -> tuple[CountSamp
     pairs, claims = np.unique(near[matched], return_counts=True)
     matched &= np.isin(near, pairs[claims == 1])
     sample = count_sample(
-        cylinder.absz[clump.inside],
-        cylinder.absz[near[matched]],
-        tracers.age[matched],
-        tracers.in_disk[matched],
+        cylinder.at(clump.inside), cylinder.at(near[matched]), tracers.age[matched], tracers.in_disk[matched]
     )
     return sample, clump
 
@@ -381,30 +419,110 @@ def apogee_count_sample(gaia: GaiaStars, tracers: AgeTracers) -> CountSample:
     position = order[np.clip(np.searchsorted(ids, tracers.source_id, sorter=order), 0, ids.size - 1)]
     matched = (tracers.source_id > 0) & (ids[position] == tracers.source_id)
     return count_sample(
-        cylinder.absz,
-        cylinder.absz[position[matched]],
+        cylinder.at(np.arange(cylinder.rows.size)),
+        cylinder.at(position[matched]),
         tracers.age[matched],
         tracers.in_disk[matched],
     )
 
 
+def _in_population(sample: CountSample, lo: float, hi: float) -> BoolArray:
+    """Return which matches of *sample* belong to its population and to the ages [*lo*, *hi*) Gyr."""
+    return sample.tracer_in_disk & (sample.tracer_age >= lo) & (sample.tracer_age < hi)
+
+
 def slice_fraction(sample: CountSample, lo: float, hi: float) -> FloatArray:
     """Return the fraction of the matches of each slice that belong to the population of ages [*lo*, *hi*) Gyr."""
     slices = slice_of(sample.tracer_absz)
-    in_pop = sample.tracer_in_disk & (sample.tracer_age >= lo) & (sample.tracer_age < hi)
+    in_pop = _in_population(sample, lo, hi)
     n_slices = len(SLICE_EDGES_KPC) - 1
     total = np.bincount(slices, minlength=n_slices).astype(np.float64)
     hits = np.bincount(slices, weights=in_pop.astype(np.float64), minlength=n_slices)
     return np.divide(hits, total, out=np.zeros_like(hits), where=total > 0)
 
 
+def horizontal_gradient(sample: CountSample, member: BoolArray) -> float:
+    """Return b (per kpc) of the fraction A(z) exp(b x) of the matches *member*, one b for every slice.
+
+    With A of each slice profiled out of the Poisson likelihood of the memberships, b solves
+    sum_k M_k <x e^{bx}>_k / <e^{bx}>_k = sum_j m_j x_j, M_k the members of slice k and the
+    averages over its matches, whose left side increases with b. It is 0 when the matches
+    carry no x, and ``GRADIENT_BOUND_PER_KPC`` with its sign when the root lies beyond it.
+    """
+    slices = slice_of(sample.tracer_absz)
+    n_slices = len(SLICE_EDGES_KPC) - 1
+    members = np.bincount(slices, weights=member.astype(np.float64), minlength=n_slices)
+    target = float(np.sum(sample.tracer_x[member]))
+
+    def score(b: float) -> float:
+        e = np.exp(b * sample.tracer_x)
+        s0 = np.bincount(slices, weights=e, minlength=n_slices)
+        s1 = np.bincount(slices, weights=e * sample.tracer_x, minlength=n_slices)
+        return float(np.sum(np.divide(members * s1, s0, out=np.zeros(n_slices), where=s0 > 0.0)) - target)
+
+    bound = GRADIENT_BOUND_PER_KPC
+    low, high = score(-bound), score(bound)
+    if high <= 0.0 <= low:
+        return 0.0
+    if low > 0.0:
+        return -bound
+    if high < 0.0:
+        return bound
+    return float(brentq(score, -bound, bound))
+
+
+@dataclass(frozen=True)
+class PopulationCounts:
+    """The counts of one population: its gradient b, the Gaia moments weighted by exp(b x), and A of each slice."""
+
+    gradient: float
+    moments: CountMoments
+    level: FloatArray
+
+    def hz(self, k: float) -> tuple[float, float]:
+        """Return h_Z (kpc) and its window k h_Z; NaN for both beyond the counts."""
+        return self.moments.fit(self.level, k)
+
+    def exponential_hz(self, limit: float = Z_MAX_KPC) -> float:
+        """Return the scale of the exponential on [0, *limit*] fit to the counts by maximum likelihood, no window."""
+        return self.moments.exponential(self.level, limit)
+
+    def per_slice(self) -> FloatArray:
+        """Return the stars of the population in each slice of ``SLICE_EDGES_KPC``."""
+        return np.asarray(np.diff(self.moments.below(self.level, _EDGES)), dtype=np.float64)
+
+
+def population_counts(sample: CountSample, lo: float, hi: float) -> PopulationCounts:
+    """Return the counts of the population of ages [*lo*, *hi*) Gyr of *sample*, corrected for its gradient.
+
+    A of slice k is M_k / sum_j exp(b x_j) over the matches of the slice, which is the
+    fraction of the slice where b = 0.
+    """
+    member = _in_population(sample, lo, hi)
+    b = horizontal_gradient(sample, member)
+    slices = slice_of(sample.tracer_absz)
+    n_slices = len(SLICE_EDGES_KPC) - 1
+    members = np.bincount(slices, weights=member.astype(np.float64), minlength=n_slices)
+    s0 = np.bincount(slices, weights=np.exp(b * sample.tracer_x), minlength=n_slices)
+    level = np.divide(members, s0, out=np.zeros(n_slices), where=s0 > 0.0)
+    moments = (
+        sample.moments if b == 0.0 else CountMoments.of(sample.gaia_absz, sample.gaia_count, np.exp(b * sample.gaia_x))
+    )
+    return PopulationCounts(b, moments, level)
+
+
 def count_hz(sample: CountSample, lo: float, hi: float, k: float) -> tuple[float, float]:
     """Return h_Z (kpc) of the population of ages [*lo*, *hi*) and its window k h_Z; NaN for both beyond the counts.
 
-    Each Gaia star is weighted by P(pop | z), the fraction of its slice interpolated between
-    the slice centers.
+    Each Gaia star is weighted by P(pop | x, z) = A(z) exp(b x) of :func:`population_counts`.
     """
-    return sample.moments.fit(slice_fraction(sample, lo, hi), k)
+    return population_counts(sample, lo, hi).hz(k)
+
+
+def _predicted_fraction(sample: CountSample, slice_mass: FloatArray) -> FloatArray:
+    """Return the fraction of the Gaia stars of each slice of *sample* that a population with *slice_mass* takes."""
+    gaia = sample.moments.per_slice()
+    return np.divide(slice_mass, gaia, out=np.zeros_like(slice_mass), where=gaia > 0.0)
 
 
 def predicted_hz(sample: CountSample, slice_mass: FloatArray, k: float) -> tuple[float, float]:
@@ -415,8 +533,16 @@ def predicted_hz(sample: CountSample, slice_mass: FloatArray, k: float) -> tuple
     :func:`count_hz` as a measured one does, bias included. Only the shape of *slice_mass*
     matters.
     """
-    gaia = sample.moments.per_slice()
-    return sample.moments.fit(np.divide(slice_mass, gaia, out=np.zeros_like(slice_mass), where=gaia > 0.0), k)
+    return sample.moments.fit(_predicted_fraction(sample, slice_mass), k)
+
+
+def predicted_exponential_hz(sample: CountSample, slice_mass: FloatArray, limit: float = Z_MAX_KPC) -> float:
+    """Return the exponential on [0, *limit*] that the counts of *sample* fit to a population with *slice_mass*.
+
+    This is :meth:`PopulationCounts.exponential_hz` of a predicted population, through the
+    same fractions as :func:`predicted_hz`.
+    """
+    return sample.moments.exponential(_predicted_fraction(sample, slice_mass), limit)
 
 
 def profile_slices(rho: FloatArray, z_grid: FloatArray = Z_GRID) -> FloatArray:

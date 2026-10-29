@@ -223,8 +223,11 @@ def with_distmass_ages(apogee: Apogee, distmass: Path) -> Apogee:
     return replace(apogee, num=num)
 
 
-def apogee_kinematics(apogee: Apogee) -> KinematicStars:
-    """Return the low-[alpha/Fe] giants of the solar annulus with good distances and ages."""
+def apogee_kinematics(apogee: Apogee, population: BoolArray | None = None) -> KinematicStars:
+    """Return the giants of the solar annulus with good distances and ages in *population* of the rows of *apogee*.
+
+    The population is by default the low-[alpha/Fe] sequence of :func:`apogee_low_alpha`.
+    """
     num = apogee.num
     finite = np.all(np.isfinite(np.vstack(list(num.values()))), axis=0)
     age = num["age_lowess_correct"]
@@ -237,8 +240,8 @@ def apogee_kinematics(apogee: Apogee) -> KinematicStars:
             & (num["weighted_dist_error"] < MAX_FRAC_DIST_ERR * num["weighted_dist"])
             & (age > 0.0) & (num["age_total_error"] < MAX_FRAC_AGE_ERR * age)
             & (num["galr"] > R_MIN_KPC) & (num["galr"] < R_MAX_KPC) & (np.abs(num["galz"]) < Z_KIN_MAX_KPC)
-            & apogee_low_alpha(num["FE_H"], num["MG_H"] - num["FE_H"])
         )  # fmt: skip
+        keep &= apogee_low_alpha(num["FE_H"], num["MG_H"] - num["FE_H"]) if population is None else population
     phase = Phase(num["galr"][keep], num["galz"][keep], num["galvr"][keep], num["galvt"][keep], num["galvz"][keep])
     return KinematicStars(age[keep], phase, num["galvr_err"][keep], num["galvz_err"][keep])
 
@@ -288,9 +291,16 @@ def lamost_age_tracers(cat: dict[str, FloatArray], population: BoolArray | None 
     )  # fmt: skip
 
 
-def lamost_kinematics(cat: dict[str, FloatArray], rng: np.random.Generator) -> KinematicStars:
-    """Return the disk red-clump stars of the solar annulus in the astroNN frame, with Monte Carlo velocity errors."""
-    keep = lamost_in_disk(cat) & (cat["ERR_DISTANCE"] < MAX_FRAC_DIST_ERR * cat["DISTANCE"])
+def lamost_kinematics(
+    cat: dict[str, FloatArray], rng: np.random.Generator, population: BoolArray | None = None
+) -> KinematicStars:
+    """Return the red-clump stars of *population* in the solar annulus, astroNN frame, with Monte Carlo velocity errors.
+
+    The population is by default the disk of :func:`lamost_in_disk`.
+    """
+    keep = (lamost_in_disk(cat) if population is None else population) & (
+        cat["ERR_DISTANCE"] < MAX_FRAC_DIST_ERR * cat["DISTANCE"]
+    )
     c = {k: v[keep] for k, v in cat.items()}
     phase = galactocentric(Sky(c["RA"], c["DEC"], c["DISTANCE"], c["PMRA"], c["PMDEC"], c["RV"]))
     inside = (phase.r > R_MIN_KPC) & (phase.r < R_MAX_KPC) & (np.abs(phase.z) < Z_KIN_MAX_KPC)

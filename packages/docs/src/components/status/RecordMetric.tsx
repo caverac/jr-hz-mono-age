@@ -1,5 +1,12 @@
 import MathLabel from '@site/src/components/MathLabel'
-import { between, count, fixed, percent, plusMinus } from '@site/src/components/status/format'
+import {
+  between,
+  count,
+  fixed,
+  percent,
+  plusMinus,
+  signed
+} from '@site/src/components/status/format'
 import {
   JR_RELATION_PATH,
   type JrRelationData,
@@ -9,6 +16,7 @@ import {
 import { extent, median, trendText } from '@site/src/components/status/metrics'
 import {
   boxText,
+  type CellRatio,
   cellMedian,
   type ImigBin,
   type ImigCell,
@@ -121,10 +129,29 @@ function imigHeight(data: MilkyWayData, height: ImigHeight, age: number): string
     : `${plusMinus(bin.heights[height].value, bin.heights[height].err, 3, false)} kpc`
 }
 
-/** The median of our counts over their h_Z in the measured `cells` whose [M/H] center lies in [lo, hi), and their number. */
-function medianText(cells: ImigCells, lo: number, hi: number): string {
-  const { median, n } = cellMedian(cells, lo, hi)
+/** The median of the ratio `ratio` in the measured `cells` whose [M/H] center lies in [lo, hi), and their number. */
+function medianText(
+  cells: ImigCells,
+  lo: number,
+  hi: number,
+  ratio: CellRatio = 'counted'
+): string {
+  const { median, n } = cellMedian(cells, lo, hi, ratio)
   return `${fixed(median)} over ${n} cells`
+}
+
+/** The median of the ratio `ratio` in the measured APOGEE cells whose age bin lies inside [lo, hi) Gyr, and their number. */
+function ageMedianText(data: MilkyWayData, ratio: CellRatio, lo: number, hi: number): string {
+  const values = data.imigCells.cells
+    .filter((c) => isMeasured(data.imigCells, c) && c.ageLo >= lo - 1e-9 && c.ageHi <= hi + 1e-9)
+    .map((c) => c.ratios[ratio].value)
+    .filter((r) => Number.isFinite(r))
+  return `${fixed(median(values))} over ${values.length} cells`
+}
+
+/** The median gradient of our counts over the measured APOGEE cells whose [M/H] center lies in [lo, hi), per kpc. */
+function gradientText(data: MilkyWayData, lo: number, hi: number): string {
+  return `${signed(median(measuredIn(data.imigCells, lo, hi).map((c) => c.ours.gradient)))} kpc$^{-1}$`
 }
 
 /** What the counts of the survey `name` give an exponential of `scale` kpc, over the scale. */
@@ -141,7 +168,7 @@ function cellRange(data: MilkyWayData, value: (cell: ImigCell) => number): strin
 
 /** The median shape of the measured APOGEE cells with [M/H] in [lo, hi), slice by slice. */
 function medianShape(data: MilkyWayData, lo: number, hi: number): readonly number[] {
-  const shapes = measuredIn(data.imigCells, lo, hi).map((c) => c.shape)
+  const shapes = measuredIn(data.imigCells, lo, hi).map((c) => c.ours.shape)
   return data.sliceEdges
     .slice(1)
     .map((_, i) => median(shapes.map((shape) => shape[i] ?? Number.NaN)))
@@ -154,14 +181,6 @@ function targeted(data: MilkyWayData, index: number): TargetedCells {
     throw new Error(`no targeting box ${index}`)
   }
   return found
-}
-
-/** The ages of the Imig et al. bins without the height `height`. */
-function imigMissing(data: MilkyWayData, height: ImigHeight): string {
-  const missing = data.imig.bins.filter((b) => !Number.isFinite(b.heights[height].value))
-  return missing.length === 0
-    ? 'none'
-    : missing.map((b) => `${fixed(b.ageLo)}-${fixed(b.ageHi)} Gyr`).join(', ')
 }
 
 const MW_METRICS = {
@@ -224,11 +243,44 @@ const MW_METRICS = {
   imigCountsTrend: (d: MilkyWayData) => trendText(d.imig.trends.imigCounts),
   countsAstronnTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsAstronn),
   countsDistmassTrend: (d: MilkyWayData) => trendText(d.imig.trends.countsDistmass),
-  countsDistmassMissing: (d: MilkyWayData) => imigMissing(d, 'countsDistmass'),
   cellsMin: (d: MilkyWayData) => String(d.imigCells.minMatches),
   cellsMeasured: (d: MilkyWayData) => `${d.imigCells.nMeasured} of ${d.imigCells.cells.length}`,
   cellsMedian: (d: MilkyWayData) => fixed(d.imigCells.medianRatio),
-  cellsTrend: (d: MilkyWayData) => trendText(d.imigCells.trend),
+  cellsTrend: (d: MilkyWayData) => trendText(d.imigCells.trends.counted.metallicity),
+  cellsTrendAge: (d: MilkyWayData) => trendText(d.imigCells.trends.counted.age),
+  cellsExpMedian: (d: MilkyWayData) =>
+    medianText(d.imigCells, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, 'exponential'),
+  cellsExpPoor: (d: MilkyWayData) =>
+    medianText(d.imigCells, Number.NEGATIVE_INFINITY, -0.1, 'exponential'),
+  cellsExpSolar: (d: MilkyWayData) => medianText(d.imigCells, -0.1, 0.1, 'exponential'),
+  cellsExpRich: (d: MilkyWayData) =>
+    medianText(d.imigCells, 0.1, Number.POSITIVE_INFINITY, 'exponential'),
+  cellsExpTrend: (d: MilkyWayData) => trendText(d.imigCells.trends.exponential.metallicity),
+  cellsExpTrendAge: (d: MilkyWayData) => trendText(d.imigCells.trends.exponential.age),
+  cellsExpYoung: (d: MilkyWayData) => ageMedianText(d, 'exponential', 0, 2.51),
+  cellsExpOld: (d: MilkyWayData) => ageMedianText(d, 'exponential', 5.01, Number.POSITIVE_INFINITY),
+  cellsTracerPoor: (d: MilkyWayData) =>
+    medianText(d.imigCells, Number.NEGATIVE_INFINITY, -0.1, 'tracer'),
+  cellsTracerSolar: (d: MilkyWayData) => medianText(d.imigCells, -0.1, 0.1, 'tracer'),
+  cellsTracerRich: (d: MilkyWayData) =>
+    medianText(d.imigCells, 0.1, Number.POSITIVE_INFINITY, 'tracer'),
+  cellsTracerTrend: (d: MilkyWayData) => trendText(d.imigCells.trends.tracer.metallicity),
+  cellsTracerTrendAge: (d: MilkyWayData) => trendText(d.imigCells.trends.tracer.age),
+  cellsKinMin: (d: MilkyWayData) =>
+    String(
+      Math.min(
+        ...d.imigCells.cells
+          .filter((c) => isMeasured(d.imigCells, c) && Number.isFinite(c.ratios.tracer.value))
+          .map((c) => c.kinematics.nKin)
+      )
+    ),
+  cellsWithTracer: (d: MilkyWayData) => {
+    const measured = d.imigCells.cells.filter((c) => isMeasured(d.imigCells, c))
+    return `${measured.filter((c) => Number.isFinite(c.ratios.tracer.value)).length} of ${measured.length}`
+  },
+  gradientPoor: (d: MilkyWayData) => gradientText(d, Number.NEGATIVE_INFINITY, -0.1),
+  gradientRich: (d: MilkyWayData) => gradientText(d, 0.1, Number.POSITIVE_INFINITY),
+  lamostExpTrendAge: (d: MilkyWayData) => trendText(d.imigCellsLamost.trends.exponential.age),
   cellsMetalPoor: (d: MilkyWayData) => medianText(d.imigCells, Number.NEGATIVE_INFINITY, -0.1),
   cellsMetalSolar: (d: MilkyWayData) => medianText(d.imigCells, -0.1, 0.1),
   cellsMetalRich: (d: MilkyWayData) => medianText(d.imigCells, 0.1, Number.POSITIVE_INFINITY),
@@ -241,12 +293,24 @@ const MW_METRICS = {
   boxPoorB: (d: MilkyWayData) => medianText(targeted(d, 1).cells, Number.NEGATIVE_INFINITY, -0.1),
   boxRichA: (d: MilkyWayData) => medianText(targeted(d, 0).cells, 0.1, Number.POSITIVE_INFINITY),
   boxRichB: (d: MilkyWayData) => medianText(targeted(d, 1).cells, 0.1, Number.POSITIVE_INFINITY),
-  boxTrendA: (d: MilkyWayData) => trendText(targeted(d, 0).cells.trend),
-  boxTrendB: (d: MilkyWayData) => trendText(targeted(d, 1).cells.trend),
+  boxTrendA: (d: MilkyWayData) => trendText(targeted(d, 0).cells.trends.counted.metallicity),
+  boxTrendB: (d: MilkyWayData) => trendText(targeted(d, 1).cells.trends.counted.metallicity),
   slopeCountsApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.counts),
-  slopeImigApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.imig),
+  slopeExpApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.countsExponential),
+  slopeSunApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.imigSun),
+  slopeTracerApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.tracer),
+  slopeSigmaApogee: (d: MilkyWayData) => trendText(d.imigCells.slopes.sigmaZ),
   slopeCountsLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.counts),
-  slopeImigLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.imig),
+  slopeExpLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.countsExponential),
+  slopeSunLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.imigSun),
+  slopeTracerLamost: (d: MilkyWayData) => trendText(d.imigCellsLamost.slopes.tracer),
+  estimatorRatios: (d: MilkyWayData) =>
+    between(extent(d.estimators.map((e) => e.windowed / e.exponential))),
+  estimatorSigmas: (d: MilkyWayData) => between(extent(d.estimators.map((e) => e.sigmaZ)), 0),
+  estimatorWhole: (d: MilkyWayData) =>
+    between(extent(d.estimators.map((e) => e.exponentialWhole / e.exponential))),
+  gradientRange: (d: MilkyWayData) =>
+    between(extent(d.surveys.flatMap((s) => s.bins.map((b) => b.gradient)))),
   distmassTracerOld: (d: MilkyWayData) =>
     between(
       extent(
@@ -258,8 +322,10 @@ const MW_METRICS = {
   biasApogee15: (d: MilkyWayData) => biasText(d, 'apogee', 0.15),
   biasApogee20: (d: MilkyWayData) => biasText(d, 'apogee', 0.2),
   biasApogee40: (d: MilkyWayData) => biasText(d, 'apogee', 0.4),
-  modelGeometry: (d: MilkyWayData) => cellRange(d, (c) => c.imigWindow / c.imigSun.value),
-  modelSlices: (d: MilkyWayData) => cellRange(d, (c) => c.imig.value / c.imigWindow),
+  modelGeometry: (d: MilkyWayData) => cellRange(d, (c) => c.theirs.window / c.theirs.sun.value),
+  modelSlices: (d: MilkyWayData) => cellRange(d, (c) => c.theirs.counted.value / c.theirs.window),
+  theirExponential: (d: MilkyWayData) =>
+    cellRange(d, (c) => c.theirs.exponential.value / c.theirs.sun.value),
   shapePoorMidplane: (d: MilkyWayData) =>
     fixed(medianShape(d, Number.NEGATIVE_INFINITY, -0.1)[0] ?? Number.NaN),
   shapeRichMidplane: (d: MilkyWayData) =>

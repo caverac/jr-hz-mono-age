@@ -37,7 +37,7 @@ from experiments.mw_counts import (
     CountBias,
     CountSample,
     count_bias,
-    count_hz,
+    population_counts,
     predicted_hz,
     profile_slices,
 )
@@ -97,12 +97,13 @@ class MwKinematics:
 
 @dataclass(frozen=True)
 class MwHeights:
-    """h_Z (kpc) of one age bin from the counts, its window, the matches in the population, and failed draws."""
+    """h_Z (kpc) of one age bin from the counts, its window, the matches, failed draws, and its gradient b (1/kpc)."""
 
     measured: Estimate
     window: float
     n_matched: int
     failed: float  # the fraction of bootstrap draws without an h_Z
+    gradient: float  # of the population fraction exp(b x) across the cylinder
 
 
 @dataclass(frozen=True)
@@ -159,11 +160,12 @@ class MwSurvey:
 
 
 @dataclass(frozen=True)
-class _Values:
+class _Values:  # pylint: disable=too-many-instance-attributes
     """What one sample of the counts and of the kinematic stars of a bin gives."""
 
     hz: float
     window: float
+    gradient: float
     sigma_r: float
     sigma_z: float
     jr_median: float
@@ -178,7 +180,8 @@ def _values(
 
     The predictions go through *counts*, the sample that h_Z comes from.
     """
-    hz, window = count_hz(counts, bounds[0], bounds[1], model.k)
+    population = population_counts(counts, bounds[0], bounds[1])
+    hz, window = population.hz(model.k)
     absz = np.abs(kin.phase.z)
     jr_rows = (absz < Z_JR_MAX_KPC) & np.isfinite(jr) & (jr >= 0.0)
     mid = absz < Z_MID_MAX_KPC
@@ -186,6 +189,7 @@ def _values(
     return _Values(
         hz=hz,
         window=window,
+        gradient=population.gradient,
         sigma_r=deconvolved_dispersion(kin.phase.v_r[jr_rows], kin.v_r_err[jr_rows]),
         sigma_z=sigma_z,
         jr_median=float(np.median(jr[jr_rows])),
@@ -227,6 +231,7 @@ def measure_bin(
             point.window,
             int(in_pop.sum()),
             float(np.mean([not np.isfinite(d.hz) for d in draws])),
+            point.gradient,
         ),
         predictions=MwPredictions(point.sheet, point.tracer),
         ratios=MwRatios(spread(lambda v: v.sheet / v.hz), spread(lambda v: v.tracer / v.hz)),

@@ -94,6 +94,16 @@ def profile_hz(rho: FloatArray, window: float, z_grid: FloatArray = Z_GRID) -> f
     )
 
 
+def exponential_profile_hz(rho: FloatArray, limit: float, z_grid: FloatArray = Z_GRID) -> float:
+    """Return the scale of the exponential on [0, *limit*] that maximum likelihood fits to the profile *rho*.
+
+    This is the fit of a single exponential without a window, which matches the mean height
+    of the profile below *limit*; for a profile that is not exponential it differs from the
+    windowed h_Z.
+    """
+    return truncated_exp_scale(_profile_mean(rho, limit, z_grid), limit)
+
+
 def self_consistent_window(hz_of_window: Callable[[float], float], k: float) -> tuple[float, float]:
     """Return h_Z and the window L at the smallest root of L = k h(L); NaN for both if none on ``WINDOW_GRID``.
 

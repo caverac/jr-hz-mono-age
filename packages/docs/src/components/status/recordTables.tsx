@@ -25,6 +25,11 @@ import { fixed, signed, Table, type TableProps } from '@site/src/components/stat
 import useRecord from '@site/src/components/status/useRecord'
 import React, { type ReactNode } from 'react'
 
+/** A slope with its error, or "none" where the record has none. */
+function trendCell(t: Trend): string {
+  return Number.isFinite(t.value) ? `$${signed(t.value)} \\pm ${fixed(t.err)}$` : 'none'
+}
+
 /** A table drawn from the record at `path` once it has loaded. */
 function fromRecord<T>(
   path: string,
@@ -58,6 +63,7 @@ export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
     'matches',
     'stars',
     '$\\sigma_z$ (km s$^{-1}$)',
+    '$g$ (kpc$^{-1}$)',
     '$h_Z$ (kpc)',
     'tracer',
     'sheet'
@@ -70,6 +76,7 @@ export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
       String(b.nMatched),
       String(b.nKin),
       estimateCell(b.sigmaZ.value, b.sigmaZ.err, 1),
+      Number.isFinite(b.gradient) ? `$${signed(b.gradient)}$` : 'none',
       estimateCell(b.measured.value, b.measured.err, 3),
       estimateCell(b.ratioTracer.value, b.ratioTracer.err, 2),
       estimateCell(b.ratioSheet.value, b.ratioSheet.err, 2)
@@ -180,7 +187,7 @@ export const ImigCellTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Mi
     rows: edges.map((lo) => {
       const all = imigCells.cells.filter((c) => c.mhLo === lo)
       const measured = all.filter((c) => isMeasured(imigCells, c))
-      const ratios = measured.map((c) => c.ratio.value)
+      const ratios = measured.map((c) => c.ratios.counted.value)
       return [
         `${signed(lo, 1)} to ${signed(all[0]?.mhHi ?? Number.NaN, 1)}`,
         `${measured.length} of ${all.length}`,
@@ -206,7 +213,7 @@ export const TargetingTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
     String(cells.nMatches),
     String(cells.nMeasured),
     ...METALLICITY_RANGES.map(([lo, hi]) => fixed(cellMedian(cells, lo, hi).median)),
-    `$${signed(cells.trend.value)} \\pm ${fixed(cells.trend.err)}$`
+    trendCell(cells.trends.counted.metallicity)
   ]
   return {
     groups: [
@@ -214,7 +221,7 @@ export const TargetingTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
       ['median counts over Imig et al.', 3],
       ['', 1]
     ],
-    head: ['matches used', 'matches', 'cells', ...METALLICITY_LABELS, 'slope per dex'],
+    head: ['matches used', 'matches', 'cells', ...METALLICITY_LABELS, 'per dex, fixed age'],
     rows: [
       row('all', data.imigCells),
       ...data.imigCellsTargeting.map((t) => row(boxText(t.box), t.cells))
@@ -223,23 +230,36 @@ export const TargetingTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
 })
 
 /**
- * The slope of ln h_Z per dex of [M/H] at fixed age, in the measured cells of each set:
- * our counts, and the heights of Imig et al. in the same cells.
+ * The slope of ln h_Z per dex of [M/H] at fixed age, in the measured cells of each set: our
+ * windowed counts, the exponential fit to them, the published heights of Imig et al., the
+ * tracer of each cell's sigma_z, and ln sigma_z itself.
  */
 export const SlopeTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
-  const slope = (t: Trend): string => `$${signed(t.value)} \\pm ${fixed(t.err)}$`
   const row = (counts: string, cells: ImigCells): readonly string[] => [
     counts,
     String(cells.nMeasured),
-    slope(cells.slopes.counts),
-    slope(cells.slopes.imig)
+    trendCell(cells.slopes.counts),
+    trendCell(cells.slopes.countsExponential),
+    trendCell(cells.slopes.imigSun),
+    trendCell(cells.slopes.tracer),
+    trendCell(cells.slopes.sigmaZ)
   ]
   return {
     groups: [
       ['', 2],
-      ['slope of $\\ln h_Z$ per dex', 2]
+      ['our counts', 2],
+      ['', 2],
+      ['', 1]
     ],
-    head: ['counts', 'cells', 'ours', 'Imig et al.'],
+    head: [
+      'counts',
+      'cells',
+      'windowed',
+      'exponential fit',
+      'Imig et al.',
+      'tracer',
+      '$\\sigma_z$'
+    ],
     rows: [
       row('APOGEE, all matches', data.imigCells),
       ...data.imigCellsTargeting.map((t) => row(`APOGEE, ${boxText(t.box)}`, t.cells)),
@@ -247,6 +267,100 @@ export const SlopeTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
     ]
   }
 })
+
+/**
+ * The windowed h_Z of the tracer of each sigma_z against the exponential fits to the same
+ * profile below the edge of the counts and over the whole profile.
+ */
+export const EstimatorTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({
+  groups: [
+    ['', 2],
+    ['exponential fit (kpc)', 2],
+    ['ratios', 2]
+  ],
+  head: [
+    '$\\sigma_z$ (km s$^{-1}$)',
+    'windowed $h_Z$ (kpc)',
+    '$|z| < 1.2$ kpc',
+    'whole profile',
+    'windowed over fit',
+    'whole over $|z| < 1.2$ kpc'
+  ],
+  rows: data.estimators.map((e) => [
+    fixed(e.sigmaZ, 0),
+    fixed(e.windowed, 3),
+    fixed(e.exponential, 3),
+    fixed(e.exponentialWhole, 3),
+    fixed(e.windowed / e.exponential),
+    fixed(e.exponentialWhole / e.exponential)
+  ])
+}))
+
+/**
+ * How the three ratios of the cells change, in each set of cells: the slope of their
+ * logarithm per ln age at fixed [M/H], and per dex of [M/H] at fixed age.
+ */
+export const RatioTrendTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const row = (counts: string, cells: ImigCells): readonly string[] => [
+    counts,
+    String(cells.nMeasured),
+    ...(['counted', 'exponential', 'tracer'] as const).flatMap((ratio) => [
+      trendCell(cells.trends[ratio].age),
+      trendCell(cells.trends[ratio].metallicity)
+    ])
+  ]
+  return {
+    groups: [
+      ['', 2],
+      ['windowed, ours over theirs', 2],
+      ['exponential fit, ours over theirs', 2],
+      ['tracer over ours', 2]
+    ],
+    head: [
+      'counts',
+      'cells',
+      'per ln age',
+      'per dex',
+      'per ln age',
+      'per dex',
+      'per ln age',
+      'per dex'
+    ],
+    rows: [
+      row('APOGEE, all matches', data.imigCells),
+      ...data.imigCellsTargeting.map((t) => row(`APOGEE, ${boxText(t.box)}`, t.cells)),
+      row('LAMOST', data.imigCellsLamost)
+    ]
+  }
+})
+
+/**
+ * The measured APOGEE cells of each range of [M/H], as medians: our windowed h_Z over their
+ * model through our counts, the exponential fit to our counts over that to their model
+ * through our counts, and the tracer of each cell's sigma_z over our windowed h_Z.
+ */
+export const ImigEstimatorTable = fromRecord(
+  MILKY_WAY_PATH,
+  parseMilkyWay,
+  (data: MilkyWayData) => ({
+    groups: [
+      ['', 2],
+      ['ours over Imig et al.', 2],
+      ['', 1]
+    ],
+    head: ['$[\\mathrm{M/H}]$', 'cells', 'windowed', 'exponential fit', 'tracer over ours'],
+    rows: METALLICITY_RANGES.map(([lo, hi], j) => {
+      const cells = measuredIn(data.imigCells, lo, hi)
+      return [
+        METALLICITY_LABELS[j] ?? '',
+        String(cells.length),
+        fixed(cellMedian(data.imigCells, lo, hi, 'counted').median),
+        fixed(cellMedian(data.imigCells, lo, hi, 'exponential').median),
+        fixed(cellMedian(data.imigCells, lo, hi, 'tracer').median)
+      ]
+    })
+  })
+)
 
 /** A ratio with three digits, or "none" where the record has none. */
 function ratioCell(value: number): string {
@@ -301,9 +415,9 @@ export const ImigModelTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
     return [
       METALLICITY_LABELS[j] ?? '',
       String(cells.length),
-      ratioCell(median(cells.map((c) => c.imigWindow / c.imigSun.value))),
-      ratioCell(median(cells.map((c) => c.imig.value / c.imigWindow))),
-      fixed(median(cells.map((c) => c.ratio.value)))
+      ratioCell(median(cells.map((c) => c.theirs.window / c.theirs.sun.value))),
+      ratioCell(median(cells.map((c) => c.theirs.counted.value / c.theirs.window))),
+      fixed(median(cells.map((c) => c.ratios.counted.value)))
     ]
   })
 }))
@@ -324,7 +438,7 @@ export const ImigShapeTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: M
     ],
     head: ['$[\\mathrm{M/H}]$', ...slices],
     rows: METALLICITY_RANGES.map(([lo, hi], j) => {
-      const shapes = measuredIn(data.imigCells, lo, hi).map((c) => c.shape)
+      const shapes = measuredIn(data.imigCells, lo, hi).map((c) => c.ours.shape)
       return [
         METALLICITY_LABELS[j] ?? '',
         ...slices.map((_, i) => fixed(median(shapes.map((shape) => shape[i] ?? Number.NaN))))

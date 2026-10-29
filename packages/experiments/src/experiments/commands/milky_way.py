@@ -12,6 +12,7 @@ and writes its record to ``<out-dir>/milky-way.json``::
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import click
@@ -84,30 +85,55 @@ def survey_lines(survey: MwSurvey) -> list[str]:
         lines.append(f"  {rng.lo:g}-{rng.hi:g} Gyr ({rng.n_bins} bins): trends {trends}; eta {rng.eta:.2f}")
     bias = ", ".join(f"{h:.2f} {r:.3f}" for h, r in zip(survey.bias.scales, survey.bias.ratios, strict=True))
     lines.append(f"  counts of an exponential over its scale (kpc): {bias}")
+    gradients = ", ".join(f"{b.age_lo:g}-{b.age_hi:g} {b.heights.gradient:+.2f}" for b in survey.bins)
+    lines.append(f"  gradient of the fraction exp(b x) toward the center (1/kpc): {gradients}")
     return lines
 
 
 def cell_lines(cells: ImigCells, title: str = "imig cells") -> list[str]:
-    """Return the printed summary of the populations of Imig et al. one at a time, by [M/H] bin."""
+    """Return the printed summary of the populations of Imig et al. one at a time, by [M/H] bin.
+
+    The medians are of our windowed h_Z over their model through our counts, of our
+    exponential fit over theirs through our counts, and of the tracer over our windowed h_Z.
+    """
     lines = [
         f"{title}, {cells.n_matches:,} matches, cells with {cells.min_matches}+:"
-        "   [M/H]  cells  matches  median counts/Imig"
+        "   [M/H]  cells  matches  ours/theirs  exponential/theirs  tracer/ours"
     ]
+
+    def median(values: list[float]) -> str:
+        finite = [v for v in values if np.isfinite(v)]
+        return f"{np.median(finite):.2f}" if finite else "none"
+
     for lo in sorted({c.m_h_lo for c in cells.cells}):
         measured = [
-            c for c in cells.cells if c.m_h_lo == lo and c.n_matched >= cells.min_matches and np.isfinite(c.ratio.value)
+            c
+            for c in cells.cells
+            if c.m_h_lo == lo and c.n_matched >= cells.min_matches and np.isfinite(c.ratios.counted.value)
         ]
-        median = f"{np.median([c.ratio.value for c in measured]):.2f}" if measured else "none"
-        lines.append(f"  {lo:+.1f}  {len(measured):5d} {sum(c.n_matched for c in measured):8d}  {median}")
-    t, ours, theirs = cells.trend, cells.slopes.counts, cells.slopes.imig
-    lines.append(
-        f"  {cells.n_measured} cells: median {cells.median_ratio:.2f}, "
-        f"slope of ln(counts/Imig) {t.value:+.2f}+/-{t.err:.2f} per dex of [M/H]"
+        lines.append(
+            f"  {lo:+.1f}  {len(measured):5d} {sum(c.n_matched for c in measured):8d}"
+            f"  {median([c.ratios.counted.value for c in measured]):>11s}"
+            f"  {median([c.ratios.exponential.value for c in measured]):>18s}"
+            f"  {median([c.ratios.tracer.value for c in measured]):>11s}"
+        )
+    trends = ", ".join(
+        f"{name} {t.age.value:+.2f}+/-{t.age.err:.2f} ({t.metallicity.value:+.2f}+/-{t.metallicity.err:.2f})"
+        for name, t in (
+            ("counted", cells.trends.counted),
+            ("exponential", cells.trends.exponential),
+            ("tracer", cells.trends.tracer),
+        )
     )
     lines.append(
-        f"  slope of ln h_Z per dex at fixed age: counts {ours.value:+.2f}+/-{ours.err:.2f}, "
-        f"Imig {theirs.value:+.2f}+/-{theirs.err:.2f}"
+        f"  {cells.n_measured} cells: median {cells.median_ratio:.2f}; "
+        f"slope of ln ratio per ln age at fixed [M/H] (per dex at fixed age): {trends}"
     )
+    slopes = ", ".join(
+        f"{name} {getattr(cells.slopes, name).value:+.2f}+/-{getattr(cells.slopes, name).err:.2f}"
+        for name in ("counts", "counts_exponential", "imig", "imig_sun", "tracer", "sigma_z")
+    )
+    lines.append(f"  slope of ln h_Z (ln sigma_z) per dex at fixed age: {slopes}")
     return lines
 
 
@@ -135,6 +161,11 @@ def report_lines(result: MilkyWay) -> list[str]:
         title = f"imig cells in {box.h_lo:g} < H < {box.h_hi:g}, {box.jk_lo:g} < (J-K)0 < {box.jk_hi:g}"
         lines.extend(cell_lines(targeted.cells, title))
     lines.extend(cell_lines(result.imig_cells_lamost, "imig cells with LAMOST, LAMOST ages"))
+    estimators = ", ".join(
+        f"{e.sigma_z:g} km/s {e.windowed / e.exponential:.2f} ({e.windowed / e.exponential_whole:.2f})"
+        for e in result.estimators
+    )
+    lines.append(f"tracer, windowed h_Z over the exponential fit to |z| < 1.2 kpc (to the whole profile): {estimators}")
     return lines
 
 
@@ -151,9 +182,17 @@ def report_lines(result: MilkyWay) -> list[str]:
     help="Directory of the JSON record.",
 )
 def analyze(root: Path, n_bootstrap: int, out_dir: Path) -> None:
-    """Measure the test of the isothermal tracer with the Milky Way catalogs under the root."""
+    """Measure the test of the isothermal tracer with the Milky Way catalogs under the root.
+
+    Each stage prints one line to stderr as it ends, with the minutes since the start.
+    """
+    start = time.monotonic()
+
+    def progress(message: str) -> None:
+        click.echo(f"[{(time.monotonic() - start) / 60.0:5.1f} min] {message}", err=True)
+
     try:
-        result = analyze_milky_way(root, n_bootstrap, n_bootstrap)
+        result = analyze_milky_way(root, n_bootstrap, n_bootstrap, progress)
     except FileNotFoundError as err:
         raise click.ClickException(f"{err}; fetch the inputs with `experiments milky-way fetch`") from err
     for line in report_lines(result):
