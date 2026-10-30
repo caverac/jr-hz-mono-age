@@ -58,8 +58,33 @@ export interface AgeBin {
   readonly halfMass: Estimate
   /** Each prediction's half-mass height over the measured one. */
   readonly halfMassRatios: Readonly<Record<Predictor, Estimate>>
+  /** The thin-layer population of Ting & Rix (2026) against the bin, and the shape of its actions. */
+  readonly coeval: CoevalComparison
   /** The slices of the vertical Jeans equation. */
   readonly jeans: JeansProfile
+}
+
+/**
+ * b and J_0 (kpc km/s) of exp[-(J_z / J_0)^(2 - b)] fitted to the vertical actions of a bin, and
+ * the h_Z and the half-mass height of the population with b = 1/2 and the bin's sigma_z over
+ * the measured ones.
+ */
+export interface CoevalComparison {
+  readonly b: Estimate
+  readonly j0: Estimate
+  /** The b of the isothermal tracer of the bin's sigma_z in the fitted potential: 1 only where it is harmonic. */
+  readonly bIsothermal: number
+  readonly ratio: Estimate
+  readonly halfMassRatio: Estimate
+}
+
+/** The thin-layer population of a potential over a grid of sigma_z (km/s): h_Z and half-mass height (kpc). */
+export interface CoevalCurve {
+  readonly b: number
+  readonly sigmaZ: readonly number[]
+  readonly hz: readonly number[]
+  readonly halfMass: readonly number[]
+  readonly bIsothermal: readonly number[]
 }
 
 /** Age exponents over one range of ages, and the trends of h_pred / h_Z. */
@@ -70,6 +95,8 @@ export interface AgeRange {
   readonly trends: Readonly<Record<Predictor, Trend>>
   /** The trends of the half-mass ratios of the sheet, the tracer and the Jeans equation with the tilt term. */
   readonly halfMassTrends: Readonly<Record<'sheet' | 'tracer' | 'jeans', Trend>>
+  /** The trends of the thin-layer population's h_Z and half-mass ratios. */
+  readonly coevalTrends: { readonly hz: Trend; readonly halfMass: Trend }
   /** eta = d ln h_Z / d ln sigma_z, fitted across the bins with the errors of both. */
   readonly eta: Trend
   /** eta with the half-mass height in place of h_Z. */
@@ -145,6 +172,8 @@ export interface HaloRecord {
   readonly tracerCurve: TracerCurve
   /** The checks with the unclipped sigma_z, the disk stars alone and finer bins of age. */
   readonly checks: Checks
+  /** The thin-layer population of the halo's potential over the grid of the tracer curve. */
+  readonly coevalCurve: CoevalCurve
   /** The whole-disk h_Z predicted as a sum of isothermal tracers. */
   readonly tracerSum: TracerSum
   /** The mean vertical motions of every population of the annulus. */
@@ -232,6 +261,13 @@ function parseBin(bin: unknown): AgeBin {
     ratios: byPredictor(field(bin, 'ratios'), estimate),
     halfMass: estimate(field(bin, 'half_mass'), 'measured'),
     halfMassRatios: byPredictor(field(field(bin, 'half_mass'), 'ratios'), estimate),
+    coeval: {
+      b: estimate(field(bin, 'coeval'), 'b'),
+      j0: estimate(field(bin, 'coeval'), 'j0'),
+      bIsothermal: num(field(bin, 'coeval'), 'b_isothermal'),
+      ratio: estimate(field(bin, 'coeval'), 'ratio'),
+      halfMassRatio: estimate(field(bin, 'coeval'), 'half_mass_ratio')
+    },
     jeans: {
       z: numbers(field(bin, 'jeans'), 'z'),
       sigma2: numbers(field(bin, 'jeans'), 'sigma2'),
@@ -262,6 +298,10 @@ function parseRange(range: unknown): AgeRange {
       sheet: trend(field(range, 'trends'), 'half_mass_sheet'),
       tracer: trend(field(range, 'trends'), 'half_mass_tracer'),
       jeans: trend(field(range, 'trends'), 'half_mass_jeans')
+    },
+    coevalTrends: {
+      hz: trend(field(range, 'trends'), 'coeval'),
+      halfMass: trend(field(range, 'trends'), 'half_mass_coeval')
     },
     eta: trend(range, 'eta'),
     etaHalfMass: trend(range, 'eta_half_mass')
@@ -337,6 +377,13 @@ export function parseHaloRecord(label: string, records: HaloRecords): HaloRecord
       allStars: parseCheckSet(field(field(record, 'checks'), 'all_stars')),
       disk: parseCheckSet(field(field(record, 'checks'), 'disk')),
       fine: parseCheckSet(field(field(record, 'checks'), 'fine'))
+    },
+    coevalCurve: {
+      b: num(field(record, 'coeval_curve'), 'b'),
+      sigmaZ: numbers(field(record, 'coeval_curve'), 'sigma_z'),
+      hz: numbers(field(record, 'coeval_curve'), 'hz'),
+      halfMass: numbers(field(record, 'coeval_curve'), 'half_mass'),
+      bIsothermal: numbers(field(record, 'coeval_curve'), 'b_isothermal')
     },
     tracerSum: parseTracerSum(records.tracerSum),
     motions: parseEquilibrium(records.equilibrium)

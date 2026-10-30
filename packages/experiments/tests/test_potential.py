@@ -18,6 +18,7 @@ from experiments.mock import true_components
 from experiments.potential import (
     RESIDUAL_MIN_PER_SECTOR,
     RESIDUAL_SECTORS,
+    actions,
     circular_velocity,
     circularity,
     fit_potential,
@@ -94,6 +95,17 @@ def test_radial_actions(truth: agama.Potential) -> None:
     assert jr[0] == pytest.approx(0.0, abs=1e-6)
     assert jr[1] > 10.0
     assert np.isnan(jr[2])
+
+
+def test_vertical_actions(truth: agama.Potential) -> None:
+    """An orbit in the plane has J_z = 0, one that leaves it J_z > 0, and J_R as radial_actions gives it."""
+    v_c = circular_velocity(truth, 8.0)
+    pos = np.array([[8.0, 0.0, 0.0]] * 2)
+    vel = np.array([[0.0, v_c, 0.0], [20.0, v_c, 30.0]])
+    jr, jz = actions(truth, pos, vel)
+    assert jz[0] == pytest.approx(0.0, abs=1e-6)
+    assert jz[1] > 1.0
+    np.testing.assert_array_equal(jr, radial_actions(truth, pos, vel))
 
 
 def test_circularity(truth: agama.Potential) -> None:

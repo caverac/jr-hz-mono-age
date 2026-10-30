@@ -33,6 +33,7 @@ from experiments._paths import (
 from experiments.commands.all_figures import figures
 from experiments.commands.auriga import auriga
 from experiments.commands.milky_way import milky_way
+from experiments.commands.paper_figures import paper_figures_command
 from experiments.commands.window_injection import window_injection
 
 __all__ = [
@@ -73,3 +74,4 @@ main.add_command(auriga)
 main.add_command(milky_way)
 main.add_command(figures)
 main.add_command(window_injection)
+main.add_command(paper_figures_command)

@@ -51,7 +51,7 @@ times per fit.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cached_property
 
 import astropy.coordinates as coord
@@ -186,7 +186,7 @@ class CountSample:  # pylint: disable=too-many-instance-attributes
     ``gaia_absz`` is in ascending order, and ``gaia_rank`` gives the position in it of each
     row of the catalog. ``gaia_count`` is the number of times each star enters the sample:
     1 in the catalog, and its multiplicity in a bootstrap draw. x = d cos b cos l points to
-    the Galactic center.
+    the Galactic center. ``tracer_g`` is the Gaia G of each match, NaN where unknown.
     """
 
     gaia_absz: FloatArray
@@ -197,6 +197,7 @@ class CountSample:  # pylint: disable=too-many-instance-attributes
     tracer_in_disk: BoolArray
     gaia_x: FloatArray  # kpc toward the Galactic center, in the order of gaia_absz
     tracer_x: FloatArray
+    tracer_g: FloatArray
 
     @cached_property
     def moments(self) -> CountMoments:
@@ -223,6 +224,18 @@ class CountSample:  # pylint: disable=too-many-instance-attributes
             self.tracer_in_disk[t],
             self.gaia_x,
             self.tracer_x[t],
+            self.tracer_g[t],
+        )
+
+    def with_matches(self, keep: BoolArray) -> CountSample:
+        """Return the sample with only the matches where *keep* holds, and every Gaia star."""
+        return replace(
+            self,
+            tracer_absz=self.tracer_absz[keep],
+            tracer_age=self.tracer_age[keep],
+            tracer_in_disk=self.tracer_in_disk[keep],
+            tracer_x=self.tracer_x[keep],
+            tracer_g=self.tracer_g[keep],
         )
 
 
@@ -234,14 +247,41 @@ class Positions:
     x: FloatArray
 
 
-def count_sample(gaia: Positions, tracers: Positions, tracer_age: FloatArray, tracer_in_disk: BoolArray) -> CountSample:
-    """Return the counts of the Gaia stars at *gaia*, each entered once, with their matches at *tracers*."""
+def count_sample(
+    gaia: Positions,
+    tracers: Positions,
+    tracer_age: FloatArray,
+    tracer_in_disk: BoolArray,
+    tracer_g: FloatArray | None = None,
+) -> CountSample:
+    """Return the counts of the Gaia stars at *gaia*, each entered once, with their matches at *tracers*.
+
+    *tracer_g* is the G of each match, NaN for all of them if it is not given.
+    """
     order = np.argsort(gaia.absz)
     rank = np.empty_like(order)
     rank[order] = np.arange(order.size)
+    g = np.full(tracers.absz.size, np.nan) if tracer_g is None else tracer_g
     return CountSample(
-        gaia.absz[order], rank, np.ones(order.size), tracers.absz, tracer_age, tracer_in_disk, gaia.x[order], tracers.x
+        gaia.absz[order],
+        rank,
+        np.ones(order.size),
+        tracers.absz,
+        tracer_age,
+        tracer_in_disk,
+        gaia.x[order],
+        tracers.x,
+        g,
     )
+
+
+def brighter_in_slice(sample: CountSample) -> BoolArray:
+    """Return which matches of *sample* are brighter than the median G of the matches of their slice of |z|."""
+    slices = slice_of(sample.tracer_absz)
+    median = np.full(len(SLICE_EDGES_KPC) - 1, np.nan)
+    for k in np.unique(slices):
+        median[k] = np.median(sample.tracer_g[slices == k])
+    return np.asarray(sample.tracer_g < median[slices], dtype=np.bool_)
 
 
 @dataclass(frozen=True)
@@ -406,7 +446,11 @@ def lamost_count_sample(gaia: GaiaStars, tracers: AgeTracers) -> tuple[CountSamp
     pairs, claims = np.unique(near[matched], return_counts=True)
     matched &= np.isin(near, pairs[claims == 1])
     sample = count_sample(
-        cylinder.at(clump.inside), cylinder.at(near[matched]), tracers.age[matched], tracers.in_disk[matched]
+        cylinder.at(clump.inside),
+        cylinder.at(near[matched]),
+        tracers.age[matched],
+        tracers.in_disk[matched],
+        gaia.g[cylinder.rows][near[matched]],
     )
     return sample, clump
 
@@ -423,6 +467,7 @@ def apogee_count_sample(gaia: GaiaStars, tracers: AgeTracers) -> CountSample:
         cylinder.at(position[matched]),
         tracers.age[matched],
         tracers.in_disk[matched],
+        gaia.g[cylinder.rows][position[matched]],
     )
 
 

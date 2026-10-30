@@ -2,7 +2,7 @@
 
 The data commands write a dataclass with :func:`dataclasses.asdict`. :func:`from_dict`
 inverts that from the type hints of the dataclass: nested dataclasses, lists, tuples and
-dicts of them, and floats, ints and strings. A float written as ``null``, a quantity that
+dicts of them, and floats, ints, booleans and strings. A float written as ``null``, a quantity that
 could not be measured, reads back as NaN. A value of the wrong JSON type is an error,
 so a record written by another version of the code fails loudly instead of plotting
 something else.
@@ -17,8 +17,11 @@ from pathlib import Path
 from typing import TypeVar, cast, get_args, get_origin, get_type_hints
 
 from experiments.analysis import HaloAnalysis
+from experiments.injection import Injection
 from experiments.jr_map import JrMapRecord
 from experiments.mock import MockCheck
+from experiments.mw_checks import MwChecks
+from experiments.mw_pipeline import MilkyWay
 from experiments.tracer_sum import TracerSumRecord
 
 T = TypeVar("T")
@@ -39,7 +42,7 @@ def _sequence(value: object) -> Sequence[object]:
 
 
 def _scalar(hint: object, value: object) -> object:
-    """Return the float, int or string *value* as the scalar type *hint*; a null float is NaN."""
+    """Return the float, int, boolean or string *value* as the scalar type *hint*; a null float is NaN."""
     if hint is float and value is None:
         return float("nan")
     if hint is float and isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -47,6 +50,8 @@ def _scalar(hint: object, value: object) -> object:
     if hint is int and isinstance(value, int) and not isinstance(value, bool):
         return value
     if hint is str and isinstance(value, str):
+        return value
+    if hint is bool and isinstance(value, bool):
         return value
     raise TypeError(f"expected {hint}, found {type(value).__name__}")
 
@@ -95,3 +100,18 @@ def load_jr_map(path: Path) -> JrMapRecord:
 def load_tracer_sum(path: Path) -> TracerSumRecord:
     """Return the record of the predicted whole-disk h_Z of one halo written by ``experiments auriga tracer-sum``."""
     return from_dict(TracerSumRecord, json.loads(path.read_text()))
+
+
+def load_milky_way(path: Path) -> MilkyWay:
+    """Return the record written by ``experiments milky-way analyze``."""
+    return from_dict(MilkyWay, json.loads(path.read_text()))
+
+
+def load_mw_checks(path: Path) -> MwChecks:
+    """Return the record written by ``experiments milky-way checks``."""
+    return from_dict(MwChecks, json.loads(path.read_text()))
+
+
+def load_injection(path: Path) -> Injection:
+    """Return the record written by ``experiments window-injection``."""
+    return from_dict(Injection, json.loads(path.read_text()))

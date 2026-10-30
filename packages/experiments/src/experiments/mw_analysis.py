@@ -21,7 +21,9 @@ For each survey (:mod:`experiments.mw_catalogs`) and each age bin of ``AGE_EDGES
 - the ratios h_pred / h_Z carry the errors of one bootstrap that resamples, in each draw,
   the Gaia stars, their spectroscopic matches and the kinematic stars of the bin;
 - the tracer in each potential of a family (:mod:`experiments.mw_potentials`) goes through
-  the counts once, without resampling, which shows how the ratios move with the potential.
+  the counts once, without resampling, which shows how the ratios move with the potential;
+- so does the thin-layer population of Ting & Rix (2026), b = 1/2 with the bin's sigma_z
+  (:mod:`experiments.coeval`), in McMillan (2017) and in each potential of the family.
 
 Over each range of ``AGE_RANGES``, the trend of a ratio with age tests whether the
 prediction reproduces the age dependence of h_Z (:func:`experiments.populations.fit_trend`).
@@ -30,12 +32,13 @@ prediction reproduces the age dependence of h_Z (:func:`experiments.populations.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import agama
 import numpy as np
 from numpy.typing import NDArray
 
+from experiments.coeval import THIN_LAYER_B, CoevalModel, isothermal_action_shape
 from experiments.heights import Z_GRID, sheet_profile, tracer_profile
 from experiments.jeans import JeansProfile, jeans_density
 from experiments.mw_catalogs import KinematicStars
@@ -58,7 +61,7 @@ from experiments.populations import (
     fit_power_law,
     fit_trend,
 )
-from experiments.stats import deconvolved_dispersion, half_width
+from experiments.stats import deconvolved_dispersion
 
 FloatArray = NDArray[np.float64]
 
@@ -72,11 +75,23 @@ SEED = 20261028
 
 @dataclass(frozen=True)
 class SolarModel:
-    """What the predictions need: Delta Phi(R_0, z) ((km/s)^2) on the height grid, Sigma (Msun/pc^2) and k."""
+    """What the predictions need: Delta Phi(R_0, z) ((km/s)^2) on the height grid, Sigma (Msun/pc^2) and k.
+
+    ``coeval`` holds the actions of the orbits of the potential, for the thin-layer population.
+    """
 
     phi: FloatArray
     sigma_surf: float
     k: float = K_MAIN
+    coeval: CoevalModel = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Compute the actions of the orbits of the vertical potential."""
+        object.__setattr__(self, "coeval", CoevalModel(self.phi, z_mid=Z_MID_MAX_KPC))
+
+    def thin_layer(self, sigma_z: float) -> FloatArray:
+        """Return the profile of the thin-layer population whose midplane dispersion is *sigma_z*."""
+        return self.coeval.profile(sigma_z, THIN_LAYER_B)
 
 
 def solar_model(pot: agama.Potential, k: float = K_MAIN) -> SolarModel:
@@ -117,21 +132,33 @@ class MwHeights:
 
 @dataclass(frozen=True)
 class MwPredictions:
-    """h_Z (kpc) of one age bin predicted by the sheet, the tracer and the Jeans equation, through the counts."""
+    """h_Z (kpc) of one age bin predicted by the sheet, the tracer and the Jeans equation, through the counts.
+
+    ``b_isothermal`` is the b of exp[-(J_z / J_0)^(2 - b)] that the isothermal tracer of the bin's
+    sigma_z has in McMillan (2017) (:func:`experiments.coeval.isothermal_action_shape`), the
+    value against which Ting & Rix (2026) read the b of red-clump stars.
+    """
 
     sheet: float
     tracer: float
     jeans: float
+    b_isothermal: float
 
 
 @dataclass(frozen=True)
 class MwRatios:
-    """Each predicted h_Z of one age bin over the measured h_Z; ``family`` holds the tracer of each family member."""
+    """Each predicted h_Z of one age bin over the measured h_Z, and point estimates in other potentials or shapes.
+
+    ``family`` holds the tracer in each member of the family, ``coeval`` the thin-layer
+    population in McMillan (2017) and ``family_coeval`` the same in each member.
+    """
 
     sheet: Estimate
     tracer: Estimate
     jeans: Estimate
     family: list[float]
+    coeval: float
+    family_coeval: list[float]
 
 
 @dataclass(frozen=True)
@@ -256,7 +283,7 @@ def measure_bin(survey: Survey, bounds: tuple[float, float], setting: BinSetting
         draws.append(_values(survey.counts.resampled(rng), kin.select(rows), jr[rows], bounds, model))
 
     def spread(get: Callable[[_Values], float]) -> Estimate:
-        return Estimate(get(point), half_width(np.array([get(d) for d in draws], dtype=np.float64)))
+        return Estimate.of(get(point), np.array([get(d) for d in draws], dtype=np.float64))
 
     counts = survey.counts
     in_pop = counts.tracer_in_disk & (counts.tracer_age >= bounds[0]) & (counts.tracer_age < bounds[1])
@@ -278,21 +305,23 @@ def measure_bin(survey: Survey, bounds: tuple[float, float], setting: BinSetting
             float(np.mean([not np.isfinite(d.hz) for d in draws])),
             point.gradient,
         ),
-        predictions=MwPredictions(point.sheet, point.tracer, point.jeans),
+        predictions=MwPredictions(
+            point.sheet, point.tracer, point.jeans, isothermal_action_shape(model.coeval, point.sigma_z).b
+        ),
         ratios=MwRatios(
             spread(lambda v: v.sheet / v.hz),
             spread(lambda v: v.tracer / v.hz),
             spread(lambda v: v.jeans / v.hz),
-            _family_ratios(survey.counts, point, setting.family),
+            [_through(survey.counts, tracer_profile(m.phi, point.sigma_z), m.k) / point.hz for m in setting.family],
+            _through(survey.counts, model.thin_layer(point.sigma_z), model.k) / point.hz,
+            [_through(survey.counts, m.thin_layer(point.sigma_z), m.k) / point.hz for m in setting.family],
         ),
     )
 
 
-def _family_ratios(counts: CountSample, point: _Values, family: tuple[SolarModel, ...]) -> list[float]:
-    """Return the tracer of the sigma_z of *point* in each model of *family* over the h_Z of *point*."""
-    return [
-        predicted_hz(counts, profile_slices(tracer_profile(m.phi, point.sigma_z)), m.k)[0] / point.hz for m in family
-    ]
+def _through(counts: CountSample, profile: FloatArray, k: float) -> float:
+    """Return the h_Z of the predicted *profile* through the slices and the window of *counts*."""
+    return predicted_hz(counts, profile_slices(profile), k)[0]
 
 
 def measure_range(bins: list[MwBin], lo: float, hi: float) -> MwRange:

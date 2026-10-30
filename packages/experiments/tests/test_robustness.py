@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from test_populations import G_LINEAR, R_MID_KPC, SIGMA_SURF, synthetic_sample, tracer_height
+from test_populations import G_LINEAR, R_MID_KPC, SIGMA_SURF, linear_coeval, synthetic_sample, tracer_height
 
 from experiments.heights import Z_GRID
 from experiments.palicio import PalicioWindow
@@ -29,7 +29,7 @@ def fixture_checks() -> Checks:
     sample = synthetic_sample(tracer_height)
     eps = np.where(np.arange(sample.z.size) % 5 == 0, 0.2, 0.95)
     phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi, R_MID_KPC)
+    model = VerticalModel(SIGMA_SURF, phi, phi, R_MID_KPC, linear_coeval())
     return measure_checks(sample, eps, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
 
 
@@ -66,7 +66,7 @@ def test_fine_bins_without_stars_at_the_plane_have_no_values() -> None:
     sample = synthetic_sample(tracer_height)
     sparse = sample.select(sample.age < 1.0)
     phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi, R_MID_KPC)
+    model = VerticalModel(SIGMA_SURF, phi, phi, R_MID_KPC, linear_coeval())
     eps = np.ones(sparse.z.size)
     checks = measure_checks(sparse, eps, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
     empty = checks.all_stars.bins[-1]

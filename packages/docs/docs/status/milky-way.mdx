@@ -4,7 +4,7 @@ title: Milky Way
 
 import Metric from '@site/src/components/status/Metric'
 import MilkyWayChart from '@site/src/components/status/MilkyWayChart'
-import { MwMetric } from '@site/src/components/status/RecordMetric'
+import { CheckMetric, MwMetric } from '@site/src/components/status/RecordMetric'
 import {
   CountBiasTable,
   EstimatorTable,
@@ -213,6 +213,78 @@ tracer on the distmass scale are <MwMetric name="distmassTracerOld" />. Bins of 
 their neighbors through the errors of the ages (see Limitations), so the membership of one
 bin, and with it its $h_Z$, can change with the age scale. Neither record says which scale
 places this bin better.
+
+## The local potential from the tracer
+
+The family also turns the test around. Every bin carries the ratio of the tracer to its
+$h_Z$ in each of the 36 potentials. Across the family, the logarithm of that ratio is a
+linear function of $\ln\rho_0$ and $\ln\Sigma_{1.1}$ to within
+<MwMetric name="inversionModelRms" /> in every bin. If the populations are isothermal tracers,
+one potential brings every bin of a survey to its measured $h_Z$, which a weighted fit of
+the bins finds (`experiments.mw_inversion`). This is the inverse use of the tracer that Bovy &
+Rix (2013) made with mono-abundance populations, with the family standing in for their
+parameterized potential. The midplane densities are <MwMetric name="inversionRho0" />
+$M_\odot\,\mathrm{pc}^{-3}$ with LAMOST and with APOGEE on the astroNN and the distmass
+scale, against the $0.097 \pm 0.013\,M_\odot\,\mathrm{pc}^{-3}$ that McKee, Parravano &
+Hollenbach (2015) find by combining their census of stars, remnants and gas with a density of
+dark matter inferred from dynamical measurements of the surface density. $\Sigma_{1.1}$ is not
+constrained, at <MwMetric name="inversionSigma11" /> $M_\odot\,\mathrm{pc}^{-2}$, because
+the populations stay below about 1 kpc, where $\rho_0$ sets the potential, so that the two
+parameters correlate strongly. The $\chi^2$ per degree of freedom is
+<MwMetric name="inversionChi2" />, so with LAMOST and on the distmass scale the bins scatter
+about one potential by more than their errors, which the quoted errors include.
+
+## The shape of the populations
+
+Ting & Rix (2026) fit the vertical actions of red-clump stars of 2-8 Gyr with
+$p(J_z) \propto \exp[-(J_z/J_0)^{2-b}]$ and find $b = 0.51$, close to the $b = 1/2$ of
+scatterers confined to a thin layer at the midplane. An isothermal population has $b = 1$ only
+in a harmonic potential: in the potential of McMillan (2017), at the dispersions of our bins,
+the isothermal tracer has $b$ of <MwMetric name="bIsoMw" /> (`experiments.coeval`). The
+population with $b = 1/2$ and the $\sigma_z$ of each bin, through the same counts, gives
+medians over the counts of <MwMetric name="coevalMedians" /> in McMillan (2017) and
+<MwMetric name="familyCoevalMedians" /> in the admissible potentials, against
+<MwMetric name="tracerMedians" /> and <MwMetric name="familyTracerMedians" /> for the
+isothermal tracer. Inverted as above, it needs midplane densities of
+<MwMetric name="inversionCoevalRho0" /> $M_\odot\,\mathrm{pc}^{-3}$. A population with
+$b = 1/2$ is thicker than the isothermal one of the same midplane dispersion, because its
+velocities are flat-topped, so it fits the counts only in a potential denser than the
+measurements near the Sun, close to that of McMillan (2017). At the measured densities, the
+counts favor the isothermal shape, although the error of $\rho_0$ keeps the preference weak.
+
+## Age errors and selection
+
+The ages carry typical errors of 30 percent for the LAMOST red clump (Huang et al. 2020) and
+up to 40 percent by our cut for APOGEE, so bins of 2 Gyr mix their neighbors. The targeting
+of either survey could also depend on age at a fixed position. Two checks remeasure every
+survey with <CheckMetric name="checkBootstrap" /> bootstrap draws per bin
+(`experiments.mw_checks`).
+
+```bash
+OMP_NUM_THREADS=4 uv run experiments milky-way checks
+```
+
+The first draws every age again from its error, lognormal with the relative error as the
+dispersion of $\ln$ age, which doubles the variance of the errors, in
+<CheckMetric name="ageRealizations" /> realizations. The medians of the tracer over the counts
+become <CheckMetric name="ageTracerMedians" />, against <MwMetric name="tracerMedians" /> with
+the ages as given. Its trends over 0-10 Gyr become <CheckMetric name="ageTracerTrends0" />,
+within <CheckMetric name="ageTracerTrendMax0" /> standard errors of 0, with $\eta$ of
+<CheckMetric name="ageEta0" />. Doubling the errors of the ages thus leaves the test where it
+was, presumably because the mixing of ages enters the counts and the kinematics of a bin
+alike.
+
+The second asks whether the fraction of a population at a fixed position depends on the
+magnitude of its stars, as it would if the targeting depended on age there. In each slice of
+$|z|$ we split the matches of each survey at their median $G$, near
+<CheckMetric name="magnitudeSplits" />, and measure each survey with each half. The heights
+of the bright over the faint half are <CheckMetric name="magnitudeRatioRange" />, within two
+standard errors in <CheckMetric name="magnitudeWithin2" /> bins and at most
+<CheckMetric name="magnitudeMaxSigmas" /> standard errors apart. With LAMOST
+<CheckMetric name="magnitudeLamostWithin2" /> bins agree within two errors, against
+<CheckMetric name="magnitudeApogeeWithin2" /> with APOGEE on either age scale. A targeting of APOGEE that
+depends on age at a fixed position may thus move some of its bins by up to the largest of
+these differences, whereas the LAMOST counts show no such dependence.
 
 ## The heights of Imig et al.
 

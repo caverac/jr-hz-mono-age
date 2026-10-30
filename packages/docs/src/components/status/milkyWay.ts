@@ -59,8 +59,25 @@ export interface MwBin {
   /** h_Z (kpc) of the vertical Jeans equation with the measured sigma_z(z), through the same counts. */
   readonly jeans: number
   readonly ratioJeans: Estimate
+  /** The b of the isothermal tracer of the bin's sigma_z in McMillan (2017). */
+  readonly bIsothermal: number
   /** The tracer over h_Z in each potential of the family, in the order of `family`. */
   readonly ratioFamily: readonly number[]
+  /** The thin-layer population of Ting & Rix (2026) over h_Z, in McMillan (2017) and in each member. */
+  readonly ratioCoeval: number
+  readonly ratioFamilyCoeval: readonly number[]
+}
+
+/** The rho_0 (Msun/pc^3) and Sigma_1.1 (Msun/pc^2) at which every bin of one survey matches its h_Z. */
+export interface Inversion {
+  readonly survey: string
+  readonly nBins: number
+  readonly rho0: Estimate
+  readonly sigma11: Estimate
+  readonly correlation: number
+  readonly chi2Dof: number
+  readonly modelRms: number
+  readonly binRho0: readonly Estimate[]
 }
 
 /** One potential around McMillan (2017): its changes, rho_0 (Msun/pc^3), Sigma_1.1 (Msun/pc^2) and v_c (km/s). */
@@ -86,6 +103,9 @@ export interface MwRange {
   readonly jeans: Trend
   /** eta = d ln h_Z / d ln sigma_z, fitted across the bins with the errors of both. */
   readonly eta: Trend
+  /** The age exponents of h_Z and of sigma_z over the bins of the range. */
+  readonly betaH: Estimate
+  readonly betaZ: Estimate
 }
 
 /** What the counts of a survey give exponentials of known scales (kpc), over each scale. */
@@ -283,6 +303,9 @@ export interface MilkyWayData {
   readonly estimators: readonly TracerEstimator[]
   /** The potentials around McMillan (2017) whose tracers every bin also carries. */
   readonly family: readonly FamilyMember[]
+  /** The rho_0 and Sigma_1.1 of each survey with the tracer, and with the thin-layer population. */
+  readonly inversions: readonly Inversion[]
+  readonly inversionsCoeval: readonly Inversion[]
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -326,7 +349,10 @@ function parseBin(bin: unknown): MwBin {
     ratioSheet: estimate(ratios, 'sheet'),
     jeans: num(predictions, 'jeans'),
     ratioJeans: estimate(ratios, 'jeans'),
-    ratioFamily: numbers(ratios, 'family')
+    bIsothermal: num(predictions, 'b_isothermal'),
+    ratioFamily: numbers(ratios, 'family'),
+    ratioCoeval: num(ratios, 'coeval'),
+    ratioFamilyCoeval: numbers(ratios, 'family_coeval')
   }
 }
 
@@ -339,7 +365,9 @@ function parseRange(range: unknown): MwRange {
     tracer: trend(trends, 'tracer'),
     sheet: trend(trends, 'sheet'),
     jeans: trend(trends, 'jeans'),
-    eta: trend(range, 'eta')
+    eta: trend(range, 'eta'),
+    betaH: estimate(field(range, 'exponents'), 'hz'),
+    betaZ: estimate(field(range, 'exponents'), 'sigma_z')
   }
 }
 
@@ -496,6 +524,37 @@ export function isMeasured(cells: ImigCells, cell: ImigCell): boolean {
 }
 
 /** Check and read the record of the Milky Way test. */
+/** Check and read one survey of a Milky Way record. */
+export function parseSurvey(survey: unknown): MwSurvey {
+  return {
+    name: str(survey, 'name'),
+    nGaia: num(survey, 'n_gaia'),
+    nMatched: num(survey, 'n_matched'),
+    bins: list(survey, 'bins').map(parseBin),
+    ranges: list(survey, 'ranges').map(parseRange),
+    bias: {
+      scales: numbers(field(survey, 'bias'), 'scales'),
+      ratios: numbers(field(survey, 'bias'), 'ratios')
+    }
+  }
+}
+
+function parseInversion(inversion: unknown): Inversion {
+  return {
+    survey: str(inversion, 'survey'),
+    nBins: num(inversion, 'n_bins'),
+    rho0: estimate(inversion, 'rho0'),
+    sigma11: estimate(inversion, 'sigma_11'),
+    correlation: num(inversion, 'correlation'),
+    chi2Dof: num(inversion, 'chi2_dof'),
+    modelRms: num(inversion, 'model_rms'),
+    binRho0: list(inversion, 'bin_rho0').map((item) => ({
+      value: num(item, 'value'),
+      err: num(item, 'err')
+    }))
+  }
+}
+
 export function parseMilkyWay(record: unknown): MilkyWayData {
   const imig = field(record, 'imig')
   return {
@@ -504,17 +563,7 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
     k: num(record, 'k'),
     nBootstrap: num(record, 'n_bootstrap'),
     sliceEdges: numbers(record, 'slice_edges_kpc'),
-    surveys: list(record, 'surveys').map((survey) => ({
-      name: str(survey, 'name'),
-      nGaia: num(survey, 'n_gaia'),
-      nMatched: num(survey, 'n_matched'),
-      bins: list(survey, 'bins').map(parseBin),
-      ranges: list(survey, 'ranges').map(parseRange),
-      bias: {
-        scales: numbers(field(survey, 'bias'), 'scales'),
-        ratios: numbers(field(survey, 'bias'), 'ratios')
-      }
-    })),
+    surveys: list(record, 'surveys').map(parseSurvey),
     imig: {
       bins: list(imig, 'bins').map(parseImigBin),
       trends: byHeight(field(imig, 'trends'), trend)
@@ -553,6 +602,8 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
         growthWindow: num(growth, 'window'),
         growthWhole: num(growth, 'whole')
       }
-    })
+    }),
+    inversions: list(record, 'inversions').map(parseInversion),
+    inversionsCoeval: list(record, 'inversions_coeval').map(parseInversion)
   }
 }

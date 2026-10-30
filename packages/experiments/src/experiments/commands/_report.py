@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 BIN_HEADER = (
     "    age   med  N_win    sR    sz  J_R,med       h_Z(k h_Z)    window  h_Z(Z_lim)  "
-    "sheet  tracer  snapshot        a     z50  z50 tracer/z50"
+    "sheet  tracer  snapshot        a     z50  z50 tracer/z50      b  b_iso  b=1/2 layer/h_Z"
 )
 CURVE_SIGMAS_KMS = (10.0, 20.0, 40.0, 80.0)  # the dispersions at which the report quotes the tracer's eta
 RING_HEADER = "         R (kpc)    sz   Sigma  h_Z(Z_lim)  h_Z(k h_Z)  window   sheet  tracer"
@@ -41,7 +41,8 @@ def _bin_line(b: AgeBin) -> str:
         f"{hts.measured.value:6.3f}+/-{hts.measured.err:.3f} {hts.window:6.2f} {hts.fixed:11.3f} "
         f"{pred.sheet:6.3f} {pred.tracer:7.3f} {pred.tracer_snapshot:9.3f} "
         f"{b.slopes.measured.value:6.1f}+/-{b.slopes.measured.err:4.1f} "
-        f"{b.half_mass.measured.value:6.3f} {b.half_mass.ratios.tracer.value:6.2f}"
+        f"{b.half_mass.measured.value:6.3f} {b.half_mass.ratios.tracer.value:6.2f} "
+        f"{b.coeval.b.value:13.2f} {b.coeval.b_isothermal:6.2f} {b.coeval.ratio.value:6.2f}"
     )
 
 

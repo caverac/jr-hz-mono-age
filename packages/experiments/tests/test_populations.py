@@ -9,11 +9,14 @@ in the exact sample they follow it, so that the tracer is right at every age.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
+from dataclasses import replace
 
 import numpy as np
 import pytest
 
+from experiments.coeval import THIN_LAYER_B, CoevalCurve, CoevalModel, coeval_curve
 from experiments.cosmology import Cosmology
 from experiments.heights import Z_GRID, sheet_hz
 from experiments.jeans import TILT_R_MAX_KPC, TILT_R_MIN_KPC
@@ -25,6 +28,7 @@ from experiments.populations import (
     R_MAX_KPC,
     R_MIN_KPC,
     Z_LIM_SCAN_KPC,
+    AgeBin,
     AnnulusSample,
     Estimate,
     Method,
@@ -36,6 +40,7 @@ from experiments.populations import (
     fit_power_law,
     fit_trend,
     measure_mono_age,
+    range_exponents,
     surface_density,
 )
 from experiments.snapshot import Galaxy, Header, Particles, Stars
@@ -62,10 +67,27 @@ def tracer_height(age: float) -> float:
     return vertical_dispersion(age) ** 2 / G_LINEAR
 
 
+def vertical_action_scale(age: float) -> float:
+    """Return the scale J_0 (kpc km/s) of the exponential distribution of the vertical actions at *age* Gyr."""
+    return 2.0 * (0.5 + age)
+
+
+@functools.cache
+def linear_coeval() -> CoevalCurve:
+    """Return the thin-layer population of the linear potential over the dispersions of the synthetic bins.
+
+    The grid stops at 32 km/s, below the dispersion at which this shallow potential keeps more
+    than EDGE_DENSITY of the midplane density at the edge of the heights (about 33 km/s).
+    """
+    return coeval_curve(CoevalModel(G_LINEAR * Z_GRID), np.geomspace(10.0, 32.0, 6), THIN_LAYER_B, 2.0)
+
+
 def synthetic_sample(height: Callable[[float], float] = scale_height) -> AnnulusSample:
     """Return N_PER_BIN stars per 1 Gyr bin with heights of scale *height*, and the known dispersions and actions."""
     rng = np.random.default_rng(21)
-    parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass", "r")}
+    action_rng = np.random.default_rng(25)  # its own, so that the other columns do not depend on it
+    keys = ("age", "z", "v_r", "v_z", "jr", "jz", "initial_mass", "r")
+    parts: dict[str, list[np.ndarray]] = {key: [] for key in keys}
     for lo, hi in AGE_BINS:
         mid = 0.5 * (lo + hi)
         z = rng.exponential(height(mid), N_PER_BIN) * rng.choice([-1.0, 1.0], N_PER_BIN)
@@ -75,6 +97,7 @@ def synthetic_sample(height: Callable[[float], float] = scale_height) -> Annulus
         parts["v_r"].append(rng.normal(0.0, 1.5 * vertical_dispersion(mid), N_PER_BIN))
         parts["v_z"].append(rng.normal(0.0, vertical_dispersion(mid), N_PER_BIN))
         parts["jr"].append(np.where(np.abs(z) < 0.5, jr, np.nan))
+        parts["jz"].append(action_rng.exponential(vertical_action_scale(mid), N_PER_BIN))
         parts["initial_mass"].append(np.ones(N_PER_BIN))
         parts["r"].append(rng.uniform(R_MIN_KPC, R_MAX_KPC, N_PER_BIN))
     return AnnulusSample(**{key: np.concatenate(value) for key, value in parts.items()})
@@ -90,7 +113,7 @@ def synthetic_outer(height: Callable[[float], float] = scale_height) -> AnnulusS
         rng.uniform(TILT_R_MIN_KPC, R_MIN_KPC, sample.r.size),
         rng.uniform(R_MAX_KPC, TILT_R_MAX_KPC, sample.r.size),
     )
-    return AnnulusSample(**{**sample.__dict__, "r": r, "jr": np.full(r.size, np.nan)})
+    return AnnulusSample(**{**sample.__dict__, "r": r, "jr": np.full(r.size, np.nan), "jz": np.full(r.size, np.nan)})
 
 
 def measure(sample: AnnulusSample, outer: AnnulusSample | None = None) -> MonoAge:
@@ -99,7 +122,7 @@ def measure(sample: AnnulusSample, outer: AnnulusSample | None = None) -> MonoAg
     Without *outer*, no star lies outside the annulus.
     """
     phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC)
+    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC, linear_coeval())
     outside = sample.select(np.zeros(sample.z.size, dtype=bool)) if outer is None else outer
     return measure_mono_age(sample, outside, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
 
@@ -147,6 +170,38 @@ def test_ranges_fit_the_age_exponents(measured: MonoAge) -> None:
     assert whole["sigma_r"].value == pytest.approx(whole["sigma_z"].value, abs=0.05)
 
 
+def test_bins_compare_the_thin_layer_population_and_fit_their_actions(measured: MonoAge) -> None:
+    """Exponential actions give b = 1 and their J_0; the thin-layer ratios are the curve at sigma_z over the stars'."""
+    for b in measured.bins:
+        mid = 0.5 * (b.age_lo + b.age_hi)
+        assert abs(b.coeval.b.value - 1.0) < max(3.0 * b.coeval.b.err, 0.05)
+        assert b.coeval.j0.value == pytest.approx(vertical_action_scale(mid), rel=0.1)
+        hz, half_mass = linear_coeval().at(b.kinematics.sigma_z.value)
+        assert b.coeval.ratio.value == pytest.approx(hz / b.heights.measured.value)
+        assert b.coeval.half_mass_ratio.value == pytest.approx(half_mass / b.half_mass.measured.value)
+        assert 0.0 < b.coeval.ratio.err < b.coeval.ratio.value
+        # The linear potential gives the isothermal tracer b = 4/3 (experiments.coeval).
+        assert b.coeval.b_isothermal == pytest.approx(4.0 / 3.0, abs=0.02)
+    for r in measured.ranges:
+        assert np.isfinite(r.trends["coeval"].value) and np.isfinite(r.trends["half_mass_coeval"].value)
+
+
+def test_trends_leave_out_bins_without_a_ratio(measured: MonoAge) -> None:
+    """A bin with a NaN ratio drops out of the trend; with fewer than three bins left the trend is NaN."""
+    bins = measured.bins
+    gone = Estimate(float("nan"), float("nan"))
+
+    def without(b: AgeBin) -> AgeBin:
+        return replace(b, coeval=replace(b.coeval, ratio=gone))
+
+    kept = range_exponents([without(b) if i < 2 else b for i, b in enumerate(bins)], 0.0, 10.0)
+    expected = range_exponents(bins[2:], 0.0, 10.0)
+    assert kept.trends["coeval"] == expected.trends["coeval"]
+    assert kept.trends["tracer"] == range_exponents(bins, 0.0, 10.0).trends["tracer"]
+    few = range_exponents([without(b) if i < 8 else b for i, b in enumerate(bins)], 0.0, 10.0)
+    assert np.isnan(few.trends["coeval"].value)
+
+
 def test_scans_cover_k_and_the_fixed_windows(measured: MonoAge) -> None:
     """The k scan adds Palicio's k_P to the scanned k; the window scan covers the fixed windows."""
     assert [row.parameter for row in measured.k_scan] == [*K_SCAN, pytest.approx(measured.k_palicio)]
@@ -171,6 +226,13 @@ def test_half_width() -> None:
     assert np.isnan(half_width(np.array([np.nan, np.nan])))
 
 
+def test_estimate_without_a_value_has_no_error() -> None:
+    """A value has the half width of its draws as its error; a NaN value has a NaN error, even with finite draws."""
+    draws = np.array([0.5, 1.0, np.nan, 1.5])
+    assert Estimate.of(1.0, draws) == Estimate(1.0, half_width(draws))
+    assert np.isnan(Estimate.of(float("nan"), draws).err)
+
+
 def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge) -> None:
     """The heights grow more slowly with age than the tracer of the linear potential: a trend of 0.19 over 0-10 Gyr.
 
@@ -180,7 +242,7 @@ def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge)
     for r in measured.ranges:
         assert set(r.trends) == {
             "sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans",
-            "half_mass_sheet", "half_mass_tracer", "half_mass_jeans",
+            "half_mass_sheet", "half_mass_tracer", "half_mass_jeans", "coeval", "half_mass_coeval",
         }  # fmt: skip
         trend = r.trends["tracer"]
         if r.lo == 0.0:

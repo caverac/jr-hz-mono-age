@@ -3,16 +3,20 @@
 ``fetch`` downloads the six inputs of :mod:`experiments.mw_sources` into the root, which
 git ignores, skipping those already there; ``check`` compares the local copies with their
 pinned sizes and checksums; ``analyze`` measures the test (:mod:`experiments.mw_pipeline`)
-and writes its record to ``<out-dir>/milky-way.json``::
+and writes its record to ``<out-dir>/milky-way.json``; ``checks`` remeasures it with the ages
+drawn again from their errors and with the bright and the faint half of the age tracers
+(:mod:`experiments.mw_checks`), into ``<out-dir>/checks.json``::
 
     experiments milky-way fetch
     experiments milky-way check
     OMP_NUM_THREADS=4 experiments milky-way analyze
+    OMP_NUM_THREADS=4 experiments milky-way checks
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import click
@@ -21,13 +25,15 @@ import pyvo
 
 from experiments._paths import MW_DATA_DIR, MW_ROOT
 from experiments.commands._report import write_json
-from experiments.mw_analysis import N_BOOTSTRAP, MwSurvey
+from experiments.mw_analysis import N_BOOTSTRAP, MwBin, MwSurvey
+from experiments.mw_checks import CHECK_BOOTSTRAP, N_REALIZATIONS, MwChecks, check_milky_way
 from experiments.mw_imig_cells import ImigCells
 from experiments.mw_pipeline import MilkyWay, analyze_milky_way
 from experiments.mw_sources import FILE_SOURCES, GAIA_TAP_URL, check_file, check_gaia, fetch_file, fetch_gaia
 
 NAMES = tuple(source.name for source in FILE_SOURCES) + ("gaia",)
 RESULT_NAME = "milky-way.json"
+CHECKS_NAME = "checks.json"
 
 root_option = click.option(
     "--root",
@@ -174,25 +180,89 @@ def report_lines(result: MilkyWay) -> list[str]:
     )
     lines.append(f"tracer, windowed h_Z over the exponential fit to |z| < 1.2 kpc (to the whole profile): {estimators}")
     lines.extend(family_lines(result))
+    lines.extend(inversion_lines(result))
     return lines
 
 
+def _medians(result: MilkyWay, ratio: Callable[[MwBin], float]) -> str:
+    """Return the median of *ratio* over the bins of each survey where it is finite."""
+    return ", ".join(
+        f"{s.name} {np.median([v for v in map(ratio, s.bins) if np.isfinite(v)]):.2f}" for s in result.surveys
+    )
+
+
+def inversion_lines(result: MilkyWay) -> list[str]:
+    """Return the rho_0 and Sigma_1.1 that bring the bins of each survey to their h_Z, with each prediction."""
+    lines = ["rho_0 (Msun/pc^3) and Sigma_1.1 (Msun/pc^2) at which every bin agrees:"]
+    for label, inversions in (("tracer", result.inversions), ("thin layer", result.inversions_coeval)):
+        for inv in inversions:
+            lines.append(
+                f"  {label}, {inv.survey} ({inv.n_bins} bins): rho_0 {inv.rho0.value:.3f}+/-{inv.rho0.err:.3f}, "
+                f"Sigma_1.1 {inv.sigma_11.value:.1f}+/-{inv.sigma_11.err:.1f}, correlation {inv.correlation:+.2f}, "
+                f"chi2/dof {inv.chi2_dof:.1f}, family rms {inv.model_rms:.3f}"
+            )
+    return lines
+
+
+def _member(i: int, coeval: bool) -> Callable[[MwBin], float]:
+    """Return the ratio of a bin in the family member *i*: the tracer's, or the thin-layer population's."""
+    if coeval:
+        return lambda b: b.ratios.family_coeval[i]
+    return lambda b: b.ratios.family[i]
+
+
 def family_lines(result: MilkyWay) -> list[str]:
-    """Return the admissible potentials of the family and the median tracer ratio of each survey in each."""
-    lines = ["potentials around McMillan (2017) within one error of rho_0 and Sigma_1.1:"]
+    """Return the admissible potentials of the family and the median ratios of each survey in each.
+
+    The ratios are those of the tracer and of the thin-layer population, the first line in
+    McMillan (2017).
+    """
+    lines = [
+        "potentials around McMillan (2017) within one error of rho_0 and Sigma_1.1:",
+        f"  McMillan (2017): thin-layer/h_Z median {_medians(result, lambda b: b.ratios.coeval)}",
+    ]
     for i, member in enumerate(result.family):
         if not member.admissible:
             continue
         p = member.params
-        medians = ", ".join(
-            f"{s.name} {np.median([b.ratios.family[i] for b in s.bins if np.isfinite(b.ratios.family[i])]):.2f}"
-            for s in result.surveys
-        )
         lines.append(
             f"  thin x{p.thin_factor:g}, h {p.thin_height_kpc:g} kpc, halo x{p.halo_factor:g}: "
             f"rho_0 {member.rho0:.3f}, Sigma_1.1 {member.sigma_11:.1f}, v_c {member.v_circ:.0f}; "
-            f"tracer/h_Z median {medians}; exponential growth {member.growth.window:.2f} ({member.growth.whole:.2f})"
+            f"tracer/h_Z median {_medians(result, _member(i, coeval=False))}; "
+            f"thin-layer {_medians(result, _member(i, coeval=True))}; "
+            f"exponential growth {member.growth.window:.2f} ({member.growth.whole:.2f})"
         )
+    return lines
+
+
+def _progress(start: float) -> Callable[[str], None]:
+    """Return a reporter that prints each line to stderr with the minutes since *start*."""
+
+    def progress(message: str) -> None:
+        click.echo(f"[{(time.monotonic() - start) / 60.0:5.1f} min] {message}", err=True)
+
+    return progress
+
+
+def _trend_text(survey: MwSurvey) -> str:
+    """Return the median tracer ratio of *survey* and its trend over the first range of ages."""
+    ratios = [b.ratios.tracer.value for b in survey.bins if np.isfinite(b.ratios.tracer.value)]
+    trend = survey.ranges[0].trends["tracer"]
+    return f"{survey.name} median {np.median(ratios):.2f}, trend {trend.value:+.3f}+/-{trend.err:.3f}"
+
+
+def check_lines(result: MwChecks) -> list[str]:
+    """Return the tracer of every survey with the ages drawn again, and h_Z of the bright over the faint tracers."""
+    lines = [f"ages drawn again from their errors ({result.n_bootstrap} draws per bin):"]
+    for i, surveys in enumerate(result.age_errors):
+        lines.append(f"  realization {i + 1}: " + "; ".join(_trend_text(s) for s in surveys))
+    lines.append("h_Z with the bright over the faint half of the age tracers, by age bin:")
+    for split in result.magnitude:
+        ratios = ", ".join(
+            f"{b.age_lo:g}-{b.age_hi:g} {b.heights.measured.value / f.heights.measured.value:.2f}"
+            for b, f in zip(split.bright.bins, split.faint.bins, strict=True)
+        )
+        lines.append(f"  {split.survey} (G < {split.g_split:.2f}): {ratios}")
     return lines
 
 
@@ -213,15 +283,41 @@ def analyze(root: Path, n_bootstrap: int, out_dir: Path) -> None:
 
     Each stage prints one line to stderr as it ends, with the minutes since the start.
     """
-    start = time.monotonic()
-
-    def progress(message: str) -> None:
-        click.echo(f"[{(time.monotonic() - start) / 60.0:5.1f} min] {message}", err=True)
-
     try:
-        result = analyze_milky_way(root, n_bootstrap, n_bootstrap, progress)
+        result = analyze_milky_way(root, n_bootstrap, n_bootstrap, _progress(time.monotonic()))
     except FileNotFoundError as err:
         raise click.ClickException(f"{err}; fetch the inputs with `experiments milky-way fetch`") from err
     for line in report_lines(result):
         click.echo(line)
     click.echo(f"  wrote {write_json(result, out_dir / RESULT_NAME)}")
+
+
+@milky_way.command("checks")
+@root_option
+@click.option(
+    "--realizations", default=N_REALIZATIONS, show_default=True, type=click.IntRange(min=1),
+    help="Draws of the ages from their errors.",
+)  # fmt: skip
+@click.option(
+    "--n-bootstrap",
+    default=CHECK_BOOTSTRAP,
+    show_default=True,
+    type=click.IntRange(min=2),
+    help="Bootstrap resamplings.",
+)
+@click.option(
+    "--out-dir",
+    default=MW_DATA_DIR,
+    show_default=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory of the JSON record.",
+)
+def checks(root: Path, realizations: int, n_bootstrap: int, out_dir: Path) -> None:
+    """Remeasure the test with the ages drawn again from their errors, and with the bright and the faint tracers."""
+    try:
+        result = check_milky_way(root, realizations, n_bootstrap, _progress(time.monotonic()))
+    except FileNotFoundError as err:
+        raise click.ClickException(f"{err}; fetch the inputs with `experiments milky-way fetch`") from err
+    for line in check_lines(result):
+        click.echo(line)
+    click.echo(f"  wrote {write_json(result, out_dir / CHECKS_NAME)}")

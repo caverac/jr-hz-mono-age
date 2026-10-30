@@ -59,6 +59,13 @@ export function extent(values: readonly number[]): readonly [number, number] {
   return [Math.min(...finite), Math.max(...finite)]
 }
 
+/** `items` as an English list: `a`, `a and b`, `a, b and c`. */
+export function andList(items: readonly string[]): string {
+  return items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+}
+
 /** The range of the halo `halo` over the ages [lo, hi], if the record holds it. */
 export function ageRange(halo: HaloRecord, lo: number, hi: number) {
   return halo.ranges.find((r) => r.lo === lo && r.hi === hi)

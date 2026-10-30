@@ -87,7 +87,7 @@ from experiments.mw_counts import (
 )
 from experiments.mw_imig import N_DRAWS, ImigPopulations, cylinder_profile, cylinder_slices, split_normal
 from experiments.populations import Z_MID_MAX_KPC, Estimate, Trend, fit_grouped_log_slope
-from experiments.stats import deconvolved_dispersion, half_width
+from experiments.stats import deconvolved_dispersion
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -454,18 +454,18 @@ class _CellValues:
 
     def estimate(self, name: str) -> Estimate:
         """Return the value *name* with the spread of its draws."""
-        return Estimate(self.point[name], half_width(self.draws[name]))
+        return Estimate.of(self.point[name], self.draws[name])
 
     def over(self, name: str, value: float, draws: FloatArray) -> Estimate:
         """Return the value *name* over *value*, with the spread of the ratio of their *draws*."""
-        return Estimate(self.point[name] / value, half_width(self.draws[name] / draws))
+        return Estimate.of(self.point[name] / value, self.draws[name] / draws)
 
 
 def _cell(metal: MetallicityCounts, target: _Target, heights: _Heights, j: int, k: float) -> ImigCell:
     """Return the cell of *target*, the target *j* of the [M/H] bin of *metal*, from the *heights* of the bin."""
     pops, i = target.pops, target.index
     values = _CellValues.of(heights, j)
-    sun = Estimate(float(pops.h[i]), half_width(heights.sun_draws[:, j]))
+    sun = Estimate.of(float(pops.h[i]), heights.sun_draws[:, j])
     gradient, shape = heights.summaries.get(j, (float("nan"), []))
     return ImigCell(
         age_lo=pops.age_lo,

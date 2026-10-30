@@ -359,6 +359,41 @@ within 10 percent in <Metric name="unclippedWithin10" /> bins, with a median rat
 <Metric name="unclippedTrendNegative2" /> halos. The clipping therefore does not cause the
 residual, and the clipped dispersion predicts the heights better.
 
+## The shape of the vertical actions
+
+Ting & Rix (2026) describe a coeval population by the distribution of its vertical actions,
+$p(J_z) \propto \exp[-(J_z/J_0)^{2-b}]$, which diffusion with a coefficient $\propto J_z^b$
+leaves behind. Scatterers that fill the volume, such as bending waves or dark substructure,
+give $b = 1$, whereas scatterers confined to a thin layer at the midplane, such as giant
+molecular clouds, give $b = 1/2$, close to the $b = 0.51$ they measure for red-clump stars of
+2-8 Gyr in the Milky Way. We fit $b$ and $J_0$ to the vertical actions of the stars of each
+bin by maximum likelihood, weighted by initial mass, with the actions from the Staeckel fudge
+of AGAMA in the fitted potential (`experiments.coeval`). An isothermal population is
+exponential in $J_z$ only where the potential is harmonic: in a potential $\propto |z|^p$ its
+energy grows as $J_z^{2p/(p+2)}$, so a linear potential gives it $b = 4/3$. We therefore read
+each fitted $b$ against $b_\mathrm{iso}$, the $b$ of the isothermal tracer of the bin's
+$\sigma_z$ in the same potential. Both need the orbits of the population to stay inside the
+12 kpc of the grid of heights, which those of <Metric name="coevalCount" /> populations do.
+
+The fitted $b$ is <Metric name="bFitRange" />, with errors of at most
+<Metric name="bFitErrRange" />, and exceeds $b_\mathrm{iso}$ in <Metric name="bAboveIso" />
+populations, by a median of <Metric name="bExcessMedian" />. The cold populations have $b$ of
+<Metric name="bColdRange" />, against $b_\mathrm{iso}$ of <Metric name="bIsoColdRange" />.
+The vertical actions of the Auriga populations thus have heavier tails than an isothermal
+population of the same midplane dispersion, as their half-mass heights showed, and depart
+from it in the direction opposite to the thin layer of Ting & Rix. The population with
+$b = 1/2$ and the $\sigma_z$ of each bin, in the fitted potential, makes the same point
+through the heights. With $J_0$ set so that its stars within 0.3 kpc of the plane have that
+$\sigma_z$, its flat-topped velocities make it thicker than the tracer near the plane. It
+predicts
+$h_Z$ within 10 percent in <Metric name="coevalWithin10" /> populations, with a median ratio of
+<Metric name="coevalMedian" /> and a scatter of <Metric name="coevalRms" />, whereas over the
+same populations the tracer does so in <Metric name="coevalTracerWithin10" />, with a median of
+<Metric name="coevalTracerMedian" />. The Auriga
+populations are therefore not thin-layer populations, which is not surprising in hindsight:
+the star-forming gas of these simulations follows an effective equation of state rather than
+forming giant molecular clouds (Grand et al. 2017).
+
 ## The steady state
 
 The tracer and the Jeans equation both assume a steady disk that is symmetric about its

@@ -7,7 +7,7 @@ MAIN     = ms
 # into assets/figures/. This Makefile only *syncs* (copies) the finished PDFs in here,
 # so the manuscript -- and its submission tarball -- stay self-contained.
 ASSETSDIR = ../../assets/figures
-FIGURES   =
+FIGURES   = paper-prediction.pdf paper-eta.pdf paper-ratios.pdf paper-checks.pdf paper-flare.pdf paper-milky-way.pdf paper-inversion.pdf paper-imig.pdf paper-window.pdf
 
 .PHONY: all clean distclean sync-figures submission
 

@@ -35,7 +35,7 @@ from experiments.populations import (
     VerticalModel,
     fit_trend,
 )
-from experiments.stats import clipped_dispersion, half_width
+from experiments.stats import clipped_dispersion
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -130,7 +130,7 @@ def _check_bin(rows: AnnulusSample, bounds: tuple[float, float], fraction: float
         if n > 0
         else np.full((setting.n_draws, 4), np.nan)
     )
-    estimates = [Estimate(point[i], half_width(draws[:, i])) for i in range(4)]
+    estimates = [Estimate.of(float(point[i]), draws[:, i]) for i in range(4)]
     median_age = float(np.median(rows.age)) if n > 0 else float("nan")
     return CheckBin(*bounds, median_age, fraction, CheckValues(*estimates))
 

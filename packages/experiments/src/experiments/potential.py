@@ -115,10 +115,16 @@ def circularity(pot: agama.Potential, pos: FloatArray, vel: FloatArray) -> Float
     return out
 
 
+def actions(pot: agama.Potential, pos: FloatArray, vel: FloatArray) -> tuple[FloatArray, FloatArray]:
+    """Return J_R and J_z (kpc km/s) with AGAMA's Staeckel fudge; NaN for unbound orbits."""
+    finder = agama.ActionFinder(pot, interp=False)
+    found = np.asarray(finder(np.column_stack([pos, vel])), dtype=np.float64)
+    return found[:, 0], found[:, 1]
+
+
 def radial_actions(pot: agama.Potential, pos: FloatArray, vel: FloatArray) -> FloatArray:
     """Return J_R (kpc km/s) with AGAMA's Staeckel fudge; NaN for unbound orbits."""
-    finder = agama.ActionFinder(pot, interp=False)
-    return np.asarray(finder(np.column_stack([pos, vel])), dtype=np.float64)[:, 0]
+    return actions(pot, pos, vel)[0]
 
 
 def potential_check(pot: agama.Potential, stars: Stars, annulus: BoolArray) -> list[SliceCheck]:

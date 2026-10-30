@@ -8,8 +8,10 @@ APOGEE and the ages of distmass. It then compares the heights of Imig et al. (20
 the APOGEE counts on both age scales and with the tracer (:mod:`experiments.mw_imig`), and
 each of their populations with the counts of the same ages and [M/H]
 (:mod:`experiments.mw_imig_cells`), with all the matches, with those of each targeting
-box, and with the LAMOST counts split by [Fe/H]. A run takes over an hour, so it reports
-each stage to *progress* as it ends.
+box, and with the LAMOST counts split by [Fe/H]. From the family of potentials that every
+bin carries, it inverts the tracer, and the thin-layer population, for the rho_0 and
+Sigma_1.1 at which every bin of a survey agrees (:mod:`experiments.mw_inversion`). A run
+takes over an hour, so it reports each stage to *progress* as it ends.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ import agama
 import numpy as np
 from numpy.typing import NDArray
 
-from experiments.mw_analysis import N_BOOTSTRAP, SEED, MwSurvey, Survey, measure_survey, solar_model
+from experiments.mw_analysis import N_BOOTSTRAP, SEED, MwBin, MwSurvey, Survey, measure_survey, solar_model
 from experiments.mw_catalogs import (
     Apogee,
     GaiaStars,
@@ -49,6 +51,7 @@ from experiments.mw_imig_cells import (
     metallicity_counts,
     tracer_estimators,
 )
+from experiments.mw_inversion import FamilyRatios, Inversion, invert
 from experiments.mw_potentials import FamilyMember, potential_family
 from experiments.mw_sources import FILE_SOURCES, GAIA_PATH
 
@@ -70,7 +73,9 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     ``imig_cells_lamost`` with the LAMOST counts, whose ages are not on the scale of Imig et al.
     ``estimators`` holds the windowed h_Z of the tracer against the exponential fit to it.
     ``family`` holds the potentials around McMillan (2017) whose tracers every bin also
-    carries (:mod:`experiments.mw_potentials`).
+    carries (:mod:`experiments.mw_potentials`), and ``inversions`` and ``inversions_coeval``
+    the rho_0 and Sigma_1.1 of each survey that bring its bins to the measured h_Z with the
+    tracer and with the thin-layer population.
     """
 
     r0_kpc: float
@@ -86,6 +91,21 @@ class MilkyWay:  # pylint: disable=too-many-instance-attributes
     imig_cells_lamost: ImigCells
     estimators: list[TracerEstimator]
     family: list[FamilyMember]
+    inversions: list[Inversion]
+    inversions_coeval: list[Inversion]
+
+
+def survey_inversion(
+    survey: MwSurvey, members: list[FamilyMember], ratios: Callable[[MwBin], list[float]]
+) -> Inversion:
+    """Return the inversion of *survey* over the potentials *members*, with the ratios *ratios* of each bin."""
+    family = FamilyRatios(
+        rho0=np.array([m.rho0 for m in members]),
+        sigma_11=np.array([m.sigma_11 for m in members]),
+        ratios=np.array([ratios(b) for b in survey.bins], dtype=np.float64).reshape(len(survey.bins), len(members)),
+        rel_err=np.array([b.ratios.tracer.err / b.ratios.tracer.value for b in survey.bins]),
+    )
+    return invert(survey.name, family)
 
 
 def source_path(root: Path, name: str) -> Path:
@@ -161,6 +181,7 @@ def analyze_milky_way(  # pylint: disable=too-many-locals
     lamost_cells = reported(
         "LAMOST cells", measure_cells(populations, lamost_metals, model, rng, CellSettings(n_draws))
     )
+    members = [member for member, _ in family]
     return MilkyWay(
         r0_kpc=R0_KPC,
         sigma_surf=model.sigma_surf,
@@ -174,5 +195,7 @@ def analyze_milky_way(  # pylint: disable=too-many-locals
         imig_cells_targeting=targeting,
         imig_cells_lamost=lamost_cells,
         estimators=tracer_estimators(model),
-        family=[member for member, _ in family],
+        family=members,
+        inversions=[survey_inversion(s, members, lambda b: b.ratios.family) for s in surveys],
+        inversions_coeval=[survey_inversion(s, members, lambda b: b.ratios.family_coeval) for s in surveys],
     )

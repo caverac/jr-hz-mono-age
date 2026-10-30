@@ -265,6 +265,30 @@ def apogee_age_tracers(apogee: Apogee, population: BoolArray | None = None) -> A
     return AgeTracers(apogee.source_id[keep], nan, nan, nan, age[keep], population[keep])
 
 
+def scattered_ages(age: FloatArray, err: FloatArray, rng: np.random.Generator) -> FloatArray:
+    """Return *age* drawn again from its error *err*, lognormal with err / age as the dispersion of ln age.
+
+    Added to the error the age already carries, the draw doubles its variance. A star without
+    a finite, positive age or error keeps its age.
+    """
+    with np.errstate(invalid="ignore", divide="ignore"):
+        good = np.isfinite(age) & np.isfinite(err) & (age > 0.0) & (err > 0.0)
+        width = np.where(good, err / age, 0.0)
+    return np.where(good, age * np.exp(width * rng.standard_normal(age.size)), age)
+
+
+def with_scattered_ages(apogee: Apogee, rng: np.random.Generator) -> Apogee:
+    """Return *apogee* with its ages drawn again from their errors (:func:`scattered_ages`)."""
+    num = apogee.num
+    age = scattered_ages(num["age_lowess_correct"], num["age_total_error"], rng)
+    return replace(apogee, num={**num, "age_lowess_correct": age})
+
+
+def scattered_lamost(cat: dict[str, FloatArray], rng: np.random.Generator) -> dict[str, FloatArray]:
+    """Return the LAMOST catalog *cat* with its ages drawn again from their errors (:func:`scattered_ages`)."""
+    return {**cat, "AGE": scattered_ages(cat["AGE"], cat["ERR_AGE"], rng)}
+
+
 def read_lamost(path: Path) -> dict[str, FloatArray]:
     """Return the LAMOST red-clump stars at *path* whose ages are good, as columns of floats."""
     cat = {k: np.asarray(v, dtype=np.float64) for k, v in _columns(path, LAMOST_COLUMNS).items()}

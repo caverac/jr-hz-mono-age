@@ -6,7 +6,7 @@ import DiscrepancyChart from '@site/src/components/status/DiscrepancyChart'
 import FlareChart from '@site/src/components/status/FlareChart'
 import Metric from '@site/src/components/status/Metric'
 import PredictionChart from '@site/src/components/status/PredictionChart'
-import { JrMetric, MwMetric } from '@site/src/components/status/RecordMetric'
+import { CheckMetric, JrMetric, MwMetric } from '@site/src/components/status/RecordMetric'
 import ScalingChart from '@site/src/components/status/ScalingChart'
 
 # Overview
@@ -33,7 +33,8 @@ thin and the old ones too thick. Star counts of Gaia giants in the solar neighbo
 into populations by the ages of LAMOST and APOGEE, follow the tracer with no trend with age,
 at <MwMetric name="tracerMedians" /> of the counts in the median in the potential of McMillan
 (2017), and at <MwMetric name="familyTracerMedians" /> in potentials that match the measured
-density near the Sun. Summed over the
+density near the Sun. Inverted, they give midplane densities of
+<MwMetric name="inversionRho0" /> $M_\odot\,\mathrm{pc}^{-3}$. Summed over the
 populations of each disk, the tracers also predict the thickness of the whole disk. The one
 open question concerns the published heights of Imig et al. (2025), which grow more slowly
 with age than our star counts of the same stars, for reasons that our data cannot reach.
@@ -137,7 +138,7 @@ its vertical velocities, whatever its distribution function, so a cold populatio
 $\sigma_z$ near the plane represents it is bound to agree. The test bites for the hot
 populations, which reach heights where the potential is no longer harmonic. Below
 $h_Z = 1$ kpc the tracer comes within 10 percent in <Metric name="coldTracer" />
-populations, with a scatter of <Metric name="coldTracerRms" />; above 1.5 kpc it does in
+populations, with a scatter of <Metric name="coldTracerRms" />. Above 1.5 kpc it does in
 <Metric name="hotTracer" />, and its scatter grows to <Metric name="hottestTracerRms" />
 above 2.5 kpc. The populations hotter than 60 km/s, which reach $h_Z$ of up to
 <Metric name="hzMax" /> kpc with $\sigma_z$ of up to <Metric name="sigmaZMax" /> km/s, are
@@ -214,9 +215,21 @@ half-mass heights lie within 10 percent of the measured ones in
 in only <Metric name="halfMassTracerAbove1" />. The
 populations thus carry more of their mass far from the plane than the isothermal profile of
 their midplane $\sigma_z$. The Jeans heights with the measured $\sigma_z(z)$ and the tilt term
-reproduce the half-mass heights with a scatter of <Metric name="halfMassJeansRms" />, and the
+reproduce the half-mass heights with a scatter of <Metric name="halfMassJeansRms" />. The
 sheet comes within 10 percent in <Metric name="halfMassSheetWithin10" /> populations
 ([Half-mass heights](./tracer-vs-sheet#half-mass-heights)).
+
+The vertical actions show the same excess. Ting & Rix (2026) describe a coeval population by
+$p(J_z) \propto \exp[-(J_z/J_0)^{2-b}]$, with $b = 1/2$ for heating by a thin layer of giant
+molecular clouds and $b = 1$ for scatterers that fill the volume. Fitted to the actions of
+each Auriga population, $b$ is <Metric name="bFitRange" /> and exceeds the $b$ of the
+isothermal tracer of the same $\sigma_z$ in the same potential in
+<Metric name="bAboveIso" /> populations, by a median of <Metric name="bExcessMedian" />. The
+actions therefore have heavier tails than an isothermal population, as the half-mass heights
+showed, which is the opposite of a thin layer. The population with $b = 1/2$ and the same
+$\sigma_z$ predicts $h_Z$ within 10 percent in <Metric name="coevalWithin10" /> populations,
+against <Metric name="coevalTracerWithin10" /> for the tracer over the same populations
+([The shape of the vertical actions](./tracer-vs-sheet#the-shape-of-the-vertical-actions)).
 
 ### The analysis recovers a known galaxy
 
@@ -264,8 +277,8 @@ within 10 percent of the measured $h_Z$ in <Metric name="sumRingsWithin10" /> ra
 of the seven disks, with ratios of <Metric name="sumRingsScaled" />, and so follows the
 flare of each disk (Figure 3). Milky Way models have long summed isothermal components of
 different ages into a disk (Sch&ouml;nrich & Binney 2009; Binney 2010; Sysoliatina & Just
-2022), with dispersions prescribed rather than measured; here the dispersions are those of
-the simulated populations, and the sum is tested against heights measured independently.
+2022), with dispersions prescribed rather than measured. Here the dispersions are those of
+the simulated populations, so the sum can be tested against heights measured independently.
 
 Across the seven halos, the slope of a proxy for their radial action $J_{R,w}$ against
 these predicted heights is <JrMetric name="slopeScaledMixture" />, against
@@ -275,7 +288,7 @@ rests on one halo. Without <JrMetric name="influentialHalo" />, whose $J_{R,w}$ 
 <JrMetric name="influentialJr" /> kpc km/s lies well above that of any other halo
 (<JrMetric name="otherJrMax" />), the slope is <JrMetric name="withoutInfluentialScaled" />
 with the measured heights and <JrMetric name="withoutInfluentialMixture" /> with the
-predicted ones, and leaving out one halo at a time moves it over
+predicted ones. Leaving out one halo at a time moves it over
 <JrMetric name="leaveOneOutRange" /> km/s. The predicted heights follow the measured ones
 whichever halo is left out, within <JrMetric name="leaveOneOutMixtureShift" /> standard
 errors of the slope, so the heights of the relation follow from the tracers of each disk,
@@ -319,6 +332,28 @@ potentials around it that match both within their errors, the tracer's medians a
 ([Milky Way](./milky-way#the-tracer-predicts-the-star-counts)). The surface density of
 Bovy & Rix (2013) comes from stars modeled in equilibrium, so the agreement remains one of
 consistency with that assumption.
+
+The family also inverts the test. Across its potentials, the tracer over the counts of each
+bin is a power law in $\rho_0$ and $\Sigma_{1.1}$, so a joint fit of the bins of a survey
+gives the potential in which its populations are isothermal tracers. The fit needs midplane
+densities of <MwMetric name="inversionRho0" /> $M_\odot\,\mathrm{pc}^{-3}$ with LAMOST and
+with APOGEE on the astroNN and distmass scales, against the $0.097 \pm 0.013$
+$M_\odot\,\mathrm{pc}^{-3}$ of McKee, Parravano & Hollenbach (2015), whereas $\Sigma_{1.1}$
+stays unconstrained because the populations stay below about 1 kpc
+([Milky Way](./milky-way#the-local-potential-from-the-tracer)). A population with the
+thin-layer shape of Ting & Rix (2026) needs <MwMetric name="inversionCoevalRho0" />
+$M_\odot\,\mathrm{pc}^{-3}$, denser than the measurements and close to McMillan (2017). At
+the measured densities the counts thus favor the isothermal shape, although the error of
+$\rho_0$ keeps the preference weak
+([Milky Way](./milky-way#the-shape-of-the-populations)).
+
+Drawing every age again from its error, which doubles the variance of the age errors, moves
+the medians of the tracer to <CheckMetric name="ageTracerMedians" />, with trends over
+0-10 Gyr within <CheckMetric name="ageTracerTrendMax0" /> standard errors of 0. The bright
+and the faint halves of the age tracers in each slice of $|z|$ give heights within two
+standard errors in <CheckMetric name="magnitudeLamostWithin2" /> bins with LAMOST and
+<CheckMetric name="magnitudeApogeeWithin2" /> with APOGEE
+([Milky Way](./milky-way#age-errors-and-selection)).
 
 ### The heights of Imig et al.
 
@@ -394,24 +429,23 @@ the counts, the claim holds in the Milky Way unless the counts, rather than thei
 misplace how the heights grow with age.
 
 Whether a population of one age is isothermal is itself contested. Sharma et al. (2021)
-find that the dispersions of stars of fixed age and metallicity rise with height, and Ting &
-Rix (2026) and Djuri&cacute; & Sch&ouml;nrich (2026) argue that a population born at once
-departs from the isothermal shape. In Auriga the residual of the tracer persists in bins of
-0.25 Gyr, and the half-mass heights show more mass far from the plane than an isothermal
-profile at every age, as a dispersion that rises with height gives. A comparison of the
-whole vertical profile with the shapes these authors propose, rather than its scale alone,
-would tell which one the populations follow. In the Milky Way, the Jeans equation with the
-measured $\sigma_z(z)$ leaves the offset of the tracer in place, and the density of the
-potential accounts for it.
+find that the dispersions of stars of fixed age and metallicity rise with height. Ting & Rix
+(2026) and Djuri&cacute; & Sch&ouml;nrich (2026) argue that a population born at once departs
+from the isothermal shape toward a sharper cutoff in its vertical actions. The Auriga
+populations depart in the other direction, with heavier tails in their actions and more mass
+far from the plane than an isothermal profile at every age, as a dispersion that rises with
+height gives. The star counts of the solar neighborhood do not separate the two shapes: the
+thin layer fits them only in a potential denser near the Sun than measured, whereas the
+isothermal tracer fits them at the measured density. The error of $\rho_0$ keeps that
+preference weak.
 
 The Auriga snapshots are at the standard resolution of the Auriga project, whose stellar
-softening is comparable to the heights of the youngest populations, and Pakmor et al.
-(2025) find that the rise of the velocity dispersion at large radii seen at that resolution
-might be entirely numerical. Every
-Auriga population also comes from one annulus per halo, so we do not yet know how $\eta$
-depends on radius. In the Milky Way, a test independent of any calibrated potential would
-fit the potential to each age bin separately and check that the bins agree, as Bovy & Rix
-(2013) did with mono-abundance populations.
+softening is comparable to the heights of the youngest populations. Pakmor et al. (2025)
+find that the rise of the velocity dispersion at large radii seen at that resolution might
+be entirely numerical, which the Level 3 runs of the release would test. Every Auriga
+population also comes from one annulus per halo, so we do not yet know how $\eta$ depends on
+radius. In the Milky Way, the inversion fixes $\rho_0$ but not $\Sigma_{1.1}$. The Jeans
+equation there leaves out the tilt term, which our sample cannot measure.
 
 We have also not tested the radial half of the derivation,
 $J_R^{\max} = c_{\max}\sigma_R^2/\kappa$, on populations of one age: we measure
@@ -436,7 +470,9 @@ in $a$, but have not compared it with $\sigma_R^2/\kappa$.
    changes with age, within <Metric name="trendMax0" /> standard errors in every halo over
    0-10 Gyr. The residual over 2-10 Gyr, which persists in bins of 0.25 Gyr and with the
    disk stars alone, comes from a dispersion that rises with height, which also puts more
-   mass far from the plane than the tracer at every age. The Jeans equation with the
+   mass far from the plane than the tracer at every age and gives the vertical actions
+   heavier tails than an isothermal population, the opposite of the thin layer of Ting & Rix
+   (2026). The Jeans equation with the
    measured $\sigma_z(z)$ and the tilt term removes both, the tilt term holding up the old
    populations of Au19.
 4. The populations are flat near the plane, so their heights depend on the window of the
@@ -450,7 +486,9 @@ in $a$, but have not compared it with $\sigma_R^2/\kappa$.
    age on every age scale we tried, at <MwMetric name="tracerMedians" /> of the counts in
    the median in the potential of McMillan (2017), whose density near the Sun exceeds the
    measured one, and at <MwMetric name="familyTracerMedians" /> in potentials that match
-   it.
+   it. Inverted, the counts give midplane densities of <MwMetric name="inversionRho0" />
+   $M_\odot\,\mathrm{pc}^{-3}$. Doubling the variance of the age errors leaves the test in
+   place.
 7. The heights of Imig et al. (2025) agree with our counts in level and in their dependence
    on metallicity once both are fit the same way, but grow more slowly with age and with
    $\sigma_z$, at a rate consistent with $h_Z \propto \sigma_z$, for reasons that lie beyond
@@ -466,3 +504,5 @@ in $a$, but have not compared it with $\sigma_R^2/\kappa$.
 | Injected profiles | `uv run experiments window-injection` | [Fixed-window bias](./window-bias) |
 | Whole disks and the relation across galaxies | `uv run experiments auriga tracer-sum`, `jr-map` and `jr-relation` with the seven halos | [Across galaxies](./across-galaxies) |
 | Milky Way star counts and Imig et al. | `uv run experiments milky-way fetch`, `check` and `analyze` | [Milky Way](./milky-way) |
+| Milky Way with redrawn ages and split by magnitude | `uv run experiments milky-way checks` | [Milky Way](./milky-way#age-errors-and-selection) |
+| Figures and numbers of the paper | `uv run experiments paper-figures 2 3 16 19 23 24 27`, then `yarn paper:numbers` in `packages/docs` | this page |
