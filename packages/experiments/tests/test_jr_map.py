@@ -18,6 +18,7 @@ from experiments.jr_map import (
     CELL_KPC,
     L_SUN_KPC_KMS,
     MIN_PER_CELL,
+    PALICIO_INTERCEPT_LSUN,
     PALICIO_SLOPE_LSUN_PER_KPC,
     JrMap,
     JrMapRecord,
@@ -27,11 +28,11 @@ from experiments.jr_map import (
     jr_relation,
     map_proxy,
     measure_jr_map,
-    weighted_median,
 )
 from experiments.palicio import PalicioWindow
 from experiments.populations import Estimate
 from experiments.records import load_jr_map
+from experiments.stats import weighted_median
 from experiments.tracer_sum import SumHeights, SumRange, TracerSum, TracerSumRecord, Unmodeled
 
 
@@ -118,12 +119,25 @@ def test_jr_relation_fits_both_windows() -> None:
         JrPoint(h, 10.0 + 50.0 * hz, hz, 0.8 * hz, 0.9 * hz, 0.7 * hz) for h, hz in ((2, 0.5), (3, 1.0), (16, 1.5))
     ]
     relation = jr_relation(points)
-    assert relation.line_palicio.slope == pytest.approx(50.0)
-    assert relation.line_scaled.slope == pytest.approx(50.0 / 0.8)
-    assert relation.line_palicio_mixture.slope == pytest.approx(50.0 / 0.9)
-    assert relation.line_scaled_mixture.slope == pytest.approx(50.0 / 0.7)
+    assert relation.lines.line_palicio.slope == pytest.approx(50.0)
+    assert relation.lines.line_scaled.slope == pytest.approx(50.0 / 0.8)
+    assert relation.lines.line_palicio_mixture.slope == pytest.approx(50.0 / 0.9)
+    assert relation.lines.line_scaled_mixture.slope == pytest.approx(50.0 / 0.7)
     assert relation.palicio_slope == pytest.approx(PALICIO_SLOPE_LSUN_PER_KPC * L_SUN_KPC_KMS)
-    assert 70.0 < relation.palicio_slope < 71.0
+    assert 72.0 < relation.palicio_slope < 73.0
+    assert relation.palicio_intercept == pytest.approx(PALICIO_INTERCEPT_LSUN * L_SUN_KPC_KMS)
+
+
+def test_jr_relation_leaves_each_galaxy_out() -> None:
+    """Each refit drops one galaxy, so a galaxy far from the others moves the slope most."""
+    points = [JrPoint(h, 10.0 + 50.0 * hz, hz, hz, hz, hz) for h, hz in ((2, 0.5), (3, 1.0), (16, 1.5), (19, 2.0))]
+    points.append(JrPoint(24, 400.0, 2.5, 2.5, 2.5, 2.5))
+    relation = jr_relation(points)
+    assert [left.halo for left in relation.leave_one_out] == [2, 3, 16, 19, 24]
+    without = {left.halo: left.lines.line_scaled.slope for left in relation.leave_one_out}
+    assert without[24] == pytest.approx(50.0)
+    assert relation.lines.line_scaled.slope > 100.0
+    assert max(without, key=lambda halo: abs(without[halo] - relation.lines.line_scaled.slope)) == 24
 
 
 def test_jr_relation_command(mock_run: MockRun, tmp_path: Path) -> None:
@@ -139,10 +153,12 @@ def test_jr_relation_command(mock_run: MockRun, tmp_path: Path) -> None:
         write_json(TracerSumRecord(snap, predicted(jr_w / 45.0, jr_w / 60.0)), tmp_path / tracer_sum_name(snap))
     assert load_jr_map(tmp_path / jr_map_name(HaloSnapshot(6))).jr_map.jr_w == 30.0
     output = invoke("auriga", "jr-relation", "5", "6", "7", "--data-dir", str(tmp_path))
-    assert "Palicio et al.: slope 70.5 km/s" in output
+    assert "Palicio et al.: J_R,w = 5.8 + 72.6 h_Z (kpc km/s)" in output
+    assert "self-consistent slope without one galaxy: 50.0 to 50.0 km/s" in output
     record = json.loads((tmp_path / "jr-relation.json").read_text())
     assert [p["halo"] for p in record["points"]] == [5, 6, 7]
-    assert record["line_scaled_mixture"]["slope"] == pytest.approx(60.0)
+    assert record["lines"]["line_scaled_mixture"]["slope"] == pytest.approx(60.0)
+    assert [left["halo"] for left in record["leave_one_out"]] == [5, 6, 7]
     missing = run("auriga", "jr-relation", "8", "--data-dir", str(tmp_path))
     assert missing.exit_code == 1 and "experiments auriga jr-map" in missing.output
     (tmp_path / tracer_sum_name(HaloSnapshot(7))).unlink()

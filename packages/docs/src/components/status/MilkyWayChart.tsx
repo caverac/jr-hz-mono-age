@@ -1,6 +1,7 @@
 import MathLabel from '@site/src/components/MathLabel'
 import { Chips, Pending, toggled } from '@site/src/components/status/controls'
 import type { Estimate } from '@site/src/components/status/data'
+import { AGREEMENT } from '@site/src/components/status/metrics'
 import {
   IMIG_HEIGHTS,
   imigAge,
@@ -29,7 +30,6 @@ import React, { type ReactNode, useState } from 'react'
 const HEIGHT = 340
 const AGE_DOMAIN: readonly [number, number] = [0, 10]
 const RATIO_TICKS = [0.3, 0.5, 0.7, 1, 1.5, 2]
-const TOLERANCE = 0.1
 
 /** One series of the chart: a set of heights and a prediction, with its points (median age, ratio). */
 interface Series {
@@ -129,8 +129,8 @@ function Plot({
             <rect
               x={0}
               width={inner.width}
-              y={y(1 + TOLERANCE)}
-              height={y(1 - TOLERANCE) - y(1 + TOLERANCE)}
+              y={y(Math.exp(AGREEMENT))}
+              height={y(Math.exp(-AGREEMENT)) - y(Math.exp(AGREEMENT))}
               className="viz-band"
             />
             <Axis
@@ -220,7 +220,7 @@ export default function MilkyWayChart(): ReactNode {
       dash: s.dash,
       color: s.color
     })),
-    { label: `$|h_\\mathrm{pred}/h_Z - 1| \\le ${TOLERANCE}$`, band: true }
+    { label: `$|\\ln h_\\mathrm{pred}/h_Z| \\le ${AGREEMENT}$`, band: true }
   ]
   return (
     <div className="viz" ref={ref}>

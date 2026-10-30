@@ -8,6 +8,7 @@
 
 import { median } from '@site/src/components/status/metrics'
 import {
+  bool,
   type Estimate,
   estimate,
   field,
@@ -55,6 +56,42 @@ export interface MwBin {
   readonly tracer: number
   readonly ratioTracer: Estimate
   readonly ratioSheet: Estimate
+  /** h_Z (kpc) of the vertical Jeans equation with the measured sigma_z(z), through the same counts. */
+  readonly jeans: number
+  readonly ratioJeans: Estimate
+  /** The b of the isothermal tracer of the bin's sigma_z in McMillan (2017). */
+  readonly bIsothermal: number
+  /** The tracer over h_Z in each potential of the family, in the order of `family`. */
+  readonly ratioFamily: readonly number[]
+  /** The thin-layer population of Ting & Rix (2026) over h_Z, in McMillan (2017) and in each member. */
+  readonly ratioCoeval: number
+  readonly ratioFamilyCoeval: readonly number[]
+}
+
+/** The rho_0 (Msun/pc^3) and Sigma_1.1 (Msun/pc^2) at which every bin of one survey matches its h_Z. */
+export interface Inversion {
+  readonly survey: string
+  readonly nBins: number
+  readonly rho0: Estimate
+  readonly sigma11: Estimate
+  readonly correlation: number
+  readonly chi2Dof: number
+  readonly modelRms: number
+  readonly binRho0: readonly Estimate[]
+}
+
+/** One potential around McMillan (2017): its changes, rho_0 (Msun/pc^3), Sigma_1.1 (Msun/pc^2) and v_c (km/s). */
+export interface FamilyMember {
+  readonly thinFactor: number
+  readonly thinHeight: number
+  readonly haloFactor: number
+  readonly rho0: number
+  readonly sigma11: number
+  readonly vCirc: number
+  readonly admissible: boolean
+  /** d ln h / d ln sigma_z of the exponential fit to the tracer, below 1.2 kpc and over the whole profile. */
+  readonly growthWindow: number
+  readonly growthWhole: number
 }
 
 export interface MwRange {
@@ -63,7 +100,12 @@ export interface MwRange {
   readonly nBins: number
   readonly tracer: Trend
   readonly sheet: Trend
-  readonly eta: number
+  readonly jeans: Trend
+  /** eta = d ln h_Z / d ln sigma_z, fitted across the bins with the errors of both. */
+  readonly eta: Trend
+  /** The age exponents of h_Z and of sigma_z over the bins of the range. */
+  readonly betaH: Estimate
+  readonly betaZ: Estimate
 }
 
 /** What the counts of a survey give exponentials of known scales (kpc), over each scale. */
@@ -259,6 +301,11 @@ export interface MilkyWayData {
   /** The cells with the LAMOST counts, whose ages are not on the scale of Imig et al. */
   readonly imigCellsLamost: ImigCells
   readonly estimators: readonly TracerEstimator[]
+  /** The potentials around McMillan (2017) whose tracers every bin also carries. */
+  readonly family: readonly FamilyMember[]
+  /** The rho_0 and Sigma_1.1 of each survey with the tracer, and with the thin-layer population. */
+  readonly inversions: readonly Inversion[]
+  readonly inversionsCoeval: readonly Inversion[]
 }
 
 /** The age of an Imig et al. bin (Gyr): the geometric mean of its edges, as in the trends of the record. */
@@ -299,7 +346,13 @@ function parseBin(bin: unknown): MwBin {
     sheet: num(predictions, 'sheet'),
     tracer: num(predictions, 'tracer'),
     ratioTracer: estimate(ratios, 'tracer'),
-    ratioSheet: estimate(ratios, 'sheet')
+    ratioSheet: estimate(ratios, 'sheet'),
+    jeans: num(predictions, 'jeans'),
+    ratioJeans: estimate(ratios, 'jeans'),
+    bIsothermal: num(predictions, 'b_isothermal'),
+    ratioFamily: numbers(ratios, 'family'),
+    ratioCoeval: num(ratios, 'coeval'),
+    ratioFamilyCoeval: numbers(ratios, 'family_coeval')
   }
 }
 
@@ -311,7 +364,10 @@ function parseRange(range: unknown): MwRange {
     nBins: num(range, 'n_bins'),
     tracer: trend(trends, 'tracer'),
     sheet: trend(trends, 'sheet'),
-    eta: num(range, 'eta')
+    jeans: trend(trends, 'jeans'),
+    eta: trend(range, 'eta'),
+    betaH: estimate(field(range, 'exponents'), 'hz'),
+    betaZ: estimate(field(range, 'exponents'), 'sigma_z')
   }
 }
 
@@ -468,6 +524,37 @@ export function isMeasured(cells: ImigCells, cell: ImigCell): boolean {
 }
 
 /** Check and read the record of the Milky Way test. */
+/** Check and read one survey of a Milky Way record. */
+export function parseSurvey(survey: unknown): MwSurvey {
+  return {
+    name: str(survey, 'name'),
+    nGaia: num(survey, 'n_gaia'),
+    nMatched: num(survey, 'n_matched'),
+    bins: list(survey, 'bins').map(parseBin),
+    ranges: list(survey, 'ranges').map(parseRange),
+    bias: {
+      scales: numbers(field(survey, 'bias'), 'scales'),
+      ratios: numbers(field(survey, 'bias'), 'ratios')
+    }
+  }
+}
+
+function parseInversion(inversion: unknown): Inversion {
+  return {
+    survey: str(inversion, 'survey'),
+    nBins: num(inversion, 'n_bins'),
+    rho0: estimate(inversion, 'rho0'),
+    sigma11: estimate(inversion, 'sigma_11'),
+    correlation: num(inversion, 'correlation'),
+    chi2Dof: num(inversion, 'chi2_dof'),
+    modelRms: num(inversion, 'model_rms'),
+    binRho0: list(inversion, 'bin_rho0').map((item) => ({
+      value: num(item, 'value'),
+      err: num(item, 'err')
+    }))
+  }
+}
+
 export function parseMilkyWay(record: unknown): MilkyWayData {
   const imig = field(record, 'imig')
   return {
@@ -476,17 +563,7 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
     k: num(record, 'k'),
     nBootstrap: num(record, 'n_bootstrap'),
     sliceEdges: numbers(record, 'slice_edges_kpc'),
-    surveys: list(record, 'surveys').map((survey) => ({
-      name: str(survey, 'name'),
-      nGaia: num(survey, 'n_gaia'),
-      nMatched: num(survey, 'n_matched'),
-      bins: list(survey, 'bins').map(parseBin),
-      ranges: list(survey, 'ranges').map(parseRange),
-      bias: {
-        scales: numbers(field(survey, 'bias'), 'scales'),
-        ratios: numbers(field(survey, 'bias'), 'ratios')
-      }
-    })),
+    surveys: list(record, 'surveys').map(parseSurvey),
     imig: {
       bins: list(imig, 'bins').map(parseImigBin),
       trends: byHeight(field(imig, 'trends'), trend)
@@ -510,6 +587,23 @@ export function parseMilkyWay(record: unknown): MilkyWayData {
       windowed: num(e, 'windowed'),
       exponential: num(e, 'exponential'),
       exponentialWhole: num(e, 'exponential_whole')
-    }))
+    })),
+    family: list(record, 'family').map((member) => {
+      const params = field(member, 'params')
+      const growth = field(member, 'growth')
+      return {
+        thinFactor: num(params, 'thin_factor'),
+        thinHeight: num(params, 'thin_height_kpc'),
+        haloFactor: num(params, 'halo_factor'),
+        rho0: num(member, 'rho0'),
+        sigma11: num(member, 'sigma_11'),
+        vCirc: num(member, 'v_circ'),
+        admissible: bool(member, 'admissible'),
+        growthWindow: num(growth, 'window'),
+        growthWhole: num(growth, 'whole')
+      }
+    }),
+    inversions: list(record, 'inversions').map(parseInversion),
+    inversionsCoeval: list(record, 'inversions_coeval').map(parseInversion)
   }
 }

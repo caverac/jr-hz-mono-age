@@ -40,9 +40,17 @@ export function ratios(data: StatusData, predictor: Predictor): readonly number[
     .filter(Number.isFinite)
 }
 
-/** How many populations the prediction reaches within the relative `tolerance`. */
+/** Agreement within 10 percent: a ratio of heights `r` with |ln r| at most this. */
+export const AGREEMENT = 0.1
+
+/** Whether the ratio `r` agrees with 1 within `tolerance`, as |ln r| <= `tolerance`. */
+export function agrees(r: number, tolerance: number = AGREEMENT): boolean {
+  return Math.abs(Math.log(r)) <= tolerance
+}
+
+/** How many populations the prediction reaches within `tolerance`, as |ln r| <= `tolerance`. */
 export function within(data: StatusData, predictor: Predictor, tolerance: number): number {
-  return ratios(data, predictor).filter((r) => Math.abs(r - 1) <= tolerance).length
+  return ratios(data, predictor).filter((r) => agrees(r, tolerance)).length
 }
 
 export function median(values: readonly number[]): number {
@@ -57,6 +65,13 @@ export function median(values: readonly number[]): number {
 export function extent(values: readonly number[]): readonly [number, number] {
   const finite = values.filter(Number.isFinite)
   return [Math.min(...finite), Math.max(...finite)]
+}
+
+/** `items` as an English list: `a`, `a and b`, `a, b and c`. */
+export function andList(items: readonly string[]): string {
+  return items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 }
 
 /** The range of the halo `halo` over the ages [lo, hi], if the record holds it. */
@@ -142,9 +157,9 @@ export function signTest(values: readonly number[]): number {
   return Math.min(1, (2 * tail) / 2 ** n)
 }
 
-/** The ratio of eta, d ln h_Z / d ln sigma_z, over 0-10 Gyr, in every halo. */
+/** eta = d ln h_Z / d ln sigma_z over 0-10 Gyr, in every halo. */
 export function etas(data: StatusData): readonly number[] {
-  return data.halos.map((halo) => ageRange(halo, 0, 10)?.eta ?? Number.NaN)
+  return data.halos.map((halo) => ageRange(halo, 0, 10)?.eta.value ?? Number.NaN)
 }
 
 /**
@@ -196,7 +211,7 @@ export interface HaloSummary {
   readonly tracerMedian: number
   readonly snapshotMedian: number
   readonly sheetMedian: number
-  readonly eta: number
+  readonly eta: Trend
 }
 
 /** The populations of every halo, summarized. */
@@ -204,8 +219,7 @@ export function haloSummaries(data: StatusData): readonly HaloSummary[] {
   return data.halos.map((record) => {
     const of = (predictor: Predictor) =>
       record.bins.map((bin) => ratio(bin, predictor)).filter(Number.isFinite)
-    const inside = (values: readonly number[]) =>
-      values.filter((r) => Math.abs(r - 1) <= 0.1).length
+    const inside = (values: readonly number[]) => values.filter((r) => agrees(r)).length
     return {
       halo: record.label,
       zLim: record.zLim,
@@ -215,7 +229,11 @@ export function haloSummaries(data: StatusData): readonly HaloSummary[] {
       tracerMedian: median(of('tracer')),
       snapshotMedian: median(of('tracerSnapshot')),
       sheetMedian: median(of('sheet')),
-      eta: ageRange(record, 0, 10)?.eta ?? Number.NaN
+      eta: ageRange(record, 0, 10)?.eta ?? {
+        value: Number.NaN,
+        err: Number.NaN,
+        chi2Dof: Number.NaN
+      }
     }
   })
 }

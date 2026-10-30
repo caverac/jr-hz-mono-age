@@ -45,7 +45,6 @@ from experiments.populations import (
     Estimate,
 )
 from experiments.snapshot import Galaxy, cylindrical_velocities
-from experiments.stats import half_width
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -149,7 +148,7 @@ def measure_equilibrium_bin(
     draws = [_values(rows.select(rng.integers(0, n, n)), k) for _ in range(n_bootstrap)]
 
     def spread(value: float, samples: list[float]) -> Estimate:
-        return Estimate(value, half_width(np.array(samples, dtype=np.float64)))
+        return Estimate.of(value, np.array(samples, dtype=np.float64))
 
     moved = [spread(point[j], [d[2][j] for d in draws]) for j in range(len(point))]
     return EquilibriumBin(bounds[0], bounds[1], n, spread(hz, [d[0] for d in draws]), window, Motions(*moved))

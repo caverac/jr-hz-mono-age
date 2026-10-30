@@ -66,7 +66,8 @@ export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
     '$g$ (kpc$^{-1}$)',
     '$h_Z$ (kpc)',
     'tracer',
-    'sheet'
+    'sheet',
+    'Jeans'
   ],
   rows: data.surveys.flatMap((survey) =>
     survey.bins.map((b) => [
@@ -79,10 +80,56 @@ export const MwBinTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: Milky
       Number.isFinite(b.gradient) ? `$${signed(b.gradient)}$` : 'none',
       estimateCell(b.measured.value, b.measured.err, 3),
       estimateCell(b.ratioTracer.value, b.ratioTracer.err, 2),
-      estimateCell(b.ratioSheet.value, b.ratioSheet.err, 2)
+      estimateCell(b.ratioSheet.value, b.ratioSheet.err, 2),
+      estimateCell(b.ratioJeans.value, b.ratioJeans.err, 2)
     ])
   )
 }))
+
+/**
+ * The potentials around McMillan (2017) within one error of the measured rho_0 and
+ * Sigma_1.1, after McMillan's own: their changes, densities and v_c at R_0, the median of
+ * the tracer over h_Z on each age scale, and the growth of the exponential fit to the tracer.
+ */
+export const FamilyTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => {
+  const members = data.family
+    .map((member, index) => ({ member, index }))
+    .filter(
+      ({ member: m }) =>
+        m.admissible || (m.thinFactor === 1 && m.thinHeight === 0.3 && m.haloFactor === 1)
+    )
+    .sort((a, b) => Number(a.member.admissible) - Number(b.member.admissible))
+  return {
+    groups: [
+      ['', 3],
+      ['at $R_0$', 3],
+      ['tracer / $h_Z$', 3],
+      ['growth', 2]
+    ],
+    head: [
+      'thin disk',
+      '$h$ (kpc)',
+      'halo',
+      '$\\rho_0$ ($M_\\odot$ pc$^{-3}$)',
+      '$\\Sigma_{1.1}$ ($M_\\odot$ pc$^{-2}$)',
+      '$v_c$ (km s$^{-1}$)',
+      ...data.surveys.map((s) => surveyName(s.name)),
+      '$|z| < 1.2$ kpc',
+      'whole'
+    ],
+    rows: members.map(({ member: m, index }) => [
+      `$\\times ${fixed(m.thinFactor, 1)}$`,
+      fixed(m.thinHeight),
+      `$\\times ${fixed(m.haloFactor, 1)}$`,
+      `$${fixed(m.rho0, 3)}$`,
+      `$${fixed(m.sigma11, 1)}$`,
+      `$${fixed(m.vCirc, 0)}$`,
+      ...data.surveys.map((s) => `$${fixed(median(s.bins.map((b) => b.ratioFamily[index])))}$`),
+      `$${fixed(m.growthWindow)}$`,
+      `$${fixed(m.growthWhole)}$`
+    ])
+  }
+})
 
 /** The trends of h_pred / h_Z in the three surveys of the Milky Way and against the four heights of the Imig et al. bins. */
 export const MwTrendTable = fromRecord(MILKY_WAY_PATH, parseMilkyWay, (data: MilkyWayData) => ({

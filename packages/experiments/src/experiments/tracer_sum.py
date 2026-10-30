@@ -41,7 +41,7 @@ from experiments.palicio import PalicioWindow
 from experiments.populations import SEED, Z_MID_MAX_KPC, Z_SAMPLE_MAX_KPC, Estimate
 from experiments.potential import vertical_potential
 from experiments.snapshot import Galaxy, cylindrical_velocities
-from experiments.stats import clipped_dispersion, half_width
+from experiments.stats import clipped_dispersion
 from experiments.whole_disk import K_WINDOW, RING_EDGES_KPC
 
 FloatArray = NDArray[np.float64]
@@ -228,7 +228,7 @@ def _sum_range(bounds: tuple[float, float], point: FloatArray, draws: FloatArray
     """Return one range from its heights (kind, window) at the point and in each draw (draw, kind, window)."""
 
     def pair(value: FloatArray, samples: FloatArray) -> SumHeights:
-        return SumHeights(*(Estimate(float(value[w]), half_width(samples[:, w])) for w in range(2)))
+        return SumHeights(*(Estimate.of(float(value[w]), samples[:, w]) for w in range(2)))
 
     by_kind = {name: pair(point[i], draws[:, i]) for i, name in enumerate(HEIGHTS)}
     ratio = {name: pair(point[i] / point[0], draws[:, i] / draws[:, 0]) for i, name in enumerate(HEIGHTS) if i > 0}

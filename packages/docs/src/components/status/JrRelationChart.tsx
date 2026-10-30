@@ -52,14 +52,10 @@ function Plot({
   const jr = data.points.map((p) => p.jrW)
   const xDomain: readonly [number, number] = [0, (d3.max(hz) ?? 2) * 1.15]
   const yDomain: readonly [number, number] = [0, (d3.max(jr) ?? 100) * 1.2]
-  const centroid = {
-    x: d3.mean(data.points, (p) => p.hzPalicio) ?? 0,
-    y: d3.mean(jr) ?? 0
-  }
   const reference: Line = {
     slope: data.palicioSlope,
     slopeErr: 0,
-    intercept: centroid.y - data.palicioSlope * centroid.x,
+    intercept: data.palicioIntercept,
     interceptErr: 0
   }
   return (
@@ -109,7 +105,7 @@ function Plot({
 /**
  * The proxy J_R,w of every halo against its whole-disk h_Z, in the windows of Palicio et al.
  * (2025) and in the self-consistent one, with the least-squares line through each and the
- * slope of Palicio et al. drawn through the mean point of their windows.
+ * line of Palicio et al. (2025, Fig. 9).
  */
 export default function JrRelationChart(): ReactNode {
   const [ref, width] = useElementWidth<HTMLDivElement>()
@@ -131,7 +127,7 @@ export default function JrRelationChart(): ReactNode {
                 open: true,
                 dash: 'dashed'
               },
-              { label: 'slope of Palicio et al.', dash: 'dotted' }
+              { label: 'Palicio et al. (2025)', dash: 'dotted' }
             ]}
           />
           <div className="viz-controls">

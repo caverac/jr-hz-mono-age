@@ -18,6 +18,13 @@ def clipped_dispersion(v: FloatArray) -> float:
     return float(np.std(v[np.abs(v - center) < VEL_CLIP_SIGMA * mad]))
 
 
+def weighted_median(values: FloatArray, weights: FloatArray) -> float:
+    """Return the value below which half of the total *weights* lies."""
+    order = np.argsort(values)
+    cumulative = np.cumsum(weights[order])
+    return float(values[order][np.searchsorted(cumulative, 0.5 * cumulative[-1])])
+
+
 def half_width(draws: FloatArray) -> float:
     """Return half the 16th-84th percentile interval of the finite *draws*; NaN if none is finite."""
     finite = draws[np.isfinite(draws)]

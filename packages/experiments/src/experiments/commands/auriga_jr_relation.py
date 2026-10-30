@@ -50,15 +50,19 @@ def auriga_jr_relation(halos: tuple[int, ...], level: int, suite: str, snapshot:
         )
     relation = jr_relation(points)
     lines = (
-        ("Palicio's windows", relation.line_palicio),
-        ("self-consistent", relation.line_scaled),
-        ("Palicio's windows, predicted", relation.line_palicio_mixture),
-        ("self-consistent, predicted", relation.line_scaled_mixture),
+        ("Palicio's windows", relation.lines.line_palicio),
+        ("self-consistent", relation.lines.line_scaled),
+        ("Palicio's windows, predicted", relation.lines.line_palicio_mixture),
+        ("self-consistent, predicted", relation.lines.line_scaled_mixture),
     )
     for label, line in lines:
         click.echo(
             f"J_R,w = ({line.intercept:.1f} +/- {line.intercept_err:.1f}) "
-            f"+ ({line.slope:.1f} +/- {line.slope_err:.1f}) h_Z with h_Z in {label}; "
-            f"Palicio et al.: slope {relation.palicio_slope:.1f} km/s"
+            f"+ ({line.slope:.1f} +/- {line.slope_err:.1f}) h_Z with h_Z in {label}"
         )
+    slopes = [left.lines.line_scaled.slope for left in relation.leave_one_out]
+    click.echo(f"  self-consistent slope without one galaxy: {min(slopes):.1f} to {max(slopes):.1f} km/s")
+    click.echo(
+        f"  Palicio et al.: J_R,w = {relation.palicio_intercept:.1f} + {relation.palicio_slope:.1f} h_Z (kpc km/s)"
+    )
     click.echo(f"  wrote {write_json(relation, data_dir / RELATION_NAME)}")

@@ -45,6 +45,20 @@ def test_null_floats_are_nan_and_are_written_back_as_null(tmp_path: Path) -> Non
     assert finite_or_null({"a": [float("inf"), 1.0], "b": "x"}) == {"a": [None, 1.0], "b": "x"}
 
 
+@dataclass(frozen=True)
+class Flag:
+    """A dataclass with a boolean."""
+
+    kept: bool
+
+
+def test_from_dict_reads_booleans_only_as_booleans() -> None:
+    """A JSON boolean reads back as a boolean, and a number is refused where a boolean is expected."""
+    assert from_dict(Flag, {"kept": True}) == Flag(True)
+    with pytest.raises(TypeError, match="expected <class 'bool'>"):
+        from_dict(Flag, {"kept": 1})
+
+
 def test_from_dict_reads_tuples_ints_and_strings() -> None:
     """Fixed-length tuples are read element by element; ints and strings are kept."""
     assert from_dict(Pair, {"values": [1, 2], "count": 3, "name": "a"}) == Pair((1.0, 2), 3, "a")

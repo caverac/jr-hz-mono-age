@@ -2,11 +2,13 @@
 title: Milky Way
 ---
 
+import Metric from '@site/src/components/status/Metric'
 import MilkyWayChart from '@site/src/components/status/MilkyWayChart'
-import { MwMetric } from '@site/src/components/status/RecordMetric'
+import { CheckMetric, MwMetric } from '@site/src/components/status/RecordMetric'
 import {
   CountBiasTable,
   EstimatorTable,
+  FamilyTable,
   ImigCellTable,
   ImigEstimatorTable,
   ImigModelTable,
@@ -24,14 +26,22 @@ import {
 
 We test the isothermal tracer on the mono-age populations of the Milky Way, whose scale
 heights we measure from star counts of Gaia giants around the Sun. With the ages of LAMOST,
-and of APOGEE on two age scales, the tracer in the potential of McMillan (2017) predicts
-the scale height of every population of 2 Gyr, with ratios of
+and of APOGEE on two age scales, the tracer in the potential of McMillan (2017) follows the
+scale height of every population of 2 Gyr, with ratios of
 <MwMetric name="lamostTracer" />, <MwMetric name="apogeeTracer" /> and
-<MwMetric name="distmassTracer" /> and no trend with age, so the populations of the Milky
-Way behave as those of the Auriga disks do. The heights that Imig et al. (2025) fit to
-APOGEE with a model of the whole disk agree with ours in level and in their dependence on
-metallicity once both are measured with the same estimator, whereas they grow more slowly
-with age, a difference that our tests of the data that both analyses share do not explain.
+<MwMetric name="distmassTracer" /> and no trend with age, although it falls below the counts
+in <MwMetric name="tracerBelowOne" /> bins. That shortfall comes from the potential, because in
+the potentials around McMillan's that match the measured midplane and surface densities near
+the Sun, the medians of the tracer over the counts are <MwMetric name="familyTracerMedians" />.
+Models of the Milky Way disk have long assumed
+that each population of one age is isothermal in the total potential (Bienaym&eacute;, Robin
+& Cr&eacute;z&eacute; 1987; Robin et al. 2003; Just & Jahreiss 2010), and the density law of
+a tracer has been predicted from its kinematics before (Holmberg & Flynn 2000); here each
+population of measured age is tested against its own counts. The heights that Imig et al.
+(2025) fit to APOGEE with a model of the whole disk agree with ours in level and in their
+dependence on metallicity once both are measured with the same estimator, whereas they grow
+more slowly with age, a difference that our tests of the data that both analyses share do
+not explain.
 
 ```bash
 uv run experiments milky-way fetch
@@ -111,7 +121,7 @@ and the kinematic stars of the population.
 
 <MilkyWayChart />
 
-_Figure 10. Predicted over measured $h_Z$ for every mono-age population of the Milky Way,
+_Figure 11. Predicted over measured $h_Z$ for every mono-age population of the Milky Way,
 against its median age $\tau$: the tracer (filled markers, solid lines) and the sheet (open
 markers, dashed lines) over the star counts of LAMOST (circles) and of APOGEE with the
 astroNN ages (squares) and the distmass ages (triangles), and the tracer over the heights
@@ -126,15 +136,72 @@ percent in <MwMetric name="lamostWithin10" /> age bins with LAMOST, with ratios 
 <MwMetric name="lamostTracer" />, and in <MwMetric name="apogeeWithin10" /> and
 <MwMetric name="distmassWithin10" /> with APOGEE on the astroNN and the distmass scale,
 with ratios of <MwMetric name="apogeeTracer" /> and <MwMetric name="distmassTracer" />. The
-populations of the solar neighborhood thus have the thickness that their dispersions give
-them in the potential of the Galaxy, as the Auriga populations have in theirs.
+populations of the solar neighborhood thus have close to the thickness that their
+dispersions give them in the potential of the Galaxy, as the Auriga populations have in
+theirs.
+
+The agreement is not perfect, and the potential is not independent of it. The tracer falls
+below the counts in <MwMetric name="tracerBelowOne" /> bins, with medians of
+<MwMetric name="tracerMedians" /> over the three age scales, whereas its median in Auriga
+is <Metric name="tracerMedian" />
+([overview](./overview#auriga-populations-are-isothermal-tracers)). The
+potential of McMillan (2017) is constrained by the vertical force at 1.1 kpc above the Sun
+that Kuijken & Gilmore (1991) derived from K dwarfs assumed in equilibrium, and it holds the
+scale heights of its thin and thick disks fixed at 300 and 900 pc, so the test is one of
+consistency between the counts of these populations and that calibration. Two causes could
+make the tracer fall short: populations that are not isothermal, and a potential that is too
+dense near the plane. Ting & Rix (2026) find that the vertical actions of red-clump stars of
+2-8 Gyr fall off faster than those of an isothermal population, and Sharma et al. (2021)
+that the dispersions of stars of fixed age and metallicity rise with height, so a
+population of one age need not be isothermal.
+
+The vertical Jeans equation tests the first cause. We measure $\sigma_z^2$ of the kinematic
+stars of each population in the slices $0 < |z| < 0.3$, $0.3$-$0.6$, $0.6$-$1.0$ and
+$1.0$-$1.5$ kpc, clipped and with their velocity errors removed as near the plane, and
+integrate the equation without the tilt term, which this sample cannot measure
+(`experiments.mw_analysis.jeans_slices`). Through the same counts, the Jeans heights are
+<MwMetric name="jeansRatios" /> of the measured ones, with medians of
+<MwMetric name="jeansMedians" /> and <MwMetric name="jeansBelowOne" /> below 1, and trends
+over 0-10 Gyr of <MwMetric name="jeansTrends0" />. The change of $\sigma_z$ with height
+thus leaves the shortfall in place.
+
+The potential accounts for it. At $R_0$, McMillan (2017) has a midplane density of
+<MwMetric name="mcmillanRho0" /> $M_\odot\,\mathrm{pc}^{-3}$ and
+<MwMetric name="mcmillanSigma11" /> $M_\odot\,\mathrm{pc}^{-2}$ within $|z| < 1.1$ kpc,
+above the $\rho_0 = 0.097 \pm 0.013\,M_\odot\,\mathrm{pc}^{-3}$ of McKee, Parravano &
+Hollenbach (2015, their Eq. 57) and the
+$\Sigma_{1.1} = 68 \pm 4\,M_\odot\,\mathrm{pc}^{-2}$ of Bovy & Rix (2013). Where the
+potential is harmonic, the height of a tracer scales as $\rho_0^{-1/2}$, so a midplane
+density 20 percent above 0.097 thins a cold population by about 9 percent. We vary the
+surface density of the thin disk of McMillan (2017) by factors of 0.7 to 1.0, its scale
+height over 0.25, 0.30 and 0.35 kpc, and the normalization of its dark halo by factors of
+0.7, 1.0 and 1.3 (`experiments.mw_potentials`). Of these potentials,
+<MwMetric name="familyAdmissible" /> lie within one error of both measurements, with $\rho_0$
+of <MwMetric name="familyRho0" />, $\Sigma_{1.1}$ of <MwMetric name="familySigma11" /> and a
+circular velocity at $R_0$ of <MwMetric name="familyVCirc" /> km/s. Every bin carries the
+tracer of each potential through its counts. The table gives McMillan (2017) and the
+admissible potentials, with the growth of the exponential fit to the tracer that
+[How their heights grow with age](#how-their-heights-grow-with-age) uses:
+
+<FamilyTable />
+
+In the admissible potentials, the medians of
+the tracer over the counts of the three age scales are
+<MwMetric name="familyTracerMedians" />, so the shortfall of the tracer comes from the
+densities of McMillan (2017) near the Sun rather than from the populations. The family is
+not refitted to the rotation curve, so its circular velocities lie below the
+<MwMetric name="mcmillanVCirc" /> km/s of McMillan (2017). The tracer needs only the vertical
+potential at $R_0$, which $\rho_0$ and $\Sigma_{1.1}$ bound. A test free of any calibrated
+potential would fit the vertical potential to each age bin separately and check that the
+bins agree, as Bovy & Rix (2013) did with mono-abundance populations.
 
 <MwTrendTable />
 
 The tracer also reproduces how $h_Z$ changes with age. Over 0-10 Gyr its trend is
 <MwMetric name="lamostTracerTrend0" /> with LAMOST, <MwMetric name="apogeeTracerTrend0" />
 with APOGEE on the astroNN scale and <MwMetric name="distmassTracerTrend0" /> on the
-distmass scale. The heights grow as $\sigma_z^\eta$ with $\eta = \beta_h/\beta_z$ of
+distmass scale. The heights grow as $\sigma_z^\eta$, with $\eta = d\ln h_Z/d\ln\sigma_z$
+fitted across the bins as in Auriga, of
 <MwMetric name="lamostEta" />, <MwMetric name="apogeeEta" /> and
 <MwMetric name="distmassEta" />, inside the range of the Auriga disks. Over 2-10 Gyr, with
 four bins, the trends are <MwMetric name="lamostTracerTrend2" />,
@@ -147,10 +214,83 @@ their neighbors through the errors of the ages (see Limitations), so the members
 bin, and with it its $h_Z$, can change with the age scale. Neither record says which scale
 places this bin better.
 
+## The local potential from the tracer
+
+The family also turns the test around. Every bin carries the ratio of the tracer to its
+$h_Z$ in each of the 36 potentials. Across the family, the logarithm of that ratio is a
+linear function of $\ln\rho_0$ and $\ln\Sigma_{1.1}$ to within
+<MwMetric name="inversionModelRms" /> in every bin. If the populations are isothermal tracers,
+one potential brings every bin of a survey to its measured $h_Z$, which a weighted fit of
+the bins finds (`experiments.mw_inversion`). This is the inverse use of the tracer that Bovy &
+Rix (2013) made with mono-abundance populations, with the family standing in for their
+parameterized potential. The midplane densities are <MwMetric name="inversionRho0" />
+$M_\odot\,\mathrm{pc}^{-3}$ with LAMOST and with APOGEE on the astroNN and the distmass
+scale, against the $0.097 \pm 0.013\,M_\odot\,\mathrm{pc}^{-3}$ that McKee, Parravano &
+Hollenbach (2015) find by combining their census of stars, remnants and gas with a density of
+dark matter inferred from dynamical measurements of the surface density. $\Sigma_{1.1}$ is not
+constrained, at <MwMetric name="inversionSigma11" /> $M_\odot\,\mathrm{pc}^{-2}$, because
+the populations stay below about 1 kpc, where $\rho_0$ sets the potential, so that the two
+parameters correlate strongly. The $\chi^2$ per degree of freedom is
+<MwMetric name="inversionChi2" />, so with LAMOST and on the distmass scale the bins scatter
+about one potential by more than their errors, which the quoted errors include.
+
+## The shape of the populations
+
+Ting & Rix (2026) fit the vertical actions of red-clump stars of 2-8 Gyr with
+$p(J_z) \propto \exp[-(J_z/J_0)^{2-b}]$ and find $b = 0.51$, close to the $b = 1/2$ of
+scatterers confined to a thin layer at the midplane. An isothermal population has $b = 1$ only
+in a harmonic potential: in the potential of McMillan (2017), at the dispersions of our bins,
+the isothermal tracer has $b$ of <MwMetric name="bIsoMw" /> (`experiments.coeval`). The
+population with $b = 1/2$ and the $\sigma_z$ of each bin, through the same counts, gives
+medians over the counts of <MwMetric name="coevalMedians" /> in McMillan (2017) and
+<MwMetric name="familyCoevalMedians" /> in the admissible potentials, against
+<MwMetric name="tracerMedians" /> and <MwMetric name="familyTracerMedians" /> for the
+isothermal tracer. Inverted as above, it needs midplane densities of
+<MwMetric name="inversionCoevalRho0" /> $M_\odot\,\mathrm{pc}^{-3}$. A population with
+$b = 1/2$ is thicker than the isothermal one of the same midplane dispersion, because its
+velocities are flat-topped, so it fits the counts only in a potential denser than the
+measurements near the Sun, close to that of McMillan (2017). At the measured densities, the
+counts favor the isothermal shape, although the error of $\rho_0$ keeps the preference weak.
+
+## Age errors and selection
+
+The ages carry typical errors of 30 percent for the LAMOST red clump (Huang et al. 2020) and
+up to 40 percent by our cut for APOGEE, so bins of 2 Gyr mix their neighbors. The targeting
+of either survey could also depend on age at a fixed position. Two checks remeasure every
+survey with <CheckMetric name="checkBootstrap" /> bootstrap draws per bin
+(`experiments.mw_checks`).
+
+```bash
+OMP_NUM_THREADS=4 uv run experiments milky-way checks
+```
+
+The first draws every age again from its error, lognormal with the relative error as the
+dispersion of $\ln$ age, which doubles the variance of the errors, in
+<CheckMetric name="ageRealizations" /> realizations. The medians of the tracer over the counts
+become <CheckMetric name="ageTracerMedians" />, against <MwMetric name="tracerMedians" /> with
+the ages as given. Its trends over 0-10 Gyr become <CheckMetric name="ageTracerTrends0" />,
+within <CheckMetric name="ageTracerTrendMax0" /> standard errors of 0, with $\eta$ of
+<CheckMetric name="ageEta0" />. Doubling the errors of the ages thus leaves the test where it
+was, presumably because the mixing of ages enters the counts and the kinematics of a bin
+alike.
+
+The second asks whether the fraction of a population at a fixed position depends on the
+magnitude of its stars, as it would if the targeting depended on age there. In each slice of
+$|z|$ we split the matches of each survey at their median $G$, near
+<CheckMetric name="magnitudeSplits" />, and measure each survey with each half. The heights
+of the bright over the faint half are <CheckMetric name="magnitudeRatioRange" />, within two
+standard errors in <CheckMetric name="magnitudeWithin2" /> bins and at most
+<CheckMetric name="magnitudeMaxSigmas" /> standard errors apart. With LAMOST
+<CheckMetric name="magnitudeLamostWithin2" /> bins agree within two errors, against
+<CheckMetric name="magnitudeApogeeWithin2" /> with APOGEE on either age scale. A targeting of APOGEE that
+depends on age at a fixed position may thus move some of its bins by up to the largest of
+these differences, whereas the LAMOST counts show no such dependence.
+
 ## The heights of Imig et al.
 
 Imig et al. (2025) measure the same heights in a different way. They fit every population
-of APOGEE DR17, in bins of $[\alpha/\mathrm{M}]$, $[\mathrm{M/H}]$ and age, with a model of
+of APOGEE DR17 with more than 100 stars, in bins of $[\alpha/\mathrm{M}]$,
+$[\mathrm{M/H}]$ and age, with a model of
 the whole footprint of the survey corrected for its selection function. Their model of a
 population is $\nu(R, z) = \nu_\odot \Sigma(R) \exp[-|z|/h_Z(R)]$, with $\Sigma$ a broken
 exponential in $R$ and a scale height that flares linearly,
@@ -341,10 +481,13 @@ from <MwMetric name="boxPoorA" /> and <MwMetric name="boxPoorB" /> for the metal
 populations to <MwMetric name="boxRichA" /> and <MwMetric name="boxRichB" /> for the
 metal-rich ones. At fixed age, their logarithms change by <MwMetric name="boxTrendA" /> and
 <MwMetric name="boxTrendB" /> per dex of $[\mathrm{M/H}]$, as without the boxes. A
-selection that the limits do not record remains: within a cohort, APOGEE spaces its targets evenly in apparent $H$ rather
-than drawing them at random (Zasowski et al. 2013, Section 4.4), so the chance that a star
-is targeted depends on its $H$ and, at a given distance, on its luminosity, which changes
-with the population.
+selection that the limits do not record remains: within a cohort, APOGEE spaces its
+targets evenly in apparent $H$ rather than drawing them at random (Zasowski et al. 2013,
+Sect. 4.5), so the chance that a star is targeted can depend on its $H$ and, at a given
+distance, on its luminosity, which changes with the population. Zasowski et al. find that
+the resulting distribution of magnitudes "very closely resembles a random selection within
+each cohort", with a slight bias toward the brighter stars, so the effect is presumably
+small, although we have not measured it on our cells.
 
 ### The counts of LAMOST
 
@@ -412,6 +555,15 @@ lowest for the hottest population (see the table of estimators), so their old he
 should come out thinner than ours by up to that factor. That would account for part of the
 excess of our old cells, but not for the young cells, where our fits are the thinner.
 
+The uncertainty of the potential does not account for it either. Between $\sigma_z$ of 10
+and 25 km/s, the exponential fit to the tracer below $|z| = 1.2$ kpc grows with an exponent
+of <MwMetric name="familyGrowthWindow" /> in $\sigma_z$ across the admissible potentials of
+[The tracer predicts the star counts](#the-tracer-predicts-the-star-counts), and the fit to
+the whole profile with one of <MwMetric name="familyGrowthWhole" />, whereas their published
+heights grow as <MwMetric name="dispersionSun" /> at fixed $[\mathrm{M/H}]$. A potential
+that is denser or lighter near the plane within the measured errors moves the heights of
+all the populations by similar factors, which changes their level more than their growth.
+
 The rest is untested. Both measurements use the same stars on the same age scale, so the
 errors of the ages mix the same neighbors into both, whereas the two measurements differ in
 where the stars lie. Their $h_Z$ at $R_\odot$ comes from a model of the whole footprint, in
@@ -452,6 +604,8 @@ counts, is underestimated. The kinematic samples cover the annulus $7.5 < R < 9$
 whereas the counts cover the cylinder of radius 1.5 kpc around the Sun. Ages carry typical
 errors of 30 percent for the LAMOST red clump (Huang et al. 2020), with our cut at 50
 percent, and up to 40 percent by our cut for APOGEE on either scale, so bins of 2 Gyr mix
-their neighbors. The potential of McMillan (2017) enters without its errors, and the
-clipped $\sigma_z$ of the tracer removes the tails of populations that mix several
-dispersions, as in the Auriga disks.
+their neighbors. The potential of McMillan (2017) enters without its errors except through
+the family around it, which varies its thin disk and its halo but neither its thick disk nor
+its gas, and is not refitted to the rotation curve. The Jeans heights leave out the tilt
+term, which held up the old populations of Au19, and the clipped $\sigma_z$ of the tracer
+removes the tails of populations that mix several dispersions, as in the Auriga disks.

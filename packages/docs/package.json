@@ -11,6 +11,7 @@
     "clear": "docusaurus clear",
     "serve": "DOCS_BASE_URL=/ docusaurus serve",
     "typecheck": "tsc --noEmit",
+    "paper:numbers": "node scripts/paper-numbers.cjs",
     "test": "echo 'No tests for docs package'"
   },
   "dependencies": {

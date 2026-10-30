@@ -2,6 +2,7 @@
 title: Tracer or sheet
 ---
 
+import EtaChart from '@site/src/components/status/EtaChart'
 import ExponentChart from '@site/src/components/status/ExponentChart'
 import HeightRatioChart from '@site/src/components/status/HeightRatioChart'
 import Metric from '@site/src/components/status/Metric'
@@ -21,8 +22,10 @@ In the seven Auriga halos, the isothermal tracer in a fitted potential predicts 
 height of <Metric name="tracerWithin10" /> of the <Metric name="populations" /> mono-age
 populations within 10 percent, with a median ratio of <Metric name="tracerMedian" />, and
 reproduces how $h_Z$, and hence the slope $a = J_{R,\mathrm{med}}/h_Z$, changes with age in
-every halo. Over 2-10 Gyr it falls slightly short of the oldest populations, because a
-population of 1 Gyr of ages is not one isothermal component. The vertical Jeans equation,
+every halo. The heights grow with $\sigma_z$ as fast as the tracer of each halo's potential
+grows, within two standard errors in <Metric name="etaChordWithin2" /> halos. Over 2-10 Gyr
+the tracer falls slightly short of the oldest populations, because the dispersion of a
+population grows with height, even within 0.25 Gyr of ages. The vertical Jeans equation,
 with the dispersion of each population measured at every height, removes that residual,
 with a tilt term that holds up the thick old populations of Au19. The self-gravitating sheet,
 the vertical half of the slope that the
@@ -43,12 +46,18 @@ computed in the fitted potential with the Staeckel fudge of AGAMA
 (`experiments.populations`).
 
 We fit $h_Z$ to the heights $|z|$ of the stars, weighted by their initial mass, by matching
-their mean height inside a window $|z| < L$ to that of an exponential truncated at $L$,
-which for an exponential profile is the maximum-likelihood estimate of its scale (Deemer &
-Votaw 1955). The estimate is averaged with the same fit inside $L/2$. The window scales
-with the population, $L = k\,h_Z$ with $k = 2$, taking the smallest $L$ that satisfies the
-condition (`experiments.heights`), because the height of a profile that is not exponential
-depends on the window ([Fixed-window bias](./window-bias)). Errors are half the range
+their mean height inside a window $|z| < L$ to that of an exponential truncated at $L$. For
+an exponential profile, $1/h_Z$ is then the maximum-likelihood estimate of its rate, which
+exists only when the mean height lies below $L/2$ (Deemer & Votaw 1955, Sect. 3), so a
+window whose mean reaches $L/2$ gives no $h_Z$. The estimate is averaged with the same fit
+inside $L/2$. The window scales with the population, $L = k\,h_Z$ with $k = 2$, taking the
+smallest $L$ that satisfies the condition (`experiments.heights`), because the height of a
+profile that is not exponential depends on the window
+([Fixed-window bias](./window-bias)). A window needs 100 stars inside $L/2$. With fewer,
+the profile of a hot population is nearly flat inside a small window, so the noise of the
+fitted $1/h_Z$ can satisfy the condition by chance. With a minimum of 20, about one in a
+hundred draws of 300 stars from an exponential of $h_Z = 3$ kpc gave such a spurious root
+far below the true scale, whereas 100 gave none in 3000. Errors are half the range
 between the 16th and the 84th percentiles of 300 bootstrap resamplings of the stars of each
 bin. Each resampling recomputes every quantity at once, so that ratios of quantities
 measured on the same stars, such as $a$ and the ratio of a predicted to the measured
@@ -72,7 +81,8 @@ measured $h_Z$ tests the vertical half of the slope alone.
 
 _Figure 5. Predicted over measured $h_Z$ for every mono-age population, against its median
 age $\tau$. Filled circles on solid lines are the tracer in the fitted potential, open
-circles on dashed lines the sheet. The gray band marks agreement within 10 percent. Error
+circles on dashed lines the sheet. The gray band marks agreement within 10 percent,
+$|\ln h_\mathrm{pred}/h_Z| \le 0.1$. Error
 bars are the bootstrap errors of each ratio, with both heights computed from the same
 resampled stars. Colors identify the halos, as on the buttons that highlight one of them.
 The other buttons add the tracer in the snapshot's potential and the Jeans heights._
@@ -91,13 +101,45 @@ the oldest, whose heights reach <Metric name="au19HzOld" /> kpc in Au19.
 
 The table gives the same comparison halo by halo, with the median ratio of each prediction
 to the measured $h_Z$ (snapshot $\Phi$ is the tracer in the snapshot's potential) and
-$\eta = \beta_h/\beta_z$, the ratio of the age exponents of $h_Z$ and $\sigma_z$ over
-0-10 Gyr. Across the seven halos $\eta$ spans <Metric name="etaRange" />, between the value
+$\eta = d\ln h_Z/d\ln\sigma_z$, the slope of the weighted least-squares line of $\ln h_Z$
+against $\ln\sigma_z$ over the ten bins of 0-10 Gyr. Both coordinates carry errors, so each
+bin is weighted by the inverse of $(\delta h_Z/h_Z)^2 + \eta^2(\delta\sigma_z/\sigma_z)^2$,
+refitted until $\eta$ converges, with the error scaled by $\sqrt{\chi^2_\nu}$ as for a trend
+(`experiments.populations.fit_eta`). Across the seven halos $\eta$ spans
+<Metric name="etaRange" />, with errors of <Metric name="etaErrRange" />, between the value
 of 1 that a harmonic potential gives and the value of 2 of a potential that grows linearly
 with height: the populations sample the curvature of the potential near the plane more than
-its linear rise above the disk. The tracer in the snapshot's potential follows the tracer in
-the fit in every halo, as the [overview](./overview#the-analysis-recovers-a-known-galaxy)
-quantifies.
+its linear rise above the disk. Because $\eta$ is a local slope, it changes with the range of
+ages, to <Metric name="etaAllRanges" /> over the four ranges of every halo. The tracer in the
+snapshot's potential follows the tracer in the fit in every halo, as the
+[overview](./overview#the-analysis-recovers-a-known-galaxy) quantifies.
+
+<EtaChart />
+
+_Figure 6. The local slope $\eta = d\ln h_Z/d\ln\sigma_z$ of the tracer of each halo's fitted
+potential at $R_\mathrm{mid}$, against $\sigma_z$ (lines), colored as in Figure 5. A line
+ends where the self-consistent window finds no scale. Circles mark the $\eta$ fitted to the
+populations of 0-10 Gyr, with its error, on a horizontal bar across the $\sigma_z$ of those
+populations. The dotted and dashed lines mark the $\eta$ of a harmonic and of a linear
+potential._
+
+Figure 6 compares $\eta$ with the tracer itself. For each halo we compute the tracer of the
+fitted potential at $R_\mathrm{mid}$ at 41 dispersions from 5 to 150 km/s, measure its $h_Z$
+in the self-consistent window, and take central differences of $\ln h_Z$ in $\ln\sigma_z$
+(`experiments.heights.tracer_curve`). The local slope rises from
+<Metric name="curveEtaAt10" /> at 10 km/s, where the populations stay inside the harmonic
+core of the potential, to <Metric name="curveEtaAt40" /> at 40 km/s, and to at most
+<Metric name="curveEtaMax" /> at the hottest dispersions. Over the $\sigma_z$ of the
+populations of each halo, its mean, the slope of the chord of $\ln h_Z$ against
+$\ln\sigma_z$, differs from the measured $\eta$ by <Metric name="etaChordDiff" />, within two
+standard errors in <Metric name="etaChordWithin2" /> halos. The exception is Au19, whose
+$\eta$ of <Metric name="au19Eta" /> exceeds the chord of <Metric name="au19Chord" />: its old
+populations are thicker than the tracer allows, as the
+[vertical Jeans equation](#the-vertical-jeans-equation) explains. The slope stays below 2
+over the whole grid. In <Metric name="curveNoScaleCount" /> halos the window finds no scale above
+<Metric name="curveNoScale" /> km/s, where the tracer is so flat inside $2h_Z$ that its mean
+height reaches $L/2$. The hottest population of each of those halos lies a factor of at least
+<Metric name="noScaleMargin" /> below that limit.
 
 ## Age dependence
 
@@ -123,7 +165,7 @@ error instead of sharpening the test.
 
 <TrendChart />
 
-_Figure 6. The trend $d\ln(h_\mathrm{pred}/h_Z)/d\ln\tau$ of the tracer (open squares)
+_Figure 7. The trend $d\ln(h_\mathrm{pred}/h_Z)/d\ln\tau$ of the tracer (open squares)
 and of the sheet (open triangles) in every halo, colored as in Figure 5, over 0-10 Gyr (top)
 and 2-10 Gyr (bottom). A prediction that reproduces the age dependence of $h_Z$, and hence
 of $a$, lies on the vertical line at 0. Error bars are the errors of the fits, scaled by
@@ -153,7 +195,7 @@ presumably that of the fitted potential and of departures from isothermality.
 
 <ExponentChart />
 
-_Figure 7. The age exponent $\beta_a$ of every halo over 0-10 Gyr (top) and 2-10 Gyr
+_Figure 8. The age exponent $\beta_a$ of every halo over 0-10 Gyr (top) and 2-10 Gyr
 (bottom), colored as in Figure 5: measured (filled circles), and with the $h_Z$ of the
 tracer (open squares) and of the sheet (open triangles). Error bars are the errors of the
 fits._
@@ -209,7 +251,11 @@ $$
 
 which goes through the same self-consistent window as the stars, without and with $t$
 (`experiments.jeans`). The profile is a diagnostic of the tracer's assumptions, not a
-prediction, because it uses the kinematics measured at every height. Figure 5 shows both
+prediction, because it uses the kinematics measured at every height. The same two
+refinements are known from the inverse problem of measuring the local density with one
+tracer in an N-body disk, where an isothermal tracer biases the result and its measured
+dispersion profile removes the bias (Garbari, Read & Lake 2011), and where the tilt term is
+needed for an unbiased estimate (Sivertsson et al. 2022). Figure 5 shows both
 profiles with the buttons "Jeans, $\sigma_z(z)$" and "Jeans, $\sigma_z(z)$ and tilt".
 
 <JeansTrendTable />
@@ -221,8 +267,10 @@ standard errors of 0 in <Metric name="jeansSigmaWithin2" /> of the 14 cases. Ove
 2-10 Gyr, <Metric name="jeansSigmaNegative2" /> trends are negative, so the pattern of
 signs of the tracer is gone. The difference between the tracer and these Jeans heights has
 two parts, the change of the dispersion with height and the full rather than the clipped
-second moment, which the records do not separate. Both are departures from a population of
-one isothermal component, which is what the tracer assumes.
+second moment. The tracer of the unclipped $\sigma_z$ keeps the negative trends over 2-10 Gyr
+([Checks](#disk-stars-finer-bins-and-clipping)), so the change of the dispersion with height
+is what removes them. A population whose dispersion grows with height is not one isothermal
+component, which is what the tracer assumes.
 
 The exception is Au19. Without the tilt term, its populations older than 5 Gyr reach
 <Metric name="au19JeansOld" /> of their measured $h_Z$, as short as in the tracer
@@ -244,6 +292,108 @@ median ratio of <Metric name="jeansMedian" /> and <Metric name="jeansWithin2" />
 would produce with a probability of <Metric name="jeansSignTest2" />. The Jeans heights
 with the tilt term may therefore grow slightly faster with age than the measured ones, by
 an amount below the error of each halo.
+
+Because the Jeans equation with the tilt term holds for any steady axisymmetric population,
+its scatter about the measured heights, <Metric name="jeansRms" /> with ratios of
+<Metric name="jeansRange" />, measures what a test at one radius cannot remove: departures
+from a steady state and the noise of the measured profiles. It is the floor of any
+prediction of these heights, and the tracer's scatter of <Metric name="tracerRms" /> lies
+just above it.
+
+## Half-mass heights
+
+The $h_Z$ of a population depends on the window that measures it, whereas the height below
+which half of its mass lies needs none. We measure that half-mass height for the stars of
+each population with $|z| < 12$ kpc, weighted by initial mass, and for each predicted profile
+over the same heights (`experiments.heights.half_mass_height`), with errors from the same
+300 bootstrap resamplings. The ratio of a predicted to the measured half-mass height thus
+tests each prediction over the whole profile, including the heights above $2h_Z$ that the
+window leaves out.
+
+The tracer's half-mass heights lie within 10 percent of the measured ones in
+<Metric name="halfMassTracerWithin10" /> populations, with a median ratio of
+<Metric name="halfMassTracerMedian" /> and an rms of <Metric name="halfMassTracerRms" />,
+and exceed them in only <Metric name="halfMassTracerAbove1" />. The shortfall is nearly the
+same at every age, because the trends of the ratio over 0-10 Gyr lie within
+<Metric name="halfMassTrendMax0" /> standard errors of 0, the farthest in Au19, and over
+2-10 Gyr <Metric name="halfMassTrendNegative2" /> are negative, none beyond
+<Metric name="halfMassTrendMax2" /> standard errors. With half-mass heights in place of
+$h_Z$, $\eta$ is <Metric name="etaHalfMassRange" />. The populations of every age therefore
+carry more of their mass far from the plane than the isothermal profile of their midplane
+$\sigma_z$, an excess that a window of $2h_Z$ weighs little. The Jeans heights trace it to the
+rise of $\sigma_z$ with height. With the measured $\sigma_z(z)$, their half-mass heights lie
+within 10 percent in <Metric name="halfMassJeansSigmaWithin10" /> populations, and with the
+tilt term in <Metric name="halfMassJeansWithin10" />, with an rms of
+<Metric name="halfMassJeansRms" />, below the <Metric name="jeansRms" /> of their $h_Z$.
+
+The sheet's half-mass heights lie within 10 percent in
+<Metric name="halfMassSheetWithin10" /> populations, with a median ratio of
+<Metric name="halfMassSheetMedian" />, so its failure does not come from the window either.
+
+## Disk stars, finer bins and clipping
+
+Three checks ask whether the residual of the tracer over 2-10 Gyr comes from how the
+populations are selected and measured (`experiments.robustness`). Each repeats the
+measurement of $\sigma_z$, $h_Z$ and the tracer in its own bins, with 100 bootstrap
+resamplings of its own, so that the main measurement does not change.
+
+The annulus holds stars on orbits of every circularity $L_z/L_c(E)$, the angular momentum of
+a star over that of the circular orbit of the same energy in the fitted potential. Keeping
+only the stars above 0.7, on orbits of a disk, keeps <Metric name="diskMassRange" /> of the
+mass of a bin, the least in the oldest bins. With these stars alone, the tracer predicts
+$h_Z$ within 10 percent in <Metric name="diskWithin10" /> bins, its trends over 0-10 Gyr lie
+within <Metric name="diskTrendMax0" /> standard errors of 0, and over 2-10 Gyr
+<Metric name="diskTrendNegative2" /> are negative. The residual is therefore a property of the
+disk stars, not of the stars on orbits closer to a spheroid's that a bin of age also holds.
+
+Bins of 0.25 Gyr hold a quarter of the ages of the main bins. The tracer predicts $h_Z$
+within 10 percent in <Metric name="fineWithin10" /> of them, a smaller share because each
+bin holds fewer stars, and over 2-10 Gyr <Metric name="fineTrendNegative2" /> of its trends
+are negative, up to <Metric name="fineTrendMax2" /> standard errors from 0. The residual thus
+does not come from the mixing of ages inside a bin of 1 Gyr. A population of 0.25 Gyr of
+ages is not one isothermal component either.
+
+Without clipping, $\sigma_z$ keeps the tails of $v_z$, which raise the tracer heights by
+<Metric name="unclippedShift" />. The tracer of the unclipped $\sigma_z$ predicts $h_Z$
+within 10 percent in <Metric name="unclippedWithin10" /> bins, with a median ratio of
+<Metric name="unclippedMedian" />, and its trends over 2-10 Gyr are negative in
+<Metric name="unclippedTrendNegative2" /> halos. The clipping therefore does not cause the
+residual, and the clipped dispersion predicts the heights better.
+
+## The shape of the vertical actions
+
+Ting & Rix (2026) describe a coeval population by the distribution of its vertical actions,
+$p(J_z) \propto \exp[-(J_z/J_0)^{2-b}]$, which diffusion with a coefficient $\propto J_z^b$
+leaves behind. Scatterers that fill the volume, such as bending waves or dark substructure,
+give $b = 1$, whereas scatterers confined to a thin layer at the midplane, such as giant
+molecular clouds, give $b = 1/2$, close to the $b = 0.51$ they measure for red-clump stars of
+2-8 Gyr in the Milky Way. We fit $b$ and $J_0$ to the vertical actions of the stars of each
+bin by maximum likelihood, weighted by initial mass, with the actions from the Staeckel fudge
+of AGAMA in the fitted potential (`experiments.coeval`). An isothermal population is
+exponential in $J_z$ only where the potential is harmonic: in a potential $\propto |z|^p$ its
+energy grows as $J_z^{2p/(p+2)}$, so a linear potential gives it $b = 4/3$. We therefore read
+each fitted $b$ against $b_\mathrm{iso}$, the $b$ of the isothermal tracer of the bin's
+$\sigma_z$ in the same potential. Both need the orbits of the population to stay inside the
+12 kpc of the grid of heights, which those of <Metric name="coevalCount" /> populations do.
+
+The fitted $b$ is <Metric name="bFitRange" />, with errors of at most
+<Metric name="bFitErrRange" />, and exceeds $b_\mathrm{iso}$ in <Metric name="bAboveIso" />
+populations, by a median of <Metric name="bExcessMedian" />. The cold populations have $b$ of
+<Metric name="bColdRange" />, against $b_\mathrm{iso}$ of <Metric name="bIsoColdRange" />.
+The vertical actions of the Auriga populations thus have heavier tails than an isothermal
+population of the same midplane dispersion, as their half-mass heights showed, and depart
+from it in the direction opposite to the thin layer of Ting & Rix. The population with
+$b = 1/2$ and the $\sigma_z$ of each bin, in the fitted potential, makes the same point
+through the heights. With $J_0$ set so that its stars within 0.3 kpc of the plane have that
+$\sigma_z$, its flat-topped velocities make it thicker than the tracer near the plane. It
+predicts
+$h_Z$ within 10 percent in <Metric name="coevalWithin10" /> populations, with a median ratio of
+<Metric name="coevalMedian" /> and a scatter of <Metric name="coevalRms" />, whereas over the
+same populations the tracer does so in <Metric name="coevalTracerWithin10" />, with a median of
+<Metric name="coevalTracerMedian" />. The Auriga
+populations are therefore not thin-layer populations, which is not surprising in hindsight:
+the star-forming gas of these simulations follows an effective equation of state rather than
+forming giant molecular clouds (Grand et al. 2017).
 
 ## The steady state
 
@@ -278,20 +428,28 @@ because the tilt term accounts for the thickness of its old populations.
 
 ## The sheet
 
-A self-gravitating isothermal sheet of surface density $\Sigma$ has
-$h_Z = \sigma_z^2/(\pi G \Sigma)$, the vertical half of the slope that the companion paper
-derives for a whole disk. At fixed $\Sigma$ it makes every population grow as
-$\sigma_z^2$, whereas the measured heights grow as $\sigma_z^\eta$ with $\eta$ of
-<Metric name="etaRange" />. The sheet is the isothermal tracer of a layer whose own mass
-makes its potential, the picture that the companion paper adopts for a whole disk, whereas
-a population of 1 Gyr of ages is one part of that layer and moves in the potential of all
-of it. Against the measured heights, the sheet comes within
-10 percent in <Metric name="sheetWithin10" /> populations, with ratios from
-<Metric name="sheetRange" />: <Metric name="sheetYoung" /> for the youngest population of
-each halo and <Metric name="sheetOld" /> for the oldest. Its trends with age over 0-10 Gyr
-are <Metric name="sheetTrendRange" />, at least <Metric name="sheetTrendMin" /> standard
+A self-gravitating isothermal sheet of surface density $\Sigma$ has the profile
+$\mathrm{sech}^2(z/z_0)$ with $z_0 = \sigma_z^2/(\pi G \Sigma)$ (Spitzer 1942; van der Kruit
+& Searle 1981), the vertical half of the slope that the companion paper derives for a whole
+disk. Above $z_0$ the profile falls as an exponential of scale $z_0/2$, which is why papers
+that use the exponential tail write $\sigma_z^2 = 2\pi G\Sigma h_z$. In the self-consistent
+window, the estimator of the stars returns $z_0$ for the $\mathrm{sech}^2$ profile within
+0.2 percent (`experiments.heights.sheet_profile`), so the sheet's $h_Z$ is $z_0$ measured as
+the stars are, and the convention does not enter the comparison. Applied to one population,
+the sheet appears in studies of disk heating and migration (Ro&scaron;kar et al. 2013;
+Martig, Minchev & Flynn 2014b; Grand et al. 2016; Mackereth et al. 2019; Martig et al.
+2026), most of which use it as a scaling rather than test it population by population. At
+fixed $\Sigma$ it makes every population grow as $\sigma_z^2$, whereas the measured heights
+grow as $\sigma_z^\eta$ with $\eta$ of <Metric name="etaRange" />. The sheet is the
+isothermal tracer of a layer whose own mass makes its potential, the picture that the
+companion paper adopts for a whole disk, whereas a population of 1 Gyr of ages is one part
+of that layer and moves in the potential of all of it. Against the measured heights, the
+sheet comes within 10 percent in <Metric name="sheetWithin10" /> populations, with ratios
+from <Metric name="sheetRange" />: <Metric name="sheetYoung" /> for the youngest population
+of each halo and <Metric name="sheetOld" /> for the oldest. Its trends with age over 0-10
+Gyr are <Metric name="sheetTrendRange" />, at least <Metric name="sheetTrendMin" /> standard
 errors from 0 in every halo, which is the difference between $\eta$ and 2 measured by a fit
-(Figures 5 to 7). The sheet thus fits a population only where $\sigma_z^2/(\pi G \Sigma)$
+(Figures 5, 7 and 8). The sheet thus fits a population only where $\sigma_z^2/(\pi G \Sigma)$
 happens to cross its height, at intermediate ages, and departs from it on either side.
 
 ## Limitations
@@ -299,8 +457,8 @@ happens to cross its height, at intermediate ages, and departs from it on either
 The tracer takes $\sigma_z$ from the stars within 0.3 kpc of the plane and assumes that it
 does not change with height, an assumption whose cost the Jeans heights above measure. That
 $\sigma_z$ is clipped at 4 standard deviations, which removes the tails of a population that
-mixes several dispersions, so it is smaller than the second moment of the population. How
-much this moves each tracer height on its own has not been measured. The tracer also takes
+mixes several dispersions, so it is smaller than the second moment of the population, by an
+amount whose effect on the heights the unclipped check above measures. The tracer also takes
 $\Delta\Phi$ at a single radius, which neglects the radial terms of the vertical Jeans
 equation, the tilt term that the Jeans heights above measure. That tilt term comes from
 straight lines over 4.5 kpc of radius, which cannot follow a curvature of $\nu\sigma_{Rz}$

@@ -15,5 +15,5 @@
     "composite": true,
     "noEmit": true
   },
-  "include": ["src/", "docs/", "*.ts"]
+  "include": ["src/", "docs/", "scripts/", "*.ts"]
 }

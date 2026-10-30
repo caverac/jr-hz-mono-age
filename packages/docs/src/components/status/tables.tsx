@@ -2,6 +2,7 @@ import MathLabel from '@site/src/components/MathLabel'
 import { Pending } from '@site/src/components/status/controls'
 import type { Estimate, StatusData } from '@site/src/components/status/data'
 import { FAMILIES } from '@site/src/components/status/families'
+import { plusMinus } from '@site/src/components/status/format'
 import {
   AGE_RANGES,
   ageRange,
@@ -133,7 +134,7 @@ export const HaloTable = fromRecords((data) => ({
     fixed(s.tracerMedian),
     fixed(s.snapshotMedian),
     fixed(s.sheetMedian),
-    fixed(s.eta)
+    plusMinus(s.eta.value, s.eta.err, 2, false)
   ])
 }))
 

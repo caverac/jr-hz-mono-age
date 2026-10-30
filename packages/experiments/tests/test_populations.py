@@ -9,11 +9,14 @@ in the exact sample they follow it, so that the tracer is right at every age.
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
+from dataclasses import replace
 
 import numpy as np
 import pytest
 
+from experiments.coeval import THIN_LAYER_B, CoevalCurve, CoevalModel, coeval_curve
 from experiments.cosmology import Cosmology
 from experiments.heights import Z_GRID, sheet_hz
 from experiments.jeans import TILT_R_MAX_KPC, TILT_R_MIN_KPC
@@ -25,16 +28,19 @@ from experiments.populations import (
     R_MAX_KPC,
     R_MIN_KPC,
     Z_LIM_SCAN_KPC,
+    AgeBin,
     AnnulusSample,
     Estimate,
     Method,
     MonoAge,
     VerticalModel,
+    fit_eta,
     fit_grouped_log_slope,
     fit_log_slope,
     fit_power_law,
     fit_trend,
     measure_mono_age,
+    range_exponents,
     surface_density,
 )
 from experiments.snapshot import Galaxy, Header, Particles, Stars
@@ -61,10 +67,27 @@ def tracer_height(age: float) -> float:
     return vertical_dispersion(age) ** 2 / G_LINEAR
 
 
+def vertical_action_scale(age: float) -> float:
+    """Return the scale J_0 (kpc km/s) of the exponential distribution of the vertical actions at *age* Gyr."""
+    return 2.0 * (0.5 + age)
+
+
+@functools.cache
+def linear_coeval() -> CoevalCurve:
+    """Return the thin-layer population of the linear potential over the dispersions of the synthetic bins.
+
+    The grid stops at 32 km/s, below the dispersion at which this shallow potential keeps more
+    than EDGE_DENSITY of the midplane density at the edge of the heights (about 33 km/s).
+    """
+    return coeval_curve(CoevalModel(G_LINEAR * Z_GRID), np.geomspace(10.0, 32.0, 6), THIN_LAYER_B, 2.0)
+
+
 def synthetic_sample(height: Callable[[float], float] = scale_height) -> AnnulusSample:
     """Return N_PER_BIN stars per 1 Gyr bin with heights of scale *height*, and the known dispersions and actions."""
     rng = np.random.default_rng(21)
-    parts: dict[str, list[np.ndarray]] = {key: [] for key in ("age", "z", "v_r", "v_z", "jr", "initial_mass", "r")}
+    action_rng = np.random.default_rng(25)  # its own, so that the other columns do not depend on it
+    keys = ("age", "z", "v_r", "v_z", "jr", "jz", "initial_mass", "r")
+    parts: dict[str, list[np.ndarray]] = {key: [] for key in keys}
     for lo, hi in AGE_BINS:
         mid = 0.5 * (lo + hi)
         z = rng.exponential(height(mid), N_PER_BIN) * rng.choice([-1.0, 1.0], N_PER_BIN)
@@ -74,6 +97,7 @@ def synthetic_sample(height: Callable[[float], float] = scale_height) -> Annulus
         parts["v_r"].append(rng.normal(0.0, 1.5 * vertical_dispersion(mid), N_PER_BIN))
         parts["v_z"].append(rng.normal(0.0, vertical_dispersion(mid), N_PER_BIN))
         parts["jr"].append(np.where(np.abs(z) < 0.5, jr, np.nan))
+        parts["jz"].append(action_rng.exponential(vertical_action_scale(mid), N_PER_BIN))
         parts["initial_mass"].append(np.ones(N_PER_BIN))
         parts["r"].append(rng.uniform(R_MIN_KPC, R_MAX_KPC, N_PER_BIN))
     return AnnulusSample(**{key: np.concatenate(value) for key, value in parts.items()})
@@ -89,7 +113,7 @@ def synthetic_outer(height: Callable[[float], float] = scale_height) -> AnnulusS
         rng.uniform(TILT_R_MIN_KPC, R_MIN_KPC, sample.r.size),
         rng.uniform(R_MAX_KPC, TILT_R_MAX_KPC, sample.r.size),
     )
-    return AnnulusSample(**{**sample.__dict__, "r": r, "jr": np.full(r.size, np.nan)})
+    return AnnulusSample(**{**sample.__dict__, "r": r, "jr": np.full(r.size, np.nan), "jz": np.full(r.size, np.nan)})
 
 
 def measure(sample: AnnulusSample, outer: AnnulusSample | None = None) -> MonoAge:
@@ -98,7 +122,7 @@ def measure(sample: AnnulusSample, outer: AnnulusSample | None = None) -> MonoAg
     Without *outer*, no star lies outside the annulus.
     """
     phi = G_LINEAR * Z_GRID
-    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC)
+    model = VerticalModel(SIGMA_SURF, phi, phi + 0.05 * phi, R_MID_KPC, linear_coeval())
     outside = sample.select(np.zeros(sample.z.size, dtype=bool)) if outer is None else outer
     return measure_mono_age(sample, outside, model, Method(PalicioWindow(20.0, 1.0), 2.0, 20))
 
@@ -127,18 +151,55 @@ def test_bins_recover_the_populations(measured: MonoAge) -> None:
         assert b.ratios.sheet.value == pytest.approx(b.predictions.sheet / b.heights.measured.value)
         assert 0.0 < b.slopes.measured.err < b.slopes.measured.value
         assert 0.0 < b.ratios.tracer.err < b.ratios.tracer.value
+        assert abs(b.half_mass.measured.value - np.log(2.0) * scale_height(mid)) < 3.0 * b.half_mass.measured.err
+        assert 0.0 < b.half_mass.ratios.tracer.err < b.half_mass.ratios.tracer.value
         assert kin.n_mid < kin.n_jr < N_PER_BIN
 
 
 def test_ranges_fit_the_age_exponents(measured: MonoAge) -> None:
-    """Over each age range, eta and 2 (beta_R - beta_z) follow from the exponents."""
+    """Over each age range, eta is the fit of the heights against sigma_z, and 2 (beta_R - beta_z) follows."""
     assert [(r.lo, r.hi) for r in measured.ranges] == list(AGE_RANGES)
     for r in measured.ranges:
         exp = r.exponents
-        assert r.eta == pytest.approx(exp["hz"].value / exp["sigma_z"].value)
+        chosen = [b for b in measured.bins if b.age_lo >= r.lo and b.age_hi <= r.hi]
+        sigma_z = [b.kinematics.sigma_z for b in chosen]
+        assert r.eta == fit_eta(sigma_z, [b.heights.measured for b in chosen])
+        assert r.eta_half_mass == fit_eta(sigma_z, [b.half_mass.measured for b in chosen])
         assert r.sheet_exponent == pytest.approx(2.0 * (exp["sigma_r"].value - exp["sigma_z"].value))
     whole = measured.ranges[0].exponents
     assert whole["sigma_r"].value == pytest.approx(whole["sigma_z"].value, abs=0.05)
+
+
+def test_bins_compare_the_thin_layer_population_and_fit_their_actions(measured: MonoAge) -> None:
+    """Exponential actions give b = 1 and their J_0; the thin-layer ratios are the curve at sigma_z over the stars'."""
+    for b in measured.bins:
+        mid = 0.5 * (b.age_lo + b.age_hi)
+        assert abs(b.coeval.b.value - 1.0) < max(3.0 * b.coeval.b.err, 0.05)
+        assert b.coeval.j0.value == pytest.approx(vertical_action_scale(mid), rel=0.1)
+        hz, half_mass = linear_coeval().at(b.kinematics.sigma_z.value)
+        assert b.coeval.ratio.value == pytest.approx(hz / b.heights.measured.value)
+        assert b.coeval.half_mass_ratio.value == pytest.approx(half_mass / b.half_mass.measured.value)
+        assert 0.0 < b.coeval.ratio.err < b.coeval.ratio.value
+        # The linear potential gives the isothermal tracer b = 4/3 (experiments.coeval).
+        assert b.coeval.b_isothermal == pytest.approx(4.0 / 3.0, abs=0.02)
+    for r in measured.ranges:
+        assert np.isfinite(r.trends["coeval"].value) and np.isfinite(r.trends["half_mass_coeval"].value)
+
+
+def test_trends_leave_out_bins_without_a_ratio(measured: MonoAge) -> None:
+    """A bin with a NaN ratio drops out of the trend; with fewer than three bins left the trend is NaN."""
+    bins = measured.bins
+    gone = Estimate(float("nan"), float("nan"))
+
+    def without(b: AgeBin) -> AgeBin:
+        return replace(b, coeval=replace(b.coeval, ratio=gone))
+
+    kept = range_exponents([without(b) if i < 2 else b for i, b in enumerate(bins)], 0.0, 10.0)
+    expected = range_exponents(bins[2:], 0.0, 10.0)
+    assert kept.trends["coeval"] == expected.trends["coeval"]
+    assert kept.trends["tracer"] == range_exponents(bins, 0.0, 10.0).trends["tracer"]
+    few = range_exponents([without(b) if i < 8 else b for i, b in enumerate(bins)], 0.0, 10.0)
+    assert np.isnan(few.trends["coeval"].value)
 
 
 def test_scans_cover_k_and_the_fixed_windows(measured: MonoAge) -> None:
@@ -165,6 +226,13 @@ def test_half_width() -> None:
     assert np.isnan(half_width(np.array([np.nan, np.nan])))
 
 
+def test_estimate_without_a_value_has_no_error() -> None:
+    """A value has the half width of its draws as its error; a NaN value has a NaN error, even with finite draws."""
+    draws = np.array([0.5, 1.0, np.nan, 1.5])
+    assert Estimate.of(1.0, draws) == Estimate(1.0, half_width(draws))
+    assert np.isnan(Estimate.of(float("nan"), draws).err)
+
+
 def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge) -> None:
     """The heights grow more slowly with age than the tracer of the linear potential: a trend of 0.19 over 0-10 Gyr.
 
@@ -172,7 +240,10 @@ def test_trend_detects_a_tracer_with_the_wrong_age_dependence(measured: MonoAge)
     more than 5 errors.
     """
     for r in measured.ranges:
-        assert set(r.trends) == {"sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans"}
+        assert set(r.trends) == {
+            "sheet", "tracer", "tracer_snapshot", "jeans_sigma", "jeans",
+            "half_mass_sheet", "half_mass_tracer", "half_mass_jeans", "coeval", "half_mass_coeval",
+        }  # fmt: skip
         trend = r.trends["tracer"]
         if r.lo == 0.0:
             assert trend.value > 5.0 * trend.err
@@ -183,8 +254,10 @@ def test_trend_vanishes_when_the_tracer_is_right() -> None:
     exact = measure(synthetic_sample(tracer_height))
     for b in exact.bins:
         assert b.ratios.tracer.value == pytest.approx(1.0, abs=4.0 * b.ratios.tracer.err)
+        assert b.half_mass.ratios.tracer.value == pytest.approx(1.0, abs=4.0 * b.half_mass.ratios.tracer.err)
     for r in exact.ranges:
         assert abs(r.trends["tracer"].value) < 3.0 * r.trends["tracer"].err
+        assert abs(r.trends["half_mass_tracer"].value) < 3.0 * r.trends["half_mass_tracer"].err
 
 
 def test_jeans_heights_follow_the_tracer_of_an_isothermal_untilted_population() -> None:
@@ -270,6 +343,35 @@ def test_fit_trend_widens_its_error_by_the_scatter() -> None:
     scattered = fit_trend(x, y, 0.05 * y)
     assert scattered.chi2_dof > 1.0
     assert scattered.err == pytest.approx(fit_power_law(x, y, 0.05 * y).err * np.sqrt(scattered.chi2_dof))
+
+
+def test_fit_eta_recovers_the_slope_of_an_exact_power_law() -> None:
+    """Heights h = 0.02 sigma^1.3 give eta = 1.3 with no scatter, whatever the errors of sigma."""
+    sigma = np.array([10.0, 15.0, 25.0, 40.0, 70.0])
+    height = 0.02 * sigma**1.3
+    rel = np.array([0.02, 0.04, 0.03, 0.05, 0.08])
+    fit = fit_eta([Estimate(s, r * s) for s, r in zip(sigma, rel)], [Estimate(h, 0.03 * h) for h in height])
+    assert fit.value == pytest.approx(1.3) and fit.chi2_dof == pytest.approx(0.0, abs=1e-20)
+
+
+def test_fit_eta_weights_by_the_errors_of_both_coordinates() -> None:
+    """The fit is the weighted line of ln h on ln sigma with variances (dh/h)^2 + eta^2 (dsigma/sigma)^2 at its eta."""
+    rng = np.random.default_rng(12)
+    sigma = np.geomspace(10.0, 90.0, 8)
+    height = 0.02 * sigma**1.2 * rng.lognormal(0.0, 0.05, 8)
+    rel_s, rel_h = rng.uniform(0.02, 0.1, 8), rng.uniform(0.02, 0.06, 8)
+    fit = fit_eta(
+        [Estimate(s, r * s) for s, r in zip(sigma, rel_s)], [Estimate(h, r * h) for h, r in zip(height, rel_h)]
+    )
+    w = 1.0 / (rel_h**2 + fit.value**2 * rel_s**2)
+    design = np.column_stack([np.ones(8), np.log(sigma)])
+    cov = np.linalg.inv(design.T @ (design * w[:, None]))
+    coef = cov @ (design.T @ (w * np.log(height)))
+    chi2_dof = float(np.sum(w * (np.log(height) - design @ coef) ** 2)) / 6
+    assert fit.value == pytest.approx(coef[1], rel=1e-8) and fit.chi2_dof == pytest.approx(chi2_dof, rel=1e-6)
+    assert fit.err == pytest.approx(np.sqrt(cov[1, 1] * max(1.0, chi2_dof)), rel=1e-6)
+    alone = fit_eta([Estimate(s, 1.0e-12 * s) for s in sigma], [Estimate(h, r * h) for h, r in zip(height, rel_h)])
+    assert alone.value == pytest.approx(fit_power_law(sigma, height, rel_h * height).value, rel=1e-8)
 
 
 def test_fit_power_law_recovers_an_exponent() -> None:

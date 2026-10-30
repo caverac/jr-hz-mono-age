@@ -4,6 +4,7 @@ import { Chips, fadeClass, HaloPicker, Pending } from '@site/src/components/stat
 import type { AgeBin, StatusData } from '@site/src/components/status/data'
 import { PREDICTOR_LABELS, PREDICTORS } from '@site/src/components/status/HeightRatioChart'
 import {
+  AGREEMENT,
   median,
   type Predictor,
   populations,
@@ -23,8 +24,6 @@ const HEIGHT_TICKS = [0.2, 0.3, 0.5, 0.7, 1, 1.5, 2, 3, 5]
 /** The ticks of an x axis narrower than NARROW px, where the full set would collide. */
 const SPARSE_TICKS = [0.2, 0.5, 1, 2, 5]
 const NARROW = 380
-/** The band of relative agreement drawn around the line of equality. */
-const TOLERANCE = 0.1
 
 type Population = AgeBin & { readonly halo: string }
 
@@ -69,7 +68,10 @@ function Plot({ data, predictor, width, selected, revealed, onHover }: PlotProps
         return (
           <g className={revealed ? 'viz-reveal viz-reveal--in' : 'viz-reveal'}>
             <g clipPath={inner.clip}>
-              <path d={bandPath(edge(1 - TOLERANCE), edge(1 + TOLERANCE))} className="viz-band" />
+              <path
+                d={bandPath(edge(Math.exp(-AGREEMENT)), edge(Math.exp(AGREEMENT)))}
+                className="viz-band"
+              />
             </g>
             <Axis
               scale={y}
@@ -152,7 +154,7 @@ function Readout({
   return (
     <p className="viz-note">
       <MathLabel
-        label={`${PREDICTOR_LABELS[predictor]}: ${within(data, predictor, TOLERANCE)} of ${all.length} populations within ${100 * TOLERANCE} percent, with a median ratio of $${median(all).toFixed(2)}$. Point at a population to read its heights.`}
+        label={`${PREDICTOR_LABELS[predictor]}: ${within(data, predictor, AGREEMENT)} of ${all.length} populations within ${100 * AGREEMENT} percent, with a median ratio of $${median(all).toFixed(2)}$. Point at a population to read its heights.`}
       />
     </p>
   )
@@ -161,7 +163,7 @@ function Readout({
 const ENTRIES: readonly LegendEntry[] = [
   { label: 'population', marker: 'circle' },
   { label: '$h_\\mathrm{pred} = h_Z$', dash: 'solid' },
-  { label: `$|h_\\mathrm{pred}/h_Z - 1| \\le ${TOLERANCE}$`, band: true }
+  { label: `$|\\ln h_\\mathrm{pred}/h_Z| \\le ${AGREEMENT}$`, band: true }
 ]
 
 /**

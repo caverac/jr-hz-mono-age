@@ -31,16 +31,19 @@ from experiments.auriga import HaloSnapshot
 from experiments.palicio import PalicioWindow
 from experiments.potential import radial_actions
 from experiments.snapshot import Galaxy
+from experiments.stats import weighted_median
 
 FloatArray = NDArray[np.float64]
 
 CELL_KPC = 0.375
 MIN_PER_CELL = 10
-# Palicio et al. (2025, Sect. 3.4) give the slope of J_R,w against h_Z across galaxies in
-# units of the solar angular momentum L_sun = R_0 V_0, which this module takes as the
-# companion project does, R_0 = 8.2 kpc and V_0 = 233 km/s; their paper does not state it.
+# Palicio et al. (2025, Fig. 9) fit J_R,w = 3.69e-2 h_Z + 2.95e-3 across galaxies, with J_R,w
+# in units of the solar angular momentum and h_Z in kpc. That paper does not restate the
+# unit; Palicio et al. (2023, A&A 670, L7, Sect. 3) express actions in L_sun = R_sun V_sun,
+# with the Sun at R_sun = 8.249 kpc and a circular velocity there of 238.5 km/s.
 PALICIO_SLOPE_LSUN_PER_KPC = 3.69e-2
-L_SUN_KPC_KMS = 8.2 * 233.0
+PALICIO_INTERCEPT_LSUN = 2.95e-3
+L_SUN_KPC_KMS = 8.249 * 238.5
 
 
 @dataclass(frozen=True)
@@ -53,13 +56,6 @@ class JrMap:
     jr_w: float  # the median of the cell values in 0.2 L_kpc <= R < L_kpc
     jr_cells_lo: float  # their 16th percentile
     jr_cells_hi: float  # their 84th percentile
-
-
-def weighted_median(values: FloatArray, weights: FloatArray) -> float:
-    """Return the value below which half of the total *weights* lies."""
-    order = np.argsort(values)
-    cumulative = np.cumsum(weights[order])
-    return float(values[order][np.searchsorted(cumulative, 0.5 * cumulative[-1])])
 
 
 def _cells(x: FloatArray, y: FloatArray, l_kpc: float) -> tuple[NDArray[np.int64], int]:
@@ -165,33 +161,55 @@ class JrPoint:
 
 
 @dataclass(frozen=True)
-class JrRelation:
-    """J_R,w against h_Z across the galaxies, with h_Z in Palicio's windows and in the self-consistent one.
+class Lines:
+    """The lines of J_R,w against the measured h_Z and the predicted (``_mixture``) h_Z, in both windows."""
 
-    The lines use the measured h_Z, and the ``_mixture`` lines the predicted one.
-    ``palicio_slope`` is the slope of Palicio et al. (2025) in km/s.
-    """
-
-    points: list[JrPoint]
     line_palicio: Line
     line_scaled: Line
     line_palicio_mixture: Line
     line_scaled_mixture: Line
+
+
+@dataclass(frozen=True)
+class LeftOut:
+    """The lines refitted without the galaxy ``halo``, which show how much one galaxy moves them."""
+
+    halo: int
+    lines: Lines
+
+
+@dataclass(frozen=True)
+class JrRelation:
+    """J_R,w against h_Z across the galaxies, with h_Z in Palicio's windows and in the self-consistent one.
+
+    ``lines`` go through all the galaxies, and ``leave_one_out`` refits them without each
+    galaxy in turn. ``palicio_slope`` (km/s) and ``palicio_intercept`` (kpc km/s) are the
+    line of Palicio et al. (2025, Fig. 9).
+    """
+
+    points: list[JrPoint]
+    lines: Lines
+    leave_one_out: list[LeftOut]
     palicio_slope: float
+    palicio_intercept: float
 
 
-def jr_relation(points: list[JrPoint]) -> JrRelation:
+def jr_lines(points: list[JrPoint]) -> Lines:
     """Return the lines of J_R,w against the measured and the predicted h_Z through *points*, in both windows."""
     jr = np.array([p.jr_w for p in points])
 
     def line(height: str) -> Line:
         return fit_line(np.array([getattr(p, height) for p in points]), jr)
 
+    return Lines(line("hz_palicio"), line("hz_scaled"), line("hz_palicio_mixture"), line("hz_scaled_mixture"))
+
+
+def jr_relation(points: list[JrPoint]) -> JrRelation:
+    """Return the lines through *points*, the same lines without each galaxy, and the line of Palicio et al."""
     return JrRelation(
         points=points,
-        line_palicio=line("hz_palicio"),
-        line_scaled=line("hz_scaled"),
-        line_palicio_mixture=line("hz_palicio_mixture"),
-        line_scaled_mixture=line("hz_scaled_mixture"),
+        lines=jr_lines(points),
+        leave_one_out=[LeftOut(p.halo, jr_lines([q for q in points if q is not p])) for p in points],
         palicio_slope=PALICIO_SLOPE_LSUN_PER_KPC * L_SUN_KPC_KMS,
+        palicio_intercept=PALICIO_INTERCEPT_LSUN * L_SUN_KPC_KMS,
     )

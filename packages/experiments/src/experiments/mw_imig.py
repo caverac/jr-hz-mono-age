@@ -59,7 +59,7 @@ from experiments.mw_counts import (
     profile_slices,
 )
 from experiments.populations import Z_MID_MAX_KPC, Estimate, Trend, fit_trend
-from experiments.stats import deconvolved_dispersion, half_width
+from experiments.stats import deconvolved_dispersion
 
 FloatArray = NDArray[np.float64]
 
@@ -316,14 +316,14 @@ def measure_imig_bin(
         age_hi=pops.age_hi,
         n_populations=int(pops.h.size),
         heights=ImigHeights(
-            *(Estimate(point.heights[j], half_width(np.array([d.heights[j] for d in draws]))) for j in range(n_heights))
+            *(Estimate.of(point.heights[j], np.array([d.heights[j] for d in draws])) for j in range(n_heights))
         ),
         kinematics=ImigKinematics(
-            int(in_age.sum()), Estimate(point.sigma_z, half_width(np.array([d.sigma_z for d in draws]))), tracer
+            int(in_age.sum()), Estimate.of(point.sigma_z, np.array([d.sigma_z for d in draws])), tracer
         ),
         ratios=ImigHeights(
             *(
-                Estimate(tracer / point.heights[j], half_width(tracers / np.array([d.heights[j] for d in draws])))
+                Estimate.of(tracer / point.heights[j], tracers / np.array([d.heights[j] for d in draws]))
                 for j in range(n_heights)
             )
         ),

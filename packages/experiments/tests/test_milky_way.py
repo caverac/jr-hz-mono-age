@@ -9,13 +9,17 @@ from pathlib import Path
 import numpy as np
 import pytest
 import pyvo
-from conftest import invoke, run
+from conftest import MOCK_SNAPSHOT, MockRun, invoke, run
 from mw_fixtures import RC_PEAK, scale_height, write_world
 
 from experiments import mw_counts
 from experiments.commands import milky_way
+from experiments.commands._report import write_json
+from experiments.commands.auriga_analyze import result_name
+from experiments.commands.auriga_tracer_sum import tracer_sum_name
 from experiments.heights import Z_GRID, particle_hz, scaled_particle_hz, truncated_exp_scale
-from experiments.mw_analysis import SolarModel, Survey, measure_bin, solar_model
+from experiments.injection import run_injection
+from experiments.mw_analysis import BinSetting, SolarModel, Survey, measure_bin, solar_model
 from experiments.mw_catalogs import (
     apogee_age_tracers,
     apogee_kinematics,
@@ -24,8 +28,10 @@ from experiments.mw_catalogs import (
     read_apogee,
     read_gaia,
     read_lamost,
+    scattered_ages,
     with_distmass_ages,
 )
+from experiments.mw_checks import check_milky_way
 from experiments.mw_counts import (
     APOGEE_BOX,
     BIAS_SCALES_KPC,
@@ -36,6 +42,7 @@ from experiments.mw_counts import (
     CountSample,
     Positions,
     apogee_count_sample,
+    brighter_in_slice,
     count_hz,
     count_sample,
     exponential_slices,
@@ -63,7 +70,11 @@ from experiments.mw_imig import (
 )
 from experiments.mw_pipeline import MilkyWay, analyze_milky_way, source_path
 from experiments.mw_sources import GAIA_PATH, FileSource
+from experiments.palicio import PalicioWindow
+from experiments.paper_figures import FIGURES
 from experiments.potential import circular_velocity
+from experiments.records import load_milky_way, load_mw_checks
+from experiments.tracer_sum import TracerSumRecord, measure_tracer_sum
 
 
 @pytest.fixture(name="world_root", scope="module")
@@ -372,7 +383,14 @@ def test_the_test_runs_on_both_surveys(result: MilkyWay) -> None:
         young = survey.bins[0]
         assert young.heights.measured.value == pytest.approx(scale_height(np.array(1.0))[()], rel=0.3)
         assert np.isfinite(young.ratios.tracer.value) and young.kinematics.n_kin > 0
-        assert set(survey.ranges[0].trends) == {"sheet", "tracer"}
+        assert set(survey.ranges[0].trends) == {"sheet", "tracer", "jeans"}
+        assert np.isfinite(young.ratios.jeans.value)
+        assert len(young.ratios.family) == len(young.ratios.family_coeval) == len(result.family) == 36
+        assert np.isfinite(young.ratios.coeval) and young.ratios.coeval > 0.0
+        assert 0.9 < young.predictions.b_isothermal < 1.4
+    for inversions in (result.inversions, result.inversions_coeval):
+        assert [inv.survey for inv in inversions] == ["lamost", "apogee", "apogee_distmass"]
+        assert all(inv.n_bins <= 5 and len(inv.bin_rho0) in (0, inv.n_bins) for inv in inversions)
     assert len(result.imig.bins) == 4
     assert set(result.imig.trends) == {"imig_mass", "imig_counts", "counts_astronn", "counts_distmass"}
     first = result.imig.bins[0]
@@ -397,8 +415,55 @@ def test_a_bin_without_matches_has_no_median_age(world_root: Path) -> None:
     kin = apogee_kinematics(apogee)
     survey = Survey("apogee", apogee_count_sample(gaia, apogee_age_tracers(apogee)), kin, np.full(kin.age.size, 10.0))
     model = SolarModel(np.asarray(900.0 * Z_GRID), 50.0)
-    empty = measure_bin(survey, (20.0, 30.0), model, np.random.default_rng(3), 2)
+    empty = measure_bin(survey, (20.0, 30.0), BinSetting(model, np.random.default_rng(3), 2))
     assert np.isnan(empty.age_median) and empty.heights.n_matched == 0
+
+
+def test_scattered_ages_double_the_variance_of_the_errors() -> None:
+    """Lognormal draws with err / age as the width of ln age; ages without a good error stay as they are."""
+    rng = np.random.default_rng(6)
+    age, err = np.full(20000, 5.0), np.full(20000, 1.0)
+    drawn = scattered_ages(age, err, rng)
+    assert np.all(drawn > 0.0)
+    assert np.std(np.log(drawn / age)) == pytest.approx(0.2, rel=0.03)
+    kept = scattered_ages(np.array([np.nan, 4.0, 4.0]), np.array([1.0, np.nan, 0.0]), rng)
+    assert np.isnan(kept[0]) and kept[1] == 4.0 and kept[2] == 4.0
+
+
+def test_matches_split_at_the_median_g_of_their_slice() -> None:
+    """In each slice of |z| the bright half lies below the median G of its slice; a split keeps every Gaia star."""
+    absz = np.array([0.05, 0.05, 0.05, 0.05, 0.55, 0.55])
+    g = np.array([10.0, 11.0, 12.0, 13.0, 14.0, 15.0])
+    sample = count_sample(flat(absz), flat(absz), np.full(6, 3.0), np.ones(6, dtype=bool), g)
+    bright = brighter_in_slice(sample)
+    assert bright.tolist() == [True, True, False, False, True, False]
+    half = sample.with_matches(bright)
+    assert half.tracer_g.tolist() == [10.0, 11.0, 14.0] and half.gaia_absz.size == sample.gaia_absz.size
+    assert np.all(np.isnan(count_sample(flat(absz), flat(absz), np.ones(6), np.ones(6, dtype=bool)).tracer_g))
+
+
+def test_records_read_back(result: MilkyWay, tmp_path: Path) -> None:
+    """The record of the test reads back into an equal result."""
+    written = write_json(result, tmp_path / "milky-way.json")
+    again = write_json(load_milky_way(written), tmp_path / "again.json")
+    assert again.read_text() == written.read_text()
+
+
+def test_checks_remeasure_every_survey(world_root: Path, tmp_path: Path) -> None:
+    """Each realization remeasures the three surveys, and each survey is split at the median G of its tracers."""
+    result = check_milky_way(world_root, n_realizations=2, n_bootstrap=3)
+    written = write_json(result, tmp_path / "checks.json")
+    assert write_json(load_mw_checks(written), tmp_path / "again.json").read_text() == written.read_text()
+    assert result.n_bootstrap == 3 and len(result.age_errors) == 2
+    names = ["lamost", "apogee", "apogee_distmass"]
+    assert all([s.name for s in surveys] == names for surveys in result.age_errors)
+    assert [m.survey for m in result.magnitude] == names
+    for split in result.magnitude:
+        assert np.isfinite(split.g_split)
+        assert len(split.bright.bins) == len(split.faint.bins) == 5
+        assert abs(split.bright.n_matched - split.faint.n_matched) <= 0.1 * (
+            split.bright.n_matched + split.faint.n_matched
+        )
 
 
 def test_milky_way_commands(world_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -416,6 +481,15 @@ def test_milky_way_commands(world_root: Path, tmp_path: Path, monkeypatch: pytes
     record = json.loads((tmp_path / "milky-way.json").read_text())
     assert [s["name"] for s in record["surveys"]] == ["lamost", "apogee", "apogee_distmass"]
     missing = run("milky-way", "analyze", "--root", str(tmp_path / "nothing"))
+    assert missing.exit_code == 1 and "experiments milky-way fetch" in missing.output
+    checked = run(
+        "milky-way", "checks", "--root", str(world_root), "--realizations", "1", "--n-bootstrap", "2",
+        "--out-dir", str(tmp_path),
+    )  # fmt: skip
+    assert checked.exit_code == 0 and checked.stdout.startswith("ages drawn again")
+    assert len(checked.stderr.splitlines()) == 2
+    assert set(json.loads((tmp_path / "checks.json").read_text())) == {"n_bootstrap", "age_errors", "magnitude"}
+    missing = run("milky-way", "checks", "--root", str(tmp_path / "nothing"))
     assert missing.exit_code == 1 and "experiments milky-way fetch" in missing.output
 
     fetched: list[str] = []
@@ -435,3 +509,17 @@ def test_milky_way_commands(world_root: Path, tmp_path: Path, monkeypatch: pytes
     assert fetched == ["lamost", "gaia from the archive"]
     invoke("milky-way", "fetch", "--root", str(tmp_path))
     assert fetched[2:] == ["astronn", "allstar", "lamost", "distmass", "imig", "gaia from the archive"]
+
+
+def test_paper_figures_draw_from_the_records(result: MilkyWay, mock_run: MockRun, tmp_path: Path) -> None:
+    """Every figure of the paper draws from the records, and the command writes them from a data directory."""
+    data = tmp_path / "data"
+    galaxy, pot = mock_run.prepared.galaxy, mock_run.prepared.potential
+    tracer_sum = TracerSumRecord(MOCK_SNAPSHOT, measure_tracer_sum(galaxy, pot, PalicioWindow(20.0, 1.0), n_draws=2))
+    write_json(mock_run.analysis, data / "auriga" / result_name(MOCK_SNAPSHOT))
+    write_json(tracer_sum, data / "auriga" / tracer_sum_name(MOCK_SNAPSHOT))
+    write_json(run_injection(n_stars=300, draws=2), data / "window-injection.json")
+    write_json(result, data / "milky-way" / "milky-way.json")
+    output = invoke("paper-figures", str(MOCK_SNAPSHOT.halo), "--data-dir", str(data), "--figures-dir", str(tmp_path))
+    assert output.count("wrote") == len(FIGURES)
+    assert all((tmp_path / f"{name}.pdf").exists() for name in FIGURES)

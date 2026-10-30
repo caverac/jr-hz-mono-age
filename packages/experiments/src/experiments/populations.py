@@ -18,6 +18,12 @@ are split into 1 Gyr age bins from 0 to 10 Gyr. For each bin:
   outside the annulus, within the wider range of radii of :mod:`experiments.jeans`.
 - a = J_R,med / h_Z, and its predictions with the same J_R,med.
 - The ratio of each predicted h_Z to the measured one, in which J_R,med cancels.
+- The half-mass height, below which half of the initial mass of the bin within
+  |z| < ``Z_SAMPLE_MAX_KPC`` lies, measured and from every predicted profile over the same
+  heights. It needs no window, so it checks the predictions without the choice of one.
+- The vertical actions J_z of the stars, fitted with exp[-(J_z / J_0)^(2 - b)], and the h_Z
+  and half-mass height of the thin-layer population of Ting & Rix (2026), b = 1/2, with the
+  bin's sigma_z, interpolated on the curve of the model (:mod:`experiments.coeval`).
 
 Errors are half the 16th-84th percentile interval of ``N_BOOTSTRAP`` resamplings of the
 stars of a bin. The stars outside the annulus are resampled with a generator of their
@@ -41,13 +47,17 @@ import agama
 import numpy as np
 from numpy.typing import NDArray
 
+from experiments.coeval import CoevalCurve, fit_action_shape
 from experiments.heights import (
     Z_GRID,
+    half_mass_height,
     particle_hz,
+    profile_half_mass,
     profile_hz,
     scaled_particle_hz,
     scaled_profile_hz,
     sheet_hz,
+    sheet_profile,
     tracer_profile,
 )
 from experiments.jeans import (
@@ -59,7 +69,7 @@ from experiments.jeans import (
     jeans_profile,
 )
 from experiments.palicio import PalicioWindow
-from experiments.potential import radial_actions
+from experiments.potential import actions
 from experiments.snapshot import Galaxy, cylindrical_velocities
 from experiments.stats import clipped_dispersion, half_width
 
@@ -81,6 +91,9 @@ Z_LIM_SCAN_KPC = (0.5, 1.0, 1.5, 2.5)
 N_BOOTSTRAP = 300
 SEED = 20261023
 OUTER_SEED = 20261027  # the resamplings of the stars outside the annulus
+N_MIN_TREND_BINS = 3  # bins with a finite ratio for a trend with one degree of freedom
+MAX_ETA_ITERATIONS = 50
+ETA_TOLERANCE = 1.0e-10
 
 
 @dataclass(frozen=True)
@@ -89,6 +102,15 @@ class Estimate:
 
     value: float
     err: float
+
+    @classmethod
+    def of(cls, value: float, draws: FloatArray) -> Estimate:
+        """Return *value* with half the 16th-84th percentile interval of its finite bootstrap *draws*.
+
+        A value that is not finite has no error either, whatever the draws: the draws that
+        happen to be finite would give an error to a value that does not exist.
+        """
+        return cls(value, half_width(draws) if np.isfinite(value) else float("nan"))
 
 
 @dataclass(frozen=True)
@@ -101,14 +123,15 @@ class Method:
 
 
 @dataclass(frozen=True)
-class AnnulusSample:
-    """The star particles of the annulus: age (Gyr), z and R (kpc), v_R and v_z (km/s), J_R (kpc km/s), initial mass."""
+class AnnulusSample:  # pylint: disable=too-many-instance-attributes
+    """The star particles of the annulus: age (Gyr), z and R (kpc), v_R and v_z (km/s), J_R and J_z (kpc km/s), mass."""
 
     age: FloatArray
     z: FloatArray
     v_r: FloatArray
     v_z: FloatArray
     jr: FloatArray  # NaN where |z| >= Z_JR_MAX_KPC
+    jz: FloatArray
     initial_mass: FloatArray
     r: FloatArray  # kpc, the cylindrical radius
 
@@ -149,6 +172,7 @@ class VerticalModel:
     phi_fit: FloatArray  # (km/s)^2, the fitted potential
     phi_snapshot: FloatArray  # (km/s)^2, the snapshot's potential
     r_mid: float  # kpc
+    coeval: CoevalCurve  # the thin-layer population of the fitted potential (experiments.coeval)
 
 
 @dataclass(frozen=True)
@@ -210,6 +234,33 @@ class Ratios:
 
 
 @dataclass(frozen=True)
+class HalfMass:
+    """The half-mass height of one age bin within |z| < ``Z_SAMPLE_MAX_KPC`` (kpc), and each prediction's over it."""
+
+    measured: Estimate
+    ratios: Ratios
+
+
+@dataclass(frozen=True)
+class CoevalComparison:
+    """The thin-layer population of Ting & Rix (2026) against one age bin, and the shape of the bin's actions.
+
+    ``b`` and ``j0`` (kpc km/s) fit exp[-(J_z / J_0)^(2 - b)] to the vertical actions of the
+    stars of the bin, weighted by initial mass (:func:`experiments.coeval.fit_action_shape`),
+    and ``b_isothermal`` is the b of the isothermal tracer of the bin's sigma_z in the fitted
+    potential, which is 1 only where the potential is harmonic.
+    ``ratio`` and ``half_mass_ratio`` are the h_Z and the half-mass height of the population
+    with b = 1/2 and the bin's sigma_z over the measured ones.
+    """
+
+    b: Estimate
+    j0: Estimate
+    b_isothermal: float
+    ratio: Estimate
+    half_mass_ratio: Estimate
+
+
+@dataclass(frozen=True)
 class AgeBin:  # pylint: disable=too-many-instance-attributes
     """Everything measured and predicted for one mono-age population."""
 
@@ -221,6 +272,8 @@ class AgeBin:  # pylint: disable=too-many-instance-attributes
     predictions: Predictions
     slopes: Slopes
     ratios: Ratios
+    half_mass: HalfMass
+    coeval: CoevalComparison
     jeans: JeansProfile
 
 
@@ -243,7 +296,8 @@ class AgeRange:
 
     ``trends`` holds the trend of h_pred / h_Z of each prediction, which is 0 for a
     prediction that reproduces the age dependence of h_Z.
-    ``eta`` is d ln h_Z / d ln sigma_z, the ratio of the exponents of h_Z and sigma_z.
+    ``eta`` is d ln h_Z / d ln sigma_z, fitted across the bins (:func:`fit_eta`), and
+    ``eta_half_mass`` the same with the half-mass height in place of h_Z.
     ``sheet_exponent`` is 2 (beta_R - beta_z), the exponent of a that the sheet predicts
     from the exponents beta_R and beta_z of the two dispersions alone.
     """
@@ -252,7 +306,8 @@ class AgeRange:
     hi: float
     exponents: dict[str, Estimate]
     trends: dict[str, Trend]
-    eta: float
+    eta: Trend
+    eta_half_mass: Trend
     sheet_exponent: float
 
 
@@ -293,19 +348,18 @@ def surface_density(galaxy: Galaxy, r_lo: float, r_hi: float) -> float:
 def annulus_sample(galaxy: Galaxy, pot: agama.Potential, r_lo: float, r_hi: float) -> tuple[AnnulusSample, BoolArray]:
     """Return the star particles with r_lo <= R < r_hi and |z| < ``Z_SAMPLE_MAX_KPC``, and their mask.
 
-    J_R is computed only for the stars with |z| < ``Z_JR_MAX_KPC``, the only ones it
-    enters.
+    J_R is kept only for the stars with |z| < ``Z_JR_MAX_KPC``, the only ones it enters, and
+    J_z for all of them.
     """
     stars = galaxy.stars
     cyl_r = stars.cylindrical_radius
     annulus = (cyl_r >= r_lo) & (cyl_r < r_hi) & (np.abs(stars.pos[:, 2]) < Z_SAMPLE_MAX_KPC)
     pos, vel = stars.pos[annulus], stars.vel[annulus]
     v_r, v_z = cylindrical_velocities(pos, vel)
-    jr = np.full(pos.shape[0], np.nan)
-    near = np.abs(pos[:, 2]) < Z_JR_MAX_KPC
-    jr[near] = radial_actions(pot, pos[near], vel[near])
+    jr, jz = actions(pot, pos, vel)
+    jr = np.where(np.abs(pos[:, 2]) < Z_JR_MAX_KPC, jr, np.nan)
     age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[annulus], galaxy.header.scale_factor)
-    return AnnulusSample(age, pos[:, 2], v_r, v_z, jr, stars.initial_mass[annulus], cyl_r[annulus]), annulus
+    return AnnulusSample(age, pos[:, 2], v_r, v_z, jr, jz, stars.initial_mass[annulus], cyl_r[annulus]), annulus
 
 
 def outer_sample(galaxy: Galaxy, r_lo: float, r_hi: float) -> AnnulusSample:
@@ -321,7 +375,8 @@ def outer_sample(galaxy: Galaxy, r_lo: float, r_hi: float) -> AnnulusSample:
     pos, vel = stars.pos[keep], stars.vel[keep]
     v_r, v_z = cylindrical_velocities(pos, vel)
     age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[keep], galaxy.header.scale_factor)
-    return AnnulusSample(age, pos[:, 2], v_r, v_z, np.full(pos.shape[0], np.nan), stars.initial_mass[keep], cyl_r[keep])
+    none = np.full(pos.shape[0], np.nan)
+    return AnnulusSample(age, pos[:, 2], v_r, v_z, none, none, stars.initial_mass[keep], cyl_r[keep])
 
 
 def median_radius(galaxy: Galaxy, annulus: BoolArray) -> float:
@@ -329,6 +384,19 @@ def median_radius(galaxy: Galaxy, annulus: BoolArray) -> float:
     stars = galaxy.stars
     near = np.abs(stars.pos[annulus, 2]) < Z_RMID_MAX_KPC
     return float(np.median(stars.cylindrical_radius[annulus][near]))
+
+
+@dataclass(frozen=True)
+class _HalfMassValues:
+    """The half-mass heights (kpc) of one sample of the stars of a bin and of each of its predicted profiles."""
+
+    measured: float
+    sheet: float
+    tracer: float
+    tracer_snapshot: float
+    jeans_sigma: float
+    jeans: float
+    coeval: float
 
 
 @dataclass(frozen=True)
@@ -346,17 +414,46 @@ class _BinValues:  # pylint: disable=too-many-instance-attributes
     tracer_snapshot: float
     jeans_sigma: float
     jeans: float
+    coeval: float
+    action_b: float
+    action_j0: float
+    half_mass: _HalfMassValues
+
+
+@dataclass(frozen=True)
+class _Profiles:
+    """The vertical profiles on ``Z_GRID`` that each prediction gives one sample of the stars of a bin."""
+
+    sheet: FloatArray
+    tracer: FloatArray
+    tracer_snapshot: FloatArray
+    jeans_sigma: FloatArray
+    jeans: FloatArray
+
+
+def _profiles(stars: BinStars, model: VerticalModel, sigma_z: float) -> _Profiles:
+    """Return the profile of every prediction for the stars of one bin, whose midplane dispersion is *sigma_z*."""
+    profile = _jeans(stars, model)
+    return _Profiles(
+        sheet=sheet_profile(sigma_z, model.sigma_surf),
+        tracer=tracer_profile(model.phi_fit, sigma_z),
+        tracer_snapshot=tracer_profile(model.phi_snapshot, sigma_z),
+        jeans_sigma=jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=False),
+        jeans=jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=True),
+    )
 
 
 def _bin_values(stars: BinStars, model: VerticalModel, k: float) -> _BinValues:
-    """Return the kinematics, h_Z and the predicted h_Z of the stars of one bin."""
+    """Return the kinematics, h_Z and the predicted h_Z of the stars of one bin, and the half-mass heights of all."""
     rows = stars.annulus
     absz = np.abs(rows.z)
     jr_rows = (absz < Z_JR_MAX_KPC) & np.isfinite(rows.jr)
     sigma_z = clipped_dispersion(rows.v_z[absz < Z_MID_MAX_KPC])
     hz, window = scaled_particle_hz(absz, rows.initial_mass, k)
-    tracer, tracer_window = scaled_profile_hz(tracer_profile(model.phi_fit, sigma_z), k)
-    profile = _jeans(stars, model)
+    rho = _profiles(stars, model, sigma_z)
+    tracer, tracer_window = scaled_profile_hz(rho.tracer, k)
+    coeval, coeval_half_mass = model.coeval.at(sigma_z)
+    shape = fit_action_shape(rows.jz, rows.initial_mass)
     return _BinValues(
         sigma_r=clipped_dispersion(rows.v_r[jr_rows]),
         sigma_z=sigma_z,
@@ -366,9 +463,17 @@ def _bin_values(stars: BinStars, model: VerticalModel, k: float) -> _BinValues:
         sheet=sheet_hz(sigma_z, model.sigma_surf),
         tracer=tracer,
         tracer_window=tracer_window,
-        tracer_snapshot=scaled_profile_hz(tracer_profile(model.phi_snapshot, sigma_z), k)[0],
-        jeans_sigma=scaled_profile_hz(jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=False), k)[0],
-        jeans=scaled_profile_hz(jeans_density(model.phi_fit, profile, Z_GRID, with_tilt=True), k)[0],
+        tracer_snapshot=scaled_profile_hz(rho.tracer_snapshot, k)[0],
+        jeans_sigma=scaled_profile_hz(rho.jeans_sigma, k)[0],
+        jeans=scaled_profile_hz(rho.jeans, k)[0],
+        coeval=coeval,
+        action_b=shape.b,
+        action_j0=shape.j0,
+        half_mass=_HalfMassValues(
+            measured=half_mass_height(absz, rows.initial_mass),
+            **{f.name: profile_half_mass(getattr(rho, f.name)) for f in fields(rho)},
+            coeval=coeval_half_mass,
+        ),
     )
 
 
@@ -395,7 +500,7 @@ def measure_bin(
     draws = [_bin_values(stars.resampled(*rngs), model, method.k) for _ in range(method.n_bootstrap)]
 
     def spread(get: Callable[[_BinValues], float]) -> Estimate:
-        return Estimate(get(point), half_width(np.array([get(draw) for draw in draws], dtype=np.float64)))
+        return Estimate.of(get(point), np.array([get(draw) for draw in draws], dtype=np.float64))
 
     absz = np.abs(rows.z)
     kinematics = Kinematics(
@@ -424,6 +529,16 @@ def measure_bin(
         jeans_sigma=spread(lambda v: v.jeans_sigma / v.hz),
         jeans=spread(lambda v: v.jeans / v.hz),
     )
+    half_mass = HalfMass(
+        measured=spread(lambda v: v.half_mass.measured),
+        ratios=Ratios(
+            sheet=spread(lambda v: v.half_mass.sheet / v.half_mass.measured),
+            tracer=spread(lambda v: v.half_mass.tracer / v.half_mass.measured),
+            tracer_snapshot=spread(lambda v: v.half_mass.tracer_snapshot / v.half_mass.measured),
+            jeans_sigma=spread(lambda v: v.half_mass.jeans_sigma / v.half_mass.measured),
+            jeans=spread(lambda v: v.half_mass.jeans / v.half_mass.measured),
+        ),
+    )
     return AgeBin(
         *bounds,
         float(np.median(rows.age)),
@@ -434,6 +549,14 @@ def measure_bin(
         ),
         slopes,
         ratios,
+        half_mass,
+        CoevalComparison(
+            b=spread(lambda v: v.action_b),
+            j0=spread(lambda v: v.action_j0),
+            b_isothermal=model.coeval.isothermal_b(point.sigma_z),
+            ratio=spread(lambda v: v.coeval / v.hz),
+            half_mass_ratio=spread(lambda v: v.half_mass.coeval / v.half_mass.measured),
+        ),
         _jeans(stars, model),
     )
 
@@ -468,6 +591,29 @@ def fit_trend(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
     return _scaled_trend(*_log_line(x, y, y_err), x.size - 2)
 
 
+def fit_eta(sigma_z: list[Estimate], height: list[Estimate]) -> Trend:
+    """Return eta = d ln h / d ln sigma_z, the slope of the weighted least-squares line of ln h on ln sigma_z.
+
+    Both coordinates carry errors, so each point is weighted by the inverse of
+    (err_h / h)^2 + eta^2 (err_sigma / sigma)^2, the variance of ln h about the line, with
+    eta from the previous fit, starting from the errors of h alone, until eta changes by
+    less than ``ETA_TOLERANCE``. The error is that of a trend, scaled by
+    sqrt(max(1, chi^2 per degree of freedom)).
+    """
+    log_s = np.log([e.value for e in sigma_z])
+    log_h = np.log([e.value for e in height])
+    rel_s2 = np.array([(e.err / e.value) ** 2 for e in sigma_z])
+    rel_h2 = np.array([(e.err / e.value) ** 2 for e in height])
+    eta = 0.0
+    for _ in range(MAX_ETA_ITERATIONS):
+        coef, cov, chi2 = _line(log_s, log_h, 1.0 / (rel_h2 + eta**2 * rel_s2))
+        converged = abs(float(coef[1]) - eta) < ETA_TOLERANCE
+        eta = float(coef[1])
+        if converged:
+            break
+    return _scaled_trend(coef, cov, chi2, log_s.size - 2)
+
+
 def fit_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray) -> Trend:
     """Return the slope of ln y against x, its error times sqrt(max(1, chi^2 per degree of freedom)), and that chi^2."""
     return _scaled_trend(*_line(x, np.log(y), (y / y_err) ** 2), x.size - 2)
@@ -499,7 +645,12 @@ def fit_grouped_log_slope(x: FloatArray, y: FloatArray, y_err: FloatArray, group
 
 
 def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
-    """Return the age exponents of the bins that lie inside [*lo*, *hi*] Gyr."""
+    """Return the age exponents of the bins that lie inside [*lo*, *hi*] Gyr.
+
+    A trend leaves out the bins whose ratio has no finite value and error, such as those of
+    the thin-layer population hotter than the grid allows, and is NaN with fewer than
+    ``N_MIN_TREND_BINS`` left.
+    """
     chosen = [b for b in bins if b.age_lo >= lo and b.age_hi <= hi]
     age = np.array([b.age_median for b in chosen])
 
@@ -510,7 +661,11 @@ def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
         return fit_power_law(age, column(lambda b: get(b).value), column(lambda b: get(b).err))
 
     def trend(get: Callable[[AgeBin], Estimate]) -> Trend:
-        return fit_trend(age, column(lambda b: get(b).value), column(lambda b: get(b).err))
+        value, err = column(lambda b: get(b).value), column(lambda b: get(b).err)
+        keep = np.isfinite(value) & np.isfinite(err) & (err > 0.0)
+        if np.count_nonzero(keep) < N_MIN_TREND_BINS:
+            return Trend(float("nan"), float("nan"), float("nan"))
+        return fit_trend(age[keep], value[keep], err[keep])
 
     exponents = {
         "sigma_r": fit(lambda b: b.kinematics.sigma_r),
@@ -521,6 +676,7 @@ def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
         "a_sheet": fit(lambda b: b.slopes.sheet),
         "a_tracer": fit(lambda b: b.slopes.tracer),
         "a_tracer_snapshot": fit(lambda b: b.slopes.tracer_snapshot),
+        "half_mass": fit(lambda b: b.half_mass.measured),
     }
     return AgeRange(
         lo=lo,
@@ -532,8 +688,14 @@ def range_exponents(bins: list[AgeBin], lo: float, hi: float) -> AgeRange:
             "tracer_snapshot": trend(lambda b: b.ratios.tracer_snapshot),
             "jeans_sigma": trend(lambda b: b.ratios.jeans_sigma),
             "jeans": trend(lambda b: b.ratios.jeans),
+            "half_mass_sheet": trend(lambda b: b.half_mass.ratios.sheet),
+            "half_mass_tracer": trend(lambda b: b.half_mass.ratios.tracer),
+            "half_mass_jeans": trend(lambda b: b.half_mass.ratios.jeans),
+            "coeval": trend(lambda b: b.coeval.ratio),
+            "half_mass_coeval": trend(lambda b: b.coeval.half_mass_ratio),
         },
-        eta=exponents["hz"].value / exponents["sigma_z"].value,
+        eta=fit_eta([b.kinematics.sigma_z for b in chosen], [b.heights.measured for b in chosen]),
+        eta_half_mass=fit_eta([b.kinematics.sigma_z for b in chosen], [b.half_mass.measured for b in chosen]),
         sheet_exponent=2.0 * (exponents["sigma_r"].value - exponents["sigma_z"].value),
     )
 

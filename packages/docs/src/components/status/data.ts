@@ -54,8 +54,37 @@ export interface AgeBin {
   readonly tracerSnapshot: number
   /** Each predicted h_Z over the measured h_Z, with the error of one bootstrap of both. */
   readonly ratios: Readonly<Record<Predictor, Estimate>>
+  /** The height below which half of the mass within |z| < 12 kpc lies (kpc), measured. */
+  readonly halfMass: Estimate
+  /** Each prediction's half-mass height over the measured one. */
+  readonly halfMassRatios: Readonly<Record<Predictor, Estimate>>
+  /** The thin-layer population of Ting & Rix (2026) against the bin, and the shape of its actions. */
+  readonly coeval: CoevalComparison
   /** The slices of the vertical Jeans equation. */
   readonly jeans: JeansProfile
+}
+
+/**
+ * b and J_0 (kpc km/s) of exp[-(J_z / J_0)^(2 - b)] fitted to the vertical actions of a bin, and
+ * the h_Z and the half-mass height of the population with b = 1/2 and the bin's sigma_z over
+ * the measured ones.
+ */
+export interface CoevalComparison {
+  readonly b: Estimate
+  readonly j0: Estimate
+  /** The b of the isothermal tracer of the bin's sigma_z in the fitted potential: 1 only where it is harmonic. */
+  readonly bIsothermal: number
+  readonly ratio: Estimate
+  readonly halfMassRatio: Estimate
+}
+
+/** The thin-layer population of a potential over a grid of sigma_z (km/s): h_Z and half-mass height (kpc). */
+export interface CoevalCurve {
+  readonly b: number
+  readonly sigmaZ: readonly number[]
+  readonly hz: readonly number[]
+  readonly halfMass: readonly number[]
+  readonly bIsothermal: readonly number[]
 }
 
 /** Age exponents over one range of ages, and the trends of h_pred / h_Z. */
@@ -64,7 +93,55 @@ export interface AgeRange {
   readonly hi: number
   readonly exponents: Readonly<Record<string, Estimate>>
   readonly trends: Readonly<Record<Predictor, Trend>>
-  readonly eta: number
+  /** The trends of the half-mass ratios of the sheet, the tracer and the Jeans equation with the tilt term. */
+  readonly halfMassTrends: Readonly<Record<'sheet' | 'tracer' | 'jeans', Trend>>
+  /** The trends of the thin-layer population's h_Z and half-mass ratios. */
+  readonly coevalTrends: { readonly hz: Trend; readonly halfMass: Trend }
+  /** eta = d ln h_Z / d ln sigma_z, fitted across the bins with the errors of both. */
+  readonly eta: Trend
+  /** eta with the half-mass height in place of h_Z. */
+  readonly etaHalfMass: Trend
+}
+
+/** The tracer of the fitted potential at R_mid over a grid of sigma_z (km/s): h_Z, half-mass height (kpc), eta. */
+export interface TracerCurve {
+  readonly sigmaZ: readonly number[]
+  readonly hz: readonly number[]
+  readonly halfMass: readonly number[]
+  readonly eta: readonly number[]
+}
+
+/** One bin of a check: sigma_z (km/s), h_Z (kpc), and the tracer of the clipped and unclipped sigma_z over h_Z. */
+export interface CheckBin {
+  readonly ageLo: number
+  readonly ageHi: number
+  readonly ageMedian: number
+  /** The fraction of the initial mass of the bin's ages that the check keeps. */
+  readonly massFraction: number
+  readonly sigmaZ: Estimate
+  readonly hz: Estimate
+  readonly tracer: Estimate
+  readonly tracerUnclipped: Estimate
+}
+
+/** The trends of a check's two tracer ratios with age over [lo, hi] Gyr. */
+export interface CheckRange {
+  readonly lo: number
+  readonly hi: number
+  readonly tracer: Trend
+  readonly tracerUnclipped: Trend
+}
+
+export interface CheckSet {
+  readonly bins: readonly CheckBin[]
+  readonly ranges: readonly CheckRange[]
+}
+
+/** The checks of the annulus: all stars and disk stars in bins of 1 Gyr, and all stars in finer bins. */
+export interface Checks {
+  readonly allStars: CheckSet
+  readonly disk: CheckSet
+  readonly fine: CheckSet
 }
 
 /** The heights of one radial range of the whole disk (kpc). */
@@ -91,6 +168,12 @@ export interface HaloRecord {
   readonly ranges: readonly AgeRange[]
   readonly whole: Ring
   readonly residual: Residual
+  /** The local slope eta(sigma_z) of the tracer of the halo's potential. */
+  readonly tracerCurve: TracerCurve
+  /** The checks with the unclipped sigma_z, the disk stars alone and finer bins of age. */
+  readonly checks: Checks
+  /** The thin-layer population of the halo's potential over the grid of the tracer curve. */
+  readonly coevalCurve: CoevalCurve
   /** The whole-disk h_Z predicted as a sum of isothermal tracers. */
   readonly tracerSum: TracerSum
   /** The mean vertical motions of every population of the annulus. */
@@ -176,6 +259,15 @@ function parseBin(bin: unknown): AgeBin {
     tracer: num(predictions, 'tracer'),
     tracerSnapshot: num(predictions, 'tracer_snapshot'),
     ratios: byPredictor(field(bin, 'ratios'), estimate),
+    halfMass: estimate(field(bin, 'half_mass'), 'measured'),
+    halfMassRatios: byPredictor(field(field(bin, 'half_mass'), 'ratios'), estimate),
+    coeval: {
+      b: estimate(field(bin, 'coeval'), 'b'),
+      j0: estimate(field(bin, 'coeval'), 'j0'),
+      bIsothermal: num(field(bin, 'coeval'), 'b_isothermal'),
+      ratio: estimate(field(bin, 'coeval'), 'ratio'),
+      halfMassRatio: estimate(field(bin, 'coeval'), 'half_mass_ratio')
+    },
     jeans: {
       z: numbers(field(bin, 'jeans'), 'z'),
       sigma2: numbers(field(bin, 'jeans'), 'sigma2'),
@@ -202,7 +294,17 @@ function parseRange(range: unknown): AgeRange {
       Object.keys(exponents).map((key) => [key, estimate(exponents, key)])
     ),
     trends: byPredictor(field(range, 'trends'), trend),
-    eta: num(range, 'eta')
+    halfMassTrends: {
+      sheet: trend(field(range, 'trends'), 'half_mass_sheet'),
+      tracer: trend(field(range, 'trends'), 'half_mass_tracer'),
+      jeans: trend(field(range, 'trends'), 'half_mass_jeans')
+    },
+    coevalTrends: {
+      hz: trend(field(range, 'trends'), 'coeval'),
+      halfMass: trend(field(range, 'trends'), 'half_mass_coeval')
+    },
+    eta: trend(range, 'eta'),
+    etaHalfMass: trend(range, 'eta_half_mass')
   }
 }
 
@@ -215,6 +317,30 @@ function parseRing(ring: unknown): Ring {
     scaled: num(heights, 'scaled'),
     sheet: num(heights, 'sheet'),
     tracer: num(heights, 'tracer')
+  }
+}
+
+function parseCheckSet(value: unknown): CheckSet {
+  return {
+    bins: list(value, 'bins').map((bin) => {
+      const values = field(bin, 'values')
+      return {
+        ageLo: num(bin, 'age_lo'),
+        ageHi: num(bin, 'age_hi'),
+        ageMedian: num(bin, 'age_median'),
+        massFraction: num(bin, 'mass_fraction'),
+        sigmaZ: estimate(values, 'sigma_z'),
+        hz: estimate(values, 'hz'),
+        tracer: estimate(values, 'tracer'),
+        tracerUnclipped: estimate(values, 'tracer_unclipped')
+      }
+    }),
+    ranges: list(value, 'ranges').map((range) => ({
+      lo: num(range, 'lo'),
+      hi: num(range, 'hi'),
+      tracer: trend(range, 'tracer'),
+      tracerUnclipped: trend(range, 'tracer_unclipped')
+    }))
   }
 }
 
@@ -240,6 +366,24 @@ export function parseHaloRecord(label: string, records: HaloRecords): HaloRecord
     residual: {
       z: numbers(field(record, 'residual'), 'z'),
       residual: numbers(field(record, 'residual'), 'residual')
+    },
+    tracerCurve: {
+      sigmaZ: numbers(field(record, 'tracer_curve'), 'sigma_z'),
+      hz: numbers(field(record, 'tracer_curve'), 'hz'),
+      halfMass: numbers(field(record, 'tracer_curve'), 'half_mass'),
+      eta: numbers(field(record, 'tracer_curve'), 'eta')
+    },
+    checks: {
+      allStars: parseCheckSet(field(field(record, 'checks'), 'all_stars')),
+      disk: parseCheckSet(field(field(record, 'checks'), 'disk')),
+      fine: parseCheckSet(field(field(record, 'checks'), 'fine'))
+    },
+    coevalCurve: {
+      b: num(field(record, 'coeval_curve'), 'b'),
+      sigmaZ: numbers(field(record, 'coeval_curve'), 'sigma_z'),
+      hz: numbers(field(record, 'coeval_curve'), 'hz'),
+      halfMass: numbers(field(record, 'coeval_curve'), 'half_mass'),
+      bIsothermal: numbers(field(record, 'coeval_curve'), 'b_isothermal')
     },
     tracerSum: parseTracerSum(records.tracerSum),
     motions: parseEquilibrium(records.equilibrium)
