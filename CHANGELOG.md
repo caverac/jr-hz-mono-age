@@ -1,3 +1,15 @@
+# [1.6.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.5.0...v1.6.0) (2026-10-30)
+
+### Bug Fixes
+
+- **pre-print:** caption improvements ([1d378f7](https://github.com/caverac/jr-hz-mono-age/commit/1d378f712692bba6d4e05e7346093e5a2dc26bba))
+
+### Features
+
+- add action shapes, the Milky Way inversion and checks, and the first draft of the paper ([d8b2a62](https://github.com/caverac/jr-hz-mono-age/commit/d8b2a62844b5a23d4ea55ca670ed3877dae559cc))
+- add eta curves, half-mass heights, robustness checks and a Milky Way potential family ([584d01c](https://github.com/caverac/jr-hz-mono-age/commit/584d01cf0f9582fc93384e265df863215b2bba45))
+- draw height ratios as ln with a |ln| <= 0.1 band, drop a duplicate figure and revise the paper ([edefbd3](https://github.com/caverac/jr-hz-mono-age/commit/edefbd37faf54b780fb2c4cbe3f8b8ecabdd2a36))
+
 # [1.5.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.4.0...v1.5.0) (2026-10-29)
 
 ### Features
