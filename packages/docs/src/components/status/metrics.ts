@@ -40,9 +40,17 @@ export function ratios(data: StatusData, predictor: Predictor): readonly number[
     .filter(Number.isFinite)
 }
 
-/** How many populations the prediction reaches within the relative `tolerance`. */
+/** Agreement within 10 percent: a ratio of heights `r` with |ln r| at most this. */
+export const AGREEMENT = 0.1
+
+/** Whether the ratio `r` agrees with 1 within `tolerance`, as |ln r| <= `tolerance`. */
+export function agrees(r: number, tolerance: number = AGREEMENT): boolean {
+  return Math.abs(Math.log(r)) <= tolerance
+}
+
+/** How many populations the prediction reaches within `tolerance`, as |ln r| <= `tolerance`. */
 export function within(data: StatusData, predictor: Predictor, tolerance: number): number {
-  return ratios(data, predictor).filter((r) => Math.abs(r - 1) <= tolerance).length
+  return ratios(data, predictor).filter((r) => agrees(r, tolerance)).length
 }
 
 export function median(values: readonly number[]): number {
@@ -211,8 +219,7 @@ export function haloSummaries(data: StatusData): readonly HaloSummary[] {
   return data.halos.map((record) => {
     const of = (predictor: Predictor) =>
       record.bins.map((bin) => ratio(bin, predictor)).filter(Number.isFinite)
-    const inside = (values: readonly number[]) =>
-      values.filter((r) => Math.abs(r - 1) <= 0.1).length
+    const inside = (values: readonly number[]) => values.filter((r) => agrees(r)).length
     return {
       halo: record.label,
       zLim: record.zLim,

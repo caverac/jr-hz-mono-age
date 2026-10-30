@@ -17,7 +17,7 @@ import {
   type LeftOut,
   type Line
 } from '@site/src/components/status/jrRelation'
-import { andList, extent, median, trendText } from '@site/src/components/status/metrics'
+import { agrees, andList, extent, median, trendText } from '@site/src/components/status/metrics'
 import {
   boxText,
   type CellRatio,
@@ -110,7 +110,7 @@ function ratioRange(data: MilkyWayData, name: string, which: 'ratioTracer' | 'ra
 
 function within10(data: MilkyWayData, name: string): string {
   const ratios = survey(data, name).bins.map((b) => b.ratioTracer.value)
-  return `${ratios.filter((r) => Math.abs(r - 1) <= 0.1).length} of ${ratios.length}`
+  return `${ratios.filter((r) => agrees(r)).length} of ${ratios.length}`
 }
 
 function countHeight(data: MilkyWayData, name: string, ageLo: number): string {

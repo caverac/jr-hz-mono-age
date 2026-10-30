@@ -56,8 +56,8 @@
 \newcommand{\coevalMedian}{$1.11$}
 \newcommand{\coevalMedians}{$1.03$ to $1.05$}
 \newcommand{\coevalTracerMedian}{$1.02$}
-\newcommand{\coevalTracerWithinTen}{48 of 52}
-\newcommand{\coevalWithinTen}{24 of 52}
+\newcommand{\coevalTracerWithinTen}{49 of 52}
+\newcommand{\coevalWithinTen}{25 of 52}
 \newcommand{\coldTracer}{30 of 32}
 \newcommand{\coldTracerRms}{$5.1$ percent}
 \newcommand{\curveEtaAtForty}{$1.11$ to $1.13$}
@@ -66,7 +66,7 @@
 \newcommand{\curveNoScale}{$127$ to $150$}
 \newcommand{\curveNoScaleCount}{5 of 7}
 \newcommand{\diskMassRange}{$0.07$ to $1.00$}
-\newcommand{\diskTracer}{47 of 51}
+\newcommand{\diskTracer}{48 of 51}
 \newcommand{\diskTracerRms}{$5.5$ percent}
 \newcommand{\diskTrendMaxZero}{$0.9$}
 \newcommand{\diskTrendNegativeTwo}{7 of 7}
@@ -98,17 +98,17 @@
 \newcommand{\fineTrendMaxTwo}{$4.8$}
 \newcommand{\fineTrendNegativeTwo}{6 of 7}
 \newcommand{\halfMassJeansRms}{$3.6$ percent}
-\newcommand{\halfMassJeansSigmaWithinTen}{64 of 70}
+\newcommand{\halfMassJeansSigmaWithinTen}{63 of 70}
 \newcommand{\halfMassJeansWithinTen}{69 of 70}
 \newcommand{\halfMassSheetMedian}{$1.32$}
 \newcommand{\halfMassSheetWithinTen}{8 of 70}
 \newcommand{\halfMassTracerAboveOne}{1 of 70}
 \newcommand{\halfMassTracerMedian}{$0.94$}
 \newcommand{\halfMassTracerRms}{$7.8$ percent}
-\newcommand{\halfMassTracerWithinTen}{60 of 70}
+\newcommand{\halfMassTracerWithinTen}{57 of 70}
 \newcommand{\halfMassTrendMaxZero}{$2.9$}
 \newcommand{\hottestTracerRms}{$9.5$ percent}
-\newcommand{\hotTracer}{22 of 26}
+\newcommand{\hotTracer}{23 of 26}
 \newcommand{\hzMax}{$4.6$}
 \newcommand{\influentialHalo}{Au2}
 \newcommand{\injectionDraws}{40}
@@ -122,8 +122,8 @@
 \newcommand{\jeansRatios}{$0.81$ to $1.12$}
 \newcommand{\jeansRms}{$5.4$ percent}
 \newcommand{\jeansSigmaNegativeTwo}{4 of the 7}
-\newcommand{\jeansSigmaWithinTen}{61}
-\newcommand{\jeansWithinTen}{66}
+\newcommand{\jeansSigmaWithinTen}{58}
+\newcommand{\jeansWithinTen}{65}
 \newcommand{\lamostEta}{${1.10 \pm 0.17}$}
 \newcommand{\lamostExpTrendAge}{${+0.183 \pm 0.019}$ ($+9.5$ standard errors)}
 \newcommand{\lamostGaia}{461,601}
@@ -177,7 +177,7 @@
 \newcommand{\tracerRange}{$0.83$ to $1.16$}
 \newcommand{\tracerRms}{$6.2$ percent}
 \newcommand{\tracerWithinFive}{44}
-\newcommand{\tracerWithinTen}{63}
+\newcommand{\tracerWithinTen}{64}
 \newcommand{\trendMaxZero}{$1.6$}
 \newcommand{\trendNegativeTwo}{7 of the 7}
 \newcommand{\trendRangeZero}{$-0.045$ to $0.014$}
@@ -185,11 +185,12 @@
 \newcommand{\twoBetaZRangeZero}{$0.96$ to $1.88$}
 \newcommand{\unclippedShift}{$0$ to $24$ percent}
 \newcommand{\unclippedTrendNegativeTwo}{7 of 7}
-\newcommand{\unclippedWithinTen}{52 of 70}
+\newcommand{\unclippedWithinTen}{57 of 70}
 \newcommand{\windowLowExponential}{$1.00$}
 \newcommand{\windowLowHalos}{$0.91$}
 \newcommand{\windowLowSechTwo}{$0.89$}
 \newcommand{\withoutInfluentialScaled}{${25 \pm 15}$ km/s}
+\newcommand{\youngHeights}{$0.40$ to $0.62$}
 \newcommand{\zLimRange}{$0.5$ to $2.5$}
 % END NUMBERS
 
@@ -242,9 +243,12 @@ mass. Models of the Milky Way disk have long been built this way, from a sum of 
 populations with dispersions prescribed by an age-velocity relation and compared with star
 counts that mix all ages \citep{Bienayme1987,Robin2003,JustJahreiss2010,SysoliatinaJust2022}.
 The density of a single tracer has been predicted from its kinematics in this way
-\citep{Bahcall1984,HolmbergFlynn2000}. Mono-abundance populations, whose vertical
-dispersions change little with height \citep{Bovy2012}, have been used in the inverse
-direction, to infer the potential from their densities and kinematics \citep{BovyRix2013}.
+\citep{Bahcall1984,HolmbergFlynn2000}. The inverse problem, inferring the potential near the
+Sun from the density and the kinematics of a tracer, goes back to \citet{Oort1932,Oort1960}
+and was taken up with K dwarfs toward the south Galactic pole by
+\citet{KuijkenGilmore1989a,KuijkenGilmore1989b}. Mono-abundance populations, whose vertical
+dispersions change little with height \citep{Bovy2012}, have been used in the same direction
+\citep{BovyRix2013}.
 
 In the second model, a population is a self-gravitating isothermal sheet of surface density
 $\Sigma$, with the profile $\mathrm{sech}^2(z/z_0)$ and $z_0 = \sigz^2/(\pi G \Sigma)$
@@ -263,9 +267,10 @@ heights measured independently of it, because the models of the Milky Way assume
 age-velocity relation and fit counts that mix the populations, whereas the inverse problem
 leaves the heights free.
 
-The question also bears on the relation between radial action and scale height that
-\citet{Palicio2025} find across the disks of the Auriga simulations.
-Its slope has been derived for a whole disk from the radial action of an epicycle and the
+The question also bears on the relation between radial action and scale height, which
+\citet{Jia2023} find in the Milky Way, \citet{Jia2024} recover in an N-body disk, and
+\citet{Palicio2025} find across the disks of the Auriga simulations. Its slope has been derived
+for a whole disk from the radial action of an epicycle and the
 scale height of a sheet (\citealt{Jia2023}; C.~Vera-Ciro, in press), so that the age
 dependence of the slope for a single population depends on which vertical model holds.
 
@@ -334,8 +339,9 @@ exponential scale first.
 \subsection{What a test of the tracer can show}
 
 Part of any agreement between the tracer and the measured heights is guaranteed. In a
-harmonic potential $\dPhi = \nu^2 z^2/2$, the vertical virial theorem of a steady population
-gives $\langle v_z^2\rangle = \nu^2 \langle z^2\rangle$ whatever its distribution function, so
+harmonic potential $\dPhi = \Omega_z^2 z^2/2$, with vertical frequency $\Omega_z$, the vertical
+virial theorem of a steady population gives $\langle v_z^2\rangle = \Omega_z^2 \langle z^2\rangle$
+whatever its distribution function, so
 the spread of a cold population in $|z|$ follows from that of its vertical velocities, as
 Eq.~(\ref{eq:tracer}) gives it. A cold population whose dispersion near the plane represents
 its stars is therefore bound to agree with the tracer, to the extent that a fitted scale
@@ -398,7 +404,9 @@ radius of the annulus, whereas the sheet of Eq.~(\ref{eq:sheet}) takes $\Sigma$ 
 particles of the annulus within $|z| < 1.1\kpc$. Errors are half the range between the 16th
 and the 84th percentiles of 300 bootstrap resamplings of the stars of each bin, each of which
 recomputes every quantity, so that the ratio of a predicted to the measured height carries the
-correlation of the two. On a mock snapshot of a known galaxy, the analysis recovers $\dPhi$
+correlation of the two. A prediction agrees with a measured height within $x$ percent when
+$|\ln h_\mathrm{pred}/\hZ| \le x/100$, the band that the figures draw. On a mock snapshot of a
+known galaxy, the analysis recovers $\dPhi$
 within \mockPhi\ and the height of every bin within \mockHz\ (Appendix~\ref{app:mock}). In
 the real snapshots, the potential averaged over azimuth gives tracer heights \snapshotRange\
 times those of the fit.
@@ -408,7 +416,7 @@ times those of the fit.
 
 The tracer predicts the height of \tracerWithinTen\ of the \populations\ populations within 10
 percent, \tracerWithinFive\ within 5 percent, with ratios of \tracerRange\ and a median of
-\tracerMedian\ (Figure~\ref{fig:prediction}). The populations thus have the heights that their
+\tracerMedian\ (Figure~\ref{fig:trends}, top). The populations thus have the heights that their
 own dispersions give them in the potential of the whole galaxy, from the youngest to the
 oldest, whose heights reach \hzMax\kpc\ with $\sigz$ of up to \sigmaZMax\kms.
 
@@ -423,9 +431,9 @@ alone.
 
 \begin{figure}
 \centering
-\includegraphics[width=\columnwidth]{paper-prediction.pdf}
-\caption{The scale height that the isothermal tracer predicts for every population of the seven Auriga halos, against the measured $\hZ$ with its error. Filled circles are the populations with $\sigz \le 60\kms$, hollow circles the hotter ones. The line marks equality, inside a gray band of agreement within 10 percent.}
-\label{fig:prediction}
+\includegraphics[width=\columnwidth]{paper-ratios.pdf}
+\caption{The logarithm of the predicted over the measured $\hZ$ of every population against its median age: the isothermal tracer (top), the Jeans equation with the measured $\sigz(z)$ and the tilt term (middle), and the sheet (bottom), with their bootstrap errors. Filled circles are the populations with $\sigz \le 60\kms$, hollow circles the hotter ones. The gray band marks agreement within 10 percent, $|\ln h_\mathrm{pred}/\hZ| \le 0.1$.}
+\label{fig:trends}
 \end{figure}
 
 \subsection{The local slope of the heights}
@@ -491,13 +499,6 @@ with the tilt term holds for any steady axisymmetric population, that scatter me
 test at one radius cannot remove, departures from a steady state and the noise of the measured
 profiles, and so sets the floor of any prediction of these heights. The tracer's scatter of
 \tracerRms\ lies just above it.
-
-\begin{figure}
-\centering
-\includegraphics[width=\columnwidth]{paper-ratios.pdf}
-\caption{Predicted over measured $\hZ$ for every population against its median age: the isothermal tracer (top), the Jeans equation with the measured $\sigz(z)$ and the tilt term (middle), and the sheet (bottom), with their bootstrap errors. The gray band marks agreement within 10 percent.}
-\label{fig:trends}
-\end{figure}
 
 \subsection{Half-mass heights}
 \label{sec:halfmass}
@@ -615,7 +616,7 @@ follow from the tracers of their populations, in the window in which the tracer 
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-flare.pdf}
-\caption{Top: the measured $\hZ$ of the whole disk in every ring of 1\kpc\ of the seven halos (solid) and that of the sum of the tracers of its populations (dotted). Bottom: their ratio, with a gray band of agreement within 10 percent.}
+\caption{Top: the measured $\hZ$ of the whole disk in every ring of 1\kpc\ of the seven halos (solid) and that of the sum of the tracers of its populations (dotted). Bottom: the logarithm of their ratio, with a gray band of agreement within 10 percent.}
 \label{fig:flare}
 \end{figure}
 
@@ -671,7 +672,7 @@ leaves the shortfall in place.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-milky-way.pdf}
-\caption{The tracer over the star counts of each survey against median age, in the potential of \citet{McMillan2017} (hollow circles) and across the admissible potentials of Section~\ref{sec:family} (gray band), and the Jeans equation with the measured $\sigz(z)$ (filled squares).}
+\caption{The logarithm of the tracer over the star counts of each survey against median age, in the potential of \citet{McMillan2017} (hollow circles) and across the admissible potentials of Section~\ref{sec:family} (dark gray band), and of the Jeans equation with the measured $\sigz(z)$ (filled squares). The light gray band marks agreement within 10 percent.}
 \label{fig:milkyway}
 \end{figure}
 
@@ -864,7 +865,8 @@ test the relation across galaxies.
 \subsection{Limitations}
 
 The Auriga snapshots are at the standard resolution of the public release, whose stellar softening
-is comparable to the heights of the youngest populations. \citet{Pakmor2025} find that the
+of 369\,pc \citep{Grand2017} is comparable to the heights of \youngHeights\kpc\ of the populations
+younger than 1\Gyr. \citet{Pakmor2025} find that the
 rise of the velocity dispersion at large radii seen at that resolution might be entirely numerical.
 Numerical heating raises the dispersion and the height of a population together, so it shifts both
 sides of the test, but it could change $\eta$ and the shape of the actions, which the Level 3 runs
@@ -919,42 +921,39 @@ has been provided by national institutions, in particular the institutions
 participating in the {\it Gaia} Multilateral Agreement
 \citep{Gaia2016,Gaia2023}.
 
-Funding for the Sloan Digital Sky Survey IV has been provided by the Alfred P. Sloan
-Foundation, the U.S. Department of Energy Office of Science, and the Participating
-Institutions. SDSS acknowledges support and resources from the Center for
-High-Performance Computing at the University of Utah. The SDSS web site is
-www.sdss4.org. SDSS is managed by the Astrophysical Research Consortium for the
-Participating Institutions of the SDSS Collaboration including the Brazilian
-Participation Group, the Carnegie Institution for Science, Carnegie Mellon University,
-Center for Astrophysics $|$ Harvard \& Smithsonian (CfA), the Chilean Participation
-Group, the French Participation Group, Instituto de Astrof\'{i}sica de Canarias, The
-Johns Hopkins University, Kavli Institute for the Physics and Mathematics of the
-Universe (IPMU) / University of Tokyo, the Korean Participation Group, Lawrence Berkeley
-National Laboratory, Leibniz Institut f\"{u}r Astrophysik Potsdam (AIP),
-Max-Planck-Institut f\"{u}r Astronomie (MPIA Heidelberg), Max-Planck-Institut f\"{u}r
-Astrophysik (MPA Garching), Max-Planck-Institut f\"{u}r Extraterrestrische Physik (MPE),
-National Astronomical Observatories of China, New Mexico State University, New York
-University, University of Notre Dame, Observat\'{o}rio Nacional / MCTI, The Ohio State
-University, Pennsylvania State University, Shanghai Astronomical Observatory, United
-Kingdom Participation Group, Universidad Nacional Aut\'{o}noma de M\'{e}xico,
-University of Arizona, University of Colorado Boulder, University of Oxford, University
-of Portsmouth, University of Utah, University of Virginia, University of Washington,
-University of Wisconsin, Vanderbilt University, and Yale University. We use APOGEE DR17
+We use APOGEE DR17, part of the Sloan Digital Sky Survey IV
 \citep{Blanton2017,Majewski2017,Abdurrouf2022,Wilson2019,Gunn2006}, with the astroNN
-\citep{LeungBovy2019a,LeungBovy2019b,Mackereth2019} and DistMass
-\citep{StoneMartinez2024} value-added catalogs.
+\citep{LeungBovy2019a,LeungBovy2019b,Mackereth2019} and DistMass \citep{StoneMartinez2024}
+value-added catalogs. Funding for the Sloan Digital Sky Survey IV has been provided by the
+Alfred P. Sloan Foundation, the U.S. Department of Energy Office of Science, and the
+Participating Institutions. SDSS-IV acknowledges support and resources from the Center for High
+Performance Computing at the University of Utah. The SDSS website is www.sdss4.org. SDSS-IV is
+managed by the Astrophysical Research Consortium for the Participating Institutions of the SDSS
+Collaboration including the Brazilian Participation Group, the Carnegie Institution for Science,
+Carnegie Mellon University, Center for Astrophysics $|$ Harvard \& Smithsonian, the Chilean
+Participation Group, the French Participation Group, Instituto de Astrof\'{i}sica de Canarias,
+The Johns Hopkins University, Kavli Institute for the Physics and Mathematics of the Universe
+(IPMU) / University of Tokyo, the Korean Participation Group, Lawrence Berkeley National
+Laboratory, Leibniz Institut f\"{u}r Astrophysik Potsdam (AIP), Max-Planck-Institut f\"{u}r
+Astronomie (MPIA Heidelberg), Max-Planck-Institut f\"{u}r Astrophysik (MPA Garching),
+Max-Planck-Institut f\"{u}r Extraterrestrische Physik (MPE), National Astronomical Observatories
+of China, New Mexico State University, New York University, University of Notre Dame,
+Observat\'{o}rio Nacional / MCTI, The Ohio State University, Pennsylvania State University,
+Shanghai Astronomical Observatory, United Kingdom Participation Group, Universidad Nacional
+Aut\'{o}noma de M\'{e}xico, University of Arizona, University of Colorado Boulder, University of
+Oxford, University of Portsmouth, University of Utah, University of Virginia, University of
+Washington, University of Wisconsin, Vanderbilt University, and Yale University.
 
 This publication makes use of data products from the Two Micron All Sky Survey, which
 is a joint project of the University of Massachusetts and the Infrared Processing and
 Analysis Center/California Institute of Technology, funded by the National Aeronautics
 and Space Administration and the National Science Foundation \citep{Skrutskie2006}.
 
-Guoshoujing Telescope (the Large Sky Area Multi-Object Fiber Spectroscopic Telescope
-LAMOST) is a National Major Scientific Project built by the Chinese Academy of Sciences.
-Funding for the project has been provided by the National Development and Reform
-Commission. LAMOST is operated and managed by the National Astronomical Observatories,
-Chinese Academy of Sciences. We use the LAMOST-Gaia red-clump catalog of
-\citet{Huang2020}.
+We use the LAMOST-Gaia red-clump catalog of \citet{Huang2020}. Guoshoujing Telescope (the Large
+Sky Area Multi-Object Fiber Spectroscopic Telescope LAMOST) is a National Major Scientific
+Project built by the Chinese Academy of Sciences. Funding for the project has been provided by
+the National Development and Reform Commission. LAMOST is operated and managed by the National
+Astronomical Observatories, Chinese Academy of Sciences.
 
 We use the density fits of \citet{Imig2025}, released under CC BY 4.0 at
 \url{https://github.com/astrojimig/mw_density_imig2025}.
@@ -995,7 +994,7 @@ which is the minimum we use.
 \begin{figure}
 \centering
 \includegraphics[width=0.5\textwidth]{paper-window.pdf}
-\caption{Top: the height fitted in a fixed window $Z_\mathrm{lim} = 1\kpc$ over the self-consistent height, against $\hZ/Z_\mathrm{lim}$, for injected exponentials (solid), $\mathrm{sech}^2$ layers (dashed) and mixtures of two exponentials (dotted), with gray bands between the 16th and 84th percentiles of the draws, and for the Auriga populations (dots). Bottom: the self-consistent height of the injected draws over the height of the exact profile.}
+\caption{Top: the logarithm of the height fitted in a fixed window $Z_\mathrm{lim} = 1\kpc$ over the self-consistent height, against $\hZ/Z_\mathrm{lim}$, for injected exponentials (solid), $\mathrm{sech}^2$ layers (dashed) and mixtures of two exponentials (dotted), with dark gray bands between the 16th and 84th percentiles of the draws, and for the Auriga populations (dots). Bottom: the logarithm of the self-consistent height of the injected draws over the height of the exact profile. The light gray bands mark agreement within 10 percent.}
 \label{fig:window}
 \end{figure}
 

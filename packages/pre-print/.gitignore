@@ -12,7 +12,6 @@
 # Figures: `make` copies them in from ../../assets/figures so the paper is
 # self-contained at build time. They are build artifacts, not sources; list each
 # one here as it is added to FIGURES in the Makefile.
-paper-prediction.pdf
 paper-eta.pdf
 paper-ratios.pdf
 paper-checks.pdf

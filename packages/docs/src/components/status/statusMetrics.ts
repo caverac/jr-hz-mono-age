@@ -24,6 +24,7 @@ import {
 } from '@site/src/components/status/format'
 import {
   ageRange,
+  agrees,
   andList,
   etas,
   exponentComparisons,
@@ -134,9 +135,9 @@ function ratiosWhere(
     .filter(Number.isFinite)
 }
 
-/** How many of `values` lie within 10 percent of 1, out of how many. */
+/** How many of `values` agree with 1 within 10 percent, out of how many. */
 function within10Of(values: readonly number[]): string {
-  return `${values.filter((r) => Math.abs(r - 1) <= 0.1).length} of ${values.length}`
+  return `${values.filter((r) => agrees(r)).length} of ${values.length}`
 }
 
 /** The root mean square of `values` - 1. */
@@ -561,7 +562,7 @@ export const STATUS_METRICS = {
   sumRingsScaled: (d: StatusData) => between(extent(ringMixtureRatios(d))),
   sumRingsWithin10: (d: StatusData) => {
     const values = ringMixtureRatios(d)
-    return `${values.filter((v) => Math.abs(v - 1) <= 0.1).length} of the ${values.length}`
+    return `${values.filter((v) => agrees(v)).length} of the ${values.length}`
   },
   sumSinglePalicio: (d: StatusData) =>
     between(extent(d.halos.map((h) => h.tracerSum.whole.ratioSingle.palicio.value))),
@@ -614,6 +615,7 @@ export const STATUS_METRICS = {
     return thinnest === undefined ? 'none' : fixed(thinnest.fixed.median)
   },
   sheetYoung: (d: StatusData) => between(extent(d.halos.map((h) => ratio(h.bins[0], 'sheet')))),
+  youngHeights: (d: StatusData) => between(extent(d.halos.map((h) => h.bins[0].measured.value))),
   sheetOld: (d: StatusData) =>
     between(extent(d.halos.map((h) => ratio(h.bins[h.bins.length - 1], 'sheet'))))
 } satisfies Record<string, (d: StatusData) => string>

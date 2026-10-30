@@ -4,22 +4,24 @@ Every figure is black, with line styles and filled or hollow markers in place of
 one font size, no title and units in parentheses, and panels that share an axis are
 stacked (:mod:`experiments._plotting`):
 
-1. ``prediction``: the tracer's h_Z of every Auriga population against the measured h_Z,
-   filled for the disk populations and hollow for those hotter than ``SPHEROID_SIGMA_Z``;
-2. ``eta``: the local slope of the tracer of each halo against sigma_z, with the eta fitted
+1. ``eta``: the local slope of the tracer of each halo against sigma_z, with the eta fitted
    to its populations across their dispersions;
-3. ``ratios``: the tracer, the Jeans equation with the tilt term and the sheet over the
-   measured h_Z, against age;
-4. ``checks``: the trend of each check over 2-10 Gyr, halo by halo;
-5. ``flare``: the whole-disk h_Z of each ring and the sum of tracers over it;
-6. ``milky_way``: the tracer over the counts of each survey, in McMillan (2017) and across
+2. ``ratios``: the tracer, the Jeans equation with the tilt term and the sheet over the
+   measured h_Z, against age, filled for the disk populations and hollow for those hotter
+   than ``SPHEROID_SIGMA_Z``;
+3. ``checks``: the trend of each check over 2-10 Gyr, halo by halo;
+4. ``flare``: the whole-disk h_Z of each ring and the sum of tracers over it;
+5. ``milky_way``: the tracer over the counts of each survey, in McMillan (2017) and across
    the admissible potentials, with the Jeans equation;
-7. ``inversion``: the rho_0 at which every bin of a survey agrees, with the tracer and with the
+6. ``inversion``: the rho_0 at which every bin of a survey agrees, with the tracer and with the
    thin-layer population, against the measurement of McKee et al. (2015);
-8. ``imig``: our exponential fits and the published heights of Imig et al. (2025) against
+7. ``imig``: our exponential fits and the published heights of Imig et al. (2025) against
    sigma_z, cell by cell;
-9. ``window``: the fixed over the self-consistent h_Z of injected profiles and of the Auriga
+8. ``window``: the fixed over the self-consistent h_Z of injected profiles and of the Auriga
    populations.
+
+Every ratio of two heights is drawn as its logarithm, with the gray band of agreement within
+10 percent, ``|ln h_pred/h_Z| <= BAND``.
 """
 
 from __future__ import annotations
@@ -49,7 +51,7 @@ FloatArray = NDArray[np.float64]
 
 WIDTH = 3.5  # inches, one column
 SPHEROID_SIGMA_Z = 60.0  # km/s, the populations hotter than this are closer to a spheroid
-BAND = 0.1  # the agreement within 10 percent, drawn as a gray band
+BAND = 0.1  # the agreement within 10 percent, |ln h_pred/h_Z| <= BAND, drawn as a gray band
 BAND_GRAY = "0.88"
 GUIDE_GRAY = "0.55"
 SURVEY_LABELS = {"lamost": "LAMOST", "apogee": "APOGEE (astroNN)", "apogee_distmass": "APOGEE (distmass)"}
@@ -76,12 +78,21 @@ def _range(halo: HaloAnalysis, lo: float, hi: float) -> AgeRange:
     return next(r for r in halo.mono_age.ranges if r.lo == lo and r.hi == hi)
 
 
-def _band(axes: Axes, log: bool = True) -> None:
-    """Draw the line at 1 and the gray band of agreement within ``BAND``."""
-    axes.axhspan(1.0 - BAND, 1.0 + BAND, color=BAND_GRAY, linewidth=0.0, zorder=0)
-    axes.axhline(1.0, color=INK, linewidth=LINE_WIDTH, zorder=1)
-    if log:
-        axes.set_yscale("log")
+def _band(axes: Axes) -> None:
+    """Draw the line of equal heights, ln 1 = 0, and the gray band of agreement, ``|ln| <= BAND``."""
+    axes.axhspan(-BAND, BAND, color=BAND_GRAY, linewidth=0.0, zorder=0)
+    axes.axhline(0.0, color=INK, linewidth=LINE_WIDTH, zorder=1)
+
+
+def _ln(ratios: FloatArray) -> tuple[FloatArray, FloatArray]:
+    """Return the logarithm of the ratios in the first column of *ratios* and its error.
+
+    The second column holds the errors of the ratios, so that the error of the logarithm is,
+    to first order, the relative error of the ratio. A group without populations, such as a
+    halo with none hotter than ``SPHEROID_SIGMA_Z``, gives empty arrays.
+    """
+    pairs = np.reshape(ratios, (-1, 2))
+    return np.log(pairs[:, 0]), pairs[:, 1] / pairs[:, 0]
 
 
 def _log_axis(axes: Axes, which: str, lo: float, hi: float) -> None:
@@ -122,40 +133,6 @@ def _errorbar(  # pylint: disable=too-many-arguments,too-many-positional-argumen
     )
 
 
-def prediction_figure(records: PaperRecords) -> Figure:
-    """Return the tracer's h_Z of every population against the measured h_Z."""
-    fig, axes = plt.subplots(figsize=(WIDTH, WIDTH))
-    bins = [b for halo in records.halos for b in halo.mono_age.bins]
-    for disk, label in (
-        (True, r"$\sigma_z \leq 60\,\mathrm{km\,s^{-1}}$"),
-        (False, r"$\sigma_z > 60\,\mathrm{km\,s^{-1}}$"),
-    ):
-        chosen = [b for b in bins if (b.kinematics.sigma_z.value <= SPHEROID_SIGMA_Z) == disk]
-        measured = np.array([b.heights.measured.value for b in chosen])
-        axes.errorbar(
-            measured,
-            np.array([b.predictions.tracer for b in chosen]),
-            xerr=np.array([b.heights.measured.err for b in chosen]),
-            fmt="o",
-            color=INK,
-            markerfacecolor=INK if disk else "white",
-            markersize=MARKER_SIZE,
-            linewidth=ERROR_WIDTH,
-            label=label,
-        )
-    lo, hi = 0.15, 6.0
-    line = np.array([lo, hi])
-    axes.fill_between(line, line * (1.0 - BAND), line * (1.0 + BAND), color=BAND_GRAY, linewidth=0.0, zorder=0)
-    axes.plot(line, line, "-", color=INK, linewidth=LINE_WIDTH)
-    _log_axis(axes, "x", lo, hi)
-    _log_axis(axes, "y", lo, hi)
-    axes.set_xlabel(r"$h_Z\ (\mathrm{kpc})$")
-    axes.set_ylabel(r"$h_\mathrm{tracer}\ (\mathrm{kpc})$")
-    axes.legend(loc="upper left")
-    apply_house_style(fig)
-    return fig
-
-
 def eta_figure(records: PaperRecords) -> Figure:
     """Return the local slope of the tracer of each halo, and the eta fitted to its populations."""
     fig, axes = plt.subplots(figsize=(WIDTH, 2.8))
@@ -178,21 +155,31 @@ def eta_figure(records: PaperRecords) -> Figure:
 
 
 def ratios_figure(records: PaperRecords) -> Figure:
-    """Return the tracer, the Jeans equation with the tilt term and the sheet over the measured h_Z, against age."""
+    """Return the tracer, the Jeans equation with the tilt term and the sheet over the measured h_Z, against age.
+
+    The populations hotter than ``SPHEROID_SIGMA_Z`` are hollow, the disk populations filled.
+    """
     getters: tuple[tuple[str, Callable[[AgeBin], tuple[float, float]]], ...] = (
-        (r"$h_\mathrm{tracer}/h_Z$", lambda b: (b.ratios.tracer.value, b.ratios.tracer.err)),
-        (r"$h_\mathrm{Jeans}/h_Z$", lambda b: (b.ratios.jeans.value, b.ratios.jeans.err)),
-        (r"$h_\mathrm{sheet}/h_Z$", lambda b: (b.ratios.sheet.value, b.ratios.sheet.err)),
+        (r"$\ln h_\mathrm{tracer}/h_Z$", lambda b: (b.ratios.tracer.value, b.ratios.tracer.err)),
+        (r"$\ln h_\mathrm{Jeans}/h_Z$", lambda b: (b.ratios.jeans.value, b.ratios.jeans.err)),
+        (r"$\ln h_\mathrm{sheet}/h_Z$", lambda b: (b.ratios.sheet.value, b.ratios.sheet.err)),
     )
-    fig, panels = plt.subplots(3, 1, sharex=True, figsize=(WIDTH, 6.2))
+    fig, panels = plt.subplots(3, 1, sharex=True, sharey=True, figsize=(WIDTH, 6.2))
     bins = [b for halo in records.halos for b in halo.mono_age.bins]
-    age = np.array([b.age_median for b in bins])
+    groups = (
+        (True, r"$\sigma_z \leq 60\,\mathrm{km\,s^{-1}}$"),
+        (False, r"$\sigma_z > 60\,\mathrm{km\,s^{-1}}$"),
+    )
     for axes, (label, get) in zip(panels, getters, strict=True):
-        values = np.array([get(b) for b in bins])
         _band(axes)
-        _errorbar(axes, age, values[:, 0], values[:, 1], "o", True, None)
-        _log_axis(axes, "y", 0.4, 4.0)
+        for disk, legend in groups:
+            chosen = [b for b in bins if (b.kinematics.sigma_z.value <= SPHEROID_SIGMA_Z) == disk]
+            ln_ratio, err = _ln(np.array([get(b) for b in chosen]))
+            age = np.array([b.age_median for b in chosen])
+            _errorbar(axes, age, ln_ratio, err, "o", disk, legend if axes is panels[0] else None)
         axes.set_ylabel(label)
+    panels[0].set_ylim(-0.9, 1.4)
+    panels[0].legend(loc="upper left")
     panels[-1].set_xlabel(r"$\tau\ (\mathrm{Gyr})$")
     panels[-1].set_xlim(0.0, 10.0)
     apply_house_style(fig)
@@ -249,15 +236,17 @@ def flare_figure(records: PaperRecords) -> Figure:
         r = np.array([0.5 * (ring.r_lo + ring.r_hi) for ring in rings])
         top.plot(r, [ring.measured.scaled.value for ring in rings], "-", color=INK, linewidth=ERROR_WIDTH)
         top.plot(r, [ring.mixture.scaled.value for ring in rings], ":", color=INK, linewidth=ERROR_WIDTH)
-        ratio = np.array([[ring.ratio_mixture.scaled.value, ring.ratio_mixture.scaled.err] for ring in rings])
-        _errorbar(bottom, r, ratio[:, 0], ratio[:, 1], "o", True, None)
+        ln_ratio, err = _ln(
+            np.array([[ring.ratio_mixture.scaled.value, ring.ratio_mixture.scaled.err] for ring in rings])
+        )
+        _errorbar(bottom, r, ln_ratio, err, "o", True, None)
     top.plot([], [], "-", color=INK, linewidth=ERROR_WIDTH, label=r"measured $h_Z$")
     top.plot([], [], ":", color=INK, linewidth=ERROR_WIDTH, label="sum of tracers")
     top.legend(loc="upper left")
     top.set_ylabel(r"$h_Z\ (\mathrm{kpc})$")
-    _band(bottom, log=False)
-    bottom.set_ylim(0.75, 1.25)
-    bottom.set_ylabel(r"$h_\mathrm{sum}/h_Z$")
+    _band(bottom)
+    bottom.set_ylim(-0.25, 0.25)
+    bottom.set_ylabel(r"$\ln h_\mathrm{sum}/h_Z$")
     bottom.set_xlabel(r"$R\ (\mathrm{kpc})$")
     apply_house_style(fig)
     return fig
@@ -271,16 +260,16 @@ def milky_way_figure(records: PaperRecords) -> Figure:
     for axes, survey in zip(np.atleast_1d(panels), mw.surveys, strict=True):
         bins = [b for b in survey.bins if np.isfinite(b.ratios.tracer.value)]
         age = np.array([b.age_median for b in bins])
-        family = np.array([[b.ratios.family[i] for i in admissible] for b in bins])
-        _band(axes, log=False)
+        family = np.log(np.array([[b.ratios.family[i] for i in admissible] for b in bins]))
+        _band(axes)
         axes.fill_between(age, family.min(axis=1), family.max(axis=1), color=GUIDE_GRAY, alpha=0.5, linewidth=0.0)
-        tracer = np.array([[b.ratios.tracer.value, b.ratios.tracer.err] for b in bins])
-        jeans = np.array([[b.ratios.jeans.value, b.ratios.jeans.err] for b in bins])
-        _errorbar(axes, age, tracer[:, 0], tracer[:, 1], "o", False, "tracer, McMillan (2017)")
-        _errorbar(axes, age + 0.15, jeans[:, 0], jeans[:, 1], "s", True, r"Jeans, $\sigma_z(z)$")
-        axes.set_ylim(0.6, 1.4)
-        axes.set_ylabel(r"$h_\mathrm{pred}/h_Z$")
-        axes.text(0.03, 0.08, SURVEY_LABELS[survey.name], transform=axes.transAxes)
+        tracer, tracer_err = _ln(np.array([[b.ratios.tracer.value, b.ratios.tracer.err] for b in bins]))
+        jeans, jeans_err = _ln(np.array([[b.ratios.jeans.value, b.ratios.jeans.err] for b in bins]))
+        _errorbar(axes, age, tracer, tracer_err, "o", False, "tracer, McMillan (2017)")
+        _errorbar(axes, age + 0.15, jeans, jeans_err, "s", True, r"Jeans, $\sigma_z(z)$")
+        axes.set_ylim(-0.55, 0.4)
+        axes.set_ylabel(r"$\ln h_\mathrm{pred}/h_Z$")
+        axes.text(0.05, 0.04, SURVEY_LABELS[survey.name], transform=axes.transAxes)
     first = np.atleast_1d(panels)[0]
     first.fill_between([], [], [], color=GUIDE_GRAY, alpha=0.5, linewidth=0.0, label="tracer, admissible")
     first.legend(loc="upper left", ncols=1)
@@ -371,31 +360,33 @@ def window_figure(records: PaperRecords) -> Figure:
         points = sorted((p for p in injection.points if p.family == family), key=lambda p: p.reference)
         x = np.array([p.reference / injection.z_lim for p in points])
         label = r"$\mathrm{sech}^2$" if family == "sech2" else family
-        top.plot(x, [p.fixed.median for p in points], style, color=INK, linewidth=LINE_WIDTH, label=label)
-        top.fill_between(x, [p.fixed.lo for p in points], [p.fixed.hi for p in points], color=BAND_GRAY, linewidth=0.0)
-        bottom.plot(x, [p.scaled.median for p in points], style, color=INK, linewidth=LINE_WIDTH)
+        top.plot(x, np.log([p.fixed.median for p in points]), style, color=INK, linewidth=LINE_WIDTH, label=label)
+        top.fill_between(
+            x, np.log([p.fixed.lo for p in points]), np.log([p.fixed.hi for p in points]),
+            color=GUIDE_GRAY, alpha=0.5, linewidth=0.0,
+        )  # fmt: skip
+        bottom.plot(x, np.log([p.scaled.median for p in points]), style, color=INK, linewidth=LINE_WIDTH)
     for halo in records.halos:
         z_lim = halo.mono_age.method.window.z_lim
         bins = halo.mono_age.bins
         scaled = [b.heights.measured.value / z_lim for b in bins]
-        top.plot(scaled, [b.heights.fixed / b.heights.measured.value for b in bins], "o", color=INK, markersize=2.0)
+        top.plot(
+            scaled, np.log([b.heights.fixed / b.heights.measured.value for b in bins]), "o", color=INK, markersize=2.0
+        )
+    _band(top)
+    _band(bottom)
     top.set_xscale("log")
-    top.set_yscale("log")
-    top.set_ylabel(r"$h_\mathrm{fixed}/h_Z$")
+    top.set_ylabel(r"$\ln h_\mathrm{fixed}/h_Z$")
     top.legend(loc="upper left")
-    bottom.axhline(1.0, color=INK, linewidth=ERROR_WIDTH)
-    bottom.set_ylim(0.9, 1.1)
-    bottom.set_ylabel(r"$h_Z/h_\mathrm{ref}$")
+    bottom.set_ylim(-0.15, 0.15)
+    bottom.set_ylabel(r"$\ln h_Z/h_\mathrm{ref}$")
     bottom.set_xlabel(r"$h_Z/Z_\mathrm{lim}$")
-    for axes in (top, bottom):
-        axes.xaxis.set_major_formatter(FormatStrFormatter("%g"))
-    top.yaxis.set_major_formatter(FormatStrFormatter("%g"))
+    bottom.xaxis.set_major_formatter(FormatStrFormatter("%g"))
     apply_house_style(fig)
     return fig
 
 
 FIGURES: dict[str, Callable[[PaperRecords], Figure]] = {
-    "paper-prediction": prediction_figure,
     "paper-eta": eta_figure,
     "paper-ratios": ratios_figure,
     "paper-checks": checks_figure,

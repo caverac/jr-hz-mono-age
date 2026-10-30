@@ -2,6 +2,7 @@ import MathLabel from '@site/src/components/MathLabel'
 import { haloColor } from '@site/src/components/render/halos'
 import { fadeClass, HaloPicker, Pending } from '@site/src/components/status/controls'
 import type { StatusData } from '@site/src/components/status/data'
+import { AGREEMENT } from '@site/src/components/status/metrics'
 import type { SumRange } from '@site/src/components/status/tracerSum'
 import useStatusData from '@site/src/components/status/useStatusData'
 import Chart, { Axis, linePath } from '@site/src/components/viz/Chart'
@@ -12,8 +13,6 @@ import React, { type ReactNode, useState } from 'react'
 
 const HEIGHT_TOP = 300
 const HEIGHT_BOTTOM = 200
-/** The band of relative agreement drawn around a ratio of 1. */
-const TOLERANCE = 0.1
 
 /** The center (kpc) of a radial range, where its marker sits. */
 function center(ring: SumRange): number {
@@ -108,7 +107,7 @@ function RatioPanel({ data, width, xDomain, selected, revealed, onHover }: Panel
   const values = data.halos.flatMap((h) =>
     h.tracerSum.rings.map((r) => r.ratioMixture.scaled.value)
   )
-  const spread = Math.max(TOLERANCE * 1.6, ...values.map((v) => Math.abs(v - 1) * 1.15))
+  const spread = Math.max(AGREEMENT * 1.6, ...values.map((v) => Math.abs(v - 1) * 1.15))
   const yDomain: readonly [number, number] = [1 - spread, 1 + spread]
   return (
     <Chart width={width} height={HEIGHT_BOTTOM} xLabel="$R$ (kpc)" yLabel="$h_\mathrm{sum}/h_Z$">
@@ -120,8 +119,8 @@ function RatioPanel({ data, width, xDomain, selected, revealed, onHover }: Panel
             <rect
               x={0}
               width={inner.width}
-              y={y(1 + TOLERANCE)}
-              height={y(1 - TOLERANCE) - y(1 + TOLERANCE)}
+              y={y(Math.exp(AGREEMENT))}
+              height={y(Math.exp(-AGREEMENT)) - y(Math.exp(AGREEMENT))}
               className="viz-band"
             />
             <Axis scale={y} orientation="left" ticks={4} gridLength={inner.width} />
@@ -203,7 +202,7 @@ function Readout({ hovered }: { readonly hovered: Hovered | null }): ReactNode {
 const ENTRIES: readonly LegendEntry[] = [
   { label: 'measured', marker: 'circle', open: true },
   { label: 'sum of tracers', dash: 'solid' },
-  { label: `$|h_\\mathrm{sum}/h_Z - 1| \\le ${TOLERANCE}$`, band: true }
+  { label: `$|\\ln h_\\mathrm{sum}/h_Z| \\le ${AGREEMENT}$`, band: true }
 ]
 
 /**

@@ -1,7 +1,7 @@
 import MathLabel from '@site/src/components/MathLabel'
 import { Chips, Pending, toggled } from '@site/src/components/status/controls'
 import { plusMinus } from '@site/src/components/status/format'
-import { median } from '@site/src/components/status/metrics'
+import { AGREEMENT, median } from '@site/src/components/status/metrics'
 import {
   type ImigCell,
   type ImigCells,
@@ -30,7 +30,6 @@ const SIGMA_TICKS = [8, 10, 15, 20, 25, 30]
 const AGE_TICKS = [1, 2, 3, 5, 7, 10]
 const HEIGHT_TICKS = [0.1, 0.15, 0.2, 0.3, 0.5, 0.7, 1]
 const RATIO_TICKS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2]
-const TOLERANCE = 0.1
 /** The part of the logarithmic width of an age bin over which its cells spread by [M/H]. */
 const SPREAD: readonly [number, number] = [0.18, 0.82]
 /**
@@ -440,8 +439,8 @@ function RatioPanel({
   const cells = shared.cells.filter((c) => isPositive(read(c).value))
   const values = shared.measured.map((c) => read(c).value).filter(isPositive)
   const yDomain: readonly [number, number] = [
-    Math.min(1 - 2 * TOLERANCE, d3.min(values) ?? 1) / 1.12,
-    Math.max(1 + 2 * TOLERANCE, d3.max(values) ?? 1) * 1.12
+    Math.min(Math.exp(-2 * AGREEMENT), d3.min(values) ?? 1) / 1.12,
+    Math.max(Math.exp(2 * AGREEMENT), d3.max(values) ?? 1) * 1.12
   ]
   return (
     <Panel
@@ -458,8 +457,8 @@ function RatioPanel({
           <rect
             x={0}
             width={innerWidth}
-            y={y(1 + TOLERANCE)}
-            height={y(1 - TOLERANCE) - y(1 + TOLERANCE)}
+            y={y(Math.exp(AGREEMENT))}
+            height={y(Math.exp(-AGREEMENT)) - y(Math.exp(AGREEMENT))}
             className="viz-band"
           />
           <line x1={0} x2={innerWidth} y1={y(1)} y2={y(1)} className="viz-line viz-line--thin" />
@@ -585,7 +584,7 @@ export default function DiscrepancyChart(): ReactNode {
           { label: '$\\propto \\sigma_z$', dash: 'dotted' as const, color: 'var(--viz-muted)' }
         ]
       : [{ label: 'median of the age bin', dash: 'solid' as const }]),
-    { label: `ratio within ${100 * TOLERANCE} percent of 1`, band: true }
+    { label: `$|\\ln r| \\le ${AGREEMENT}$ for a ratio $r$`, band: true }
   ]
   return (
     <div className="viz" ref={ref}>
