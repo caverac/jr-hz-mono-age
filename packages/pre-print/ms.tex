@@ -206,24 +206,24 @@
 \email{caverac@gmail.com}
 
 \begin{abstract}
-Models of the Milky Way disk treat a mono-age population as an isothermal tracer of the total
-gravitational potential, $\rho \propto \exp(-\dPhi/\sigz^2)$ for a vertical velocity dispersion
-$\sigz$, whereas studies of disk heating and radial migration treat it as a self-gravitating
-sheet, $z_0 = \sigz^2/(\pi G \Sigma)$, whose thickness grows as $\sigz^2$. We test both,
-population by population, in seven Auriga disks, where heights, dispersions and potentials are
-known. The tracer predicts the scale heights of \tracerWithinTen\ of \populations\ populations
-within 10 percent at every age, nearly as well as the Jeans equation, whereas the sheet
-does so for \sheetWithinTen, making the youngest populations \sheetYoung\ times as thick as
-measured and the oldest \sheetOld\ times. Each population holds a small part of the mass of its
-disk and moves in the potential of all of it, so its height grows as $\sigz^\eta$, with $\eta$ of
+We test two models that relate the thickness of a mono-age disk population to its vertical
+velocity dispersion $\sigz$: an isothermal tracer of the total potential,
+$\rho \propto \exp(-\dPhi/\sigz^2)$, and a self-gravitating sheet, $z_0 = \sigz^2/(\pi G
+\Sigma)$, whose thickness grows as $\sigz^2$. In seven Auriga disks, where heights, dispersions
+and potentials are known, the tracer predicts the scale heights of \tracerWithinTen\ of
+\populations\ populations within 10 percent at every age, nearly as well as the Jeans equation,
+whereas the sheet does so for \sheetWithinTen, predicting the youngest populations \sheetYoung\
+times as thick as measured and the oldest \sheetOld\ times. Although the two models coincide for
+a self-gravitating layer, each population holds a small part of the mass of its disk and moves
+in the potential of all of it, so its height grows as $\sigz^\eta$, with $\eta$ of
 \etaRange\ set by the curvature of that potential, which makes age-thickness relations grow as
 $\mathrm{age}^{\eta\beta_z}$ rather than $\mathrm{age}^{2\beta_z}$. Dispersions rising with
 height make the oldest populations slightly thicker than the tracer. Summed over ages,
 the tracers reproduce the height and flare of each whole disk. Near the Sun, Gaia DR3 star
 counts split by LAMOST and APOGEE ages follow the tracer, with no trend with age, in potentials
 that match the measured local density, and imply midplane densities of
-\inversionRhoZero\,$\Msun\,\mathrm{pc}^{-3}$ against the measured $0.097 \pm 0.013$. The
-published heights of Imig et al. (2025) grow with $\sigz$ more slowly than the tracer allows.
+\inversionRhoZero\,$\Msun\,\mathrm{pc}^{-3}$, consistent with the measured $0.097 \pm 0.013$.
+The heights of Imig et al. (2025) agree with our counts in level but grow more slowly with age.
 \end{abstract}
 
 \keywords{Galaxy dynamics (591) --- Galaxy structure (622) --- Milky Way dynamics
@@ -252,9 +252,10 @@ dispersions change little with height \citep{Bovy2012}, have been used in the sa
 
 In the second model, a population is a self-gravitating isothermal sheet of surface density
 $\Sigma$, with the profile $\mathrm{sech}^2(z/z_0)$ and $z_0 = \sigz^2/(\pi G \Sigma)$
-\citep{Spitzer1942,vanderKruitSearle1981}. The sheet describes the old disk as a whole, and
-studies of disk heating and radial migration apply it to single populations, mostly as a
-scaling between dispersion and thickness \citep{Roskar2013,MartigMinchevFlynn2014b,Grand2016,Mackereth2019}.
+\citep{Spitzer1942,vanderKruitSearle1981}. The sheet is the tracer of a layer whose own mass
+makes its potential, which is how it describes the old disk as a whole. Studies of disk heating
+and radial migration have adopted it for single populations as well, mostly as a scaling between
+dispersion and thickness \citep{Roskar2013,MartigMinchevFlynn2014b,Grand2016,Mackereth2019}.
 \citet[Sect.~5.3]{Martig2026}, for example, use it to turn a dispersion that grows as
 $\mathrm{age}^{\beta_z}$ into an expected thickness that grows as $\mathrm{age}^{2\beta_z}$.
 The two models agree for a population that makes its own potential, and differ for one that
@@ -262,13 +263,13 @@ holds a small part of the mass of its disk. At fixed $\Sigma$ the sheet makes ev
 population grow as $\sigz^2$, whereas a tracer grows as $\sigz^\eta$, with $\eta$ set by
 the shape of $\dPhi$ over the heights that the population reaches: $\eta = 1$ where the
 potential is harmonic and $\eta = 2$ where it grows linearly with height
-\citep{vanderKruit1988}. Neither model has been tested population by population against
-heights measured independently of it, because the models of the Milky Way assume an
-age-velocity relation and fit counts that mix the populations, whereas the inverse problem
-leaves the heights free.
+\citep{vanderKruit1988}. To our knowledge, neither model has been compared population by
+population with heights measured independently of it. The models of the Milky Way are fitted to
+counts that mix the populations, with dispersions from an age-velocity relation, whereas the
+inverse problem takes the heights as data rather than predicting them.
 
 The question also bears on the relation between radial action and scale height, which
-\citet{Jia2023} find in the Milky Way, \citet{Jia2024} recover in an N-body disk, and
+\citet{Jia2023} find in the Milky Way, \citet{Jia2024} recover in an $N$-body disk, and
 \citet{Palicio2025} find across the disks of the Auriga simulations. Its slope has been derived
 for a whole disk from the radial action of an epicycle and the
 scale height of a sheet (\citealt{Jia2023}; C.~Vera-Ciro, in press), so that the age
@@ -354,7 +355,7 @@ feels no radial gradient of its motions, the tilt term of the vertical Jeans equ
 integrate that equation with the dispersion and the tilt term measured at every height,
 which holds for any steady axisymmetric population, so that its scatter about the measured
 heights sets the floor of any prediction from the kinematics at one radius. The same two
-refinements improve estimates of the local density from one tracer in N-body disks
+refinements improve estimates of the local density from one tracer in $N$-body disks
 \citep{Garbari2011,Sivertsson2022}.
 
 \subsection{The scale height and its window}
@@ -432,7 +433,7 @@ alone.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-ratios.pdf}
-\caption{The isothermal tracer predicts the scale height of almost every Auriga population, at every age, about as well as the vertical Jeans equation, whereas the self-gravitating sheet makes young populations too thin and old ones too thick. Each panel shows, against median age $\tau$, the logarithm of a predicted over the measured scale height $\hZ$ for the \populations\ populations of 1\,Gyr of seven halos: the tracer $\rho \propto \exp(-\dPhi/\sigz^2)$ in the potential fitted to all the particles (top), the vertical Jeans equation with the measured $\sigz(z)$ and the tilt term, the floor of any prediction from the kinematics (middle), and the sheet $z_0 = \sigz^2/(\pi G \Sigma)$ (bottom). Filled circles are the populations with $\sigz \le 60\kms$, hollow circles the hotter ones, which are closer to a spheroid than to a disk. Errors come from \nBootstrap\ bootstrap resamplings of the stars. The gray band marks agreement within 10 percent, $|\ln h_\mathrm{pred}/\hZ| \le 0.1$, which the tracer reaches for \tracerWithinTen\ populations, the Jeans equation for \jeansWithinTen\ and the sheet for \sheetWithinTen.}
+\caption{The isothermal tracer predicts the scale height of almost every Auriga population, at every age, about as well as the vertical Jeans equation, whereas the self-gravitating sheet predicts young populations thinner and old ones thicker than measured. Each panel shows, against median age $\tau$, the logarithm of a predicted over the measured scale height $\hZ$ for the \populations\ populations of 1\,Gyr of seven halos: the tracer $\rho \propto \exp(-\dPhi/\sigz^2)$ in the potential fitted to all the particles (top), the vertical Jeans equation with the measured $\sigz(z)$ and the tilt term, the floor of any prediction from the kinematics (middle), and the sheet $z_0 = \sigz^2/(\pi G \Sigma)$ (bottom). Filled circles are the populations with $\sigz \le 60\kms$, hollow circles the hotter ones, which are closer to a spheroid than to a disk. Errors come from \nBootstrap\ bootstrap resamplings of the stars. The gray band marks agreement within 10 percent, $|\ln h_\mathrm{pred}/\hZ| \le 0.1$, which the tracer reaches for \tracerWithinTen\ populations, the Jeans equation for \jeansWithinTen\ and the sheet for \sheetWithinTen.}
 \label{fig:trends}
 \end{figure}
 
@@ -456,7 +457,7 @@ window, and take the logarithmic derivative. The local slope rises from \curveEt
 dispersions of the populations of each halo, the slope of the chord of this curve differs from
 the measured $\eta$ by \etaChordDiff, within two standard errors in \etaChordWithinTwo\ halos.
 The exception is Au19, whose $\eta$ of \auNineteenEta\ exceeds the chord of
-\auNineteenChord, because its old populations are thicker than the tracer allows
+\auNineteenChord, because its old populations are thicker than the tracer predicts
 (Section~\ref{sec:jeans}). The slope stays below 2 over the whole grid: in \curveNoScaleCount\
 halos the window finds no scale above \curveNoScale\kms, where the tracer is so flat inside
 $2\hZ$ that its mean height reaches $L/2$. The hottest population of each of these halos
@@ -515,7 +516,7 @@ trace the excess to the rise of $\sigz$ with height: with the measured $\sigz(z)
 half-mass heights lie within 10 percent in \halfMassJeansSigmaWithinTen\ populations, and with
 the tilt term in \halfMassJeansWithinTen, with a scatter of \halfMassJeansRms. The sheet comes
 within 10 percent in \halfMassSheetWithinTen, with a median of \halfMassSheetMedian, so its
-failure does not come from the window.
+offsets do not come from the window.
 
 \subsection{Disk stars, finer bins and clipping}
 \label{sec:robustness}
@@ -581,11 +582,12 @@ Against the measured heights, the sheet comes within 10 percent in \sheetWithinT
 populations, with ratios of \sheetRange: \sheetYoung\ for the youngest population of each halo
 and \sheetOld\ for the oldest (Figure~\ref{fig:trends}). Its trends with age over 0-10\,Gyr are
 \sheetTrendRange, at least \sheetTrendMin\ standard errors from 0 in every halo, as expected of a
-ratio that grows as $\sigz^{2-\eta}$, or $\mathrm{age}^{(2-\eta)\beta_z}$ at fixed $\Sigma$. The sheet thus fits a population only where
-$\sigz^2/(\pi G \Sigma)$ happens to cross its height, at intermediate ages, making the young
-populations too thin and the old ones too thick. This is not surprising in hindsight: the sheet
-is the tracer of a layer whose own mass makes its potential, whereas a population of one age
-is one part of that layer and moves in the potential of all of it.
+ratio that grows as $\sigz^{2-\eta}$, or $\mathrm{age}^{(2-\eta)\beta_z}$ at fixed $\Sigma$. The
+sheet thus matches a population at intermediate ages, where $\sigz^2/(\pi G \Sigma)$ crosses its
+height, and predicts the young populations thinner and the old ones thicker than measured. This
+is not surprising in hindsight, because the sheet is the tracer of a layer whose own mass makes
+its potential, whereas a population of one age is one part of that layer and moves in the
+potential of all of it.
 
 \section{Whole disks}
 \label{sec:whole}
@@ -663,7 +665,7 @@ APOGEE on the astroNN scale and \distmassTracer\ on the DistMass scale, with tre
 $\eta$ of \lamostEta, \apogeeEta\ and \distmassEta, within the range of the Auriga disks
 (Figure~\ref{fig:milkyway}). It falls below the counts, however, in \tracerBelowOne\ bins, with
 medians of \tracerMedians\ against \tracerMedian\ in Auriga. Two causes could make it fall
-short: populations that are not isothermal, and a potential that is too dense near the plane.
+short: populations that are not isothermal, and a potential denser near the plane than measured.
 The Jeans equation with $\sigz^2$ measured in the slices $0$-$0.3$, $0.3$-$0.6$, $0.6$-$1.0$ and
 $1.0$-$1.5\kpc$, without the tilt term, which this sample cannot measure, gives heights of
 \jeansRatios\ of the counts, with medians of \jeansMedians. The change of $\sigz$ with height thus
@@ -760,7 +762,7 @@ dependence.
 \label{fig:inversion}
 \end{figure}
 
-\section{The heights of Imig et al.}
+\section{Comparison with Imig et al.}
 \label{sec:imig}
 
 \citet{Imig2025} fit every population of APOGEE DR17 with more than 100 stars, in bins of
@@ -779,7 +781,7 @@ have at least \cellsMin\ matched stars.
 
 Fitted the same way, our counts over their model have a median of \cellsExpMedian, and change by
 \cellsExpTrend\ per dex of metallicity at fixed age, so the two measurements agree in level and
-in how the heights depend on metallicity. They disagree in how the heights grow. At fixed
+in how the heights depend on metallicity. The two differ in how the heights grow. At fixed
 metallicity our exponential fits over theirs change by \cellsExpTrendAge\ per $\ln$ age, from
 \cellsExpYoung\ below 2.51\,Gyr to \cellsExpOld\ above 5.01\,Gyr (Figure~\ref{fig:imig}).
 Against the $\sigz$ of the giants of each cell, our exponential heights grow as
@@ -791,25 +793,27 @@ Section~\ref{sec:family}, and of \familyGrowthWhole\ over the whole profile, bec
 populations reach heights where the potential is no longer harmonic. A potential that is denser
 or lighter near the plane within the measured errors moves the heights of all the populations by
 similar factors, which changes their level more than their growth, so the uncertainty of the
-potential does not account for the slower growth of their heights. The selection of APOGEE does
-not account for it either: in the cells of LAMOST, with another survey's targeting and ages, our
-exponential fits over theirs change by \lamostExpTrendAge\ per $\ln$ age.
+potential does not account for the difference. The targeting of APOGEE does not account for it
+either, because in the cells of LAMOST, with another survey's targeting and ages, our exponential fits over theirs
+change by \lamostExpTrendAge\ per $\ln$ age.
 
 Part of the difference can come from the range of the fits. Their fit takes the stars at every
 height that APOGEE reaches, whereas ours stops at 1.2\kpc. For the tracer, the exponential
 fit to the whole profile is \estimatorWhole\ times the fit below 1.2\kpc, the lowest for the
 hottest population, so their old heights should come out thinner than ours by up to that
 factor. That would account for part of the excess of our old cells, but not for the young cells,
-where our fits are the thinner. The rest is untested. Both measurements use the same stars on the
-same age scale, so the errors of the ages mix the same neighbors into both, whereas the two
+where our fits are the thinner. We have not traced the rest. Both measurements use the same stars
+on the same age scale, so the errors of the ages mix the same neighbors into both, whereas the two
 measurements differ in where the stars lie: their height at the Sun comes from a model of the
 whole footprint, in which each population has one exponential in $|z|$ at every radius and a
-linear flare, whereas ours comes from the stars within 1.5\kpc\ of the Sun.
+linear flare, whereas ours comes from the stars within 1.5\kpc\ of the Sun. A fit of their model
+to the stars near the Sun alone would show whether the difference comes from the rest of the
+footprint.
 
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-imig.pdf}
-\caption{The heights that \citet{Imig2025} published for the solar neighborhood agree with our star counts in level, but grow with the dispersion more slowly than our counts and than the tracer in any potential that matches the measured local density. Our exponential fits below $|z| = 1.2\kpc$ to the counts of each cell of age and $[\mathrm{M/H}]$ of \citet{Imig2025} (filled circles) and their published heights at the Sun (hollow circles) are plotted against the $\sigz$ of the giants of the cell. Ours grow as \dispersionCounts\ at fixed metallicity, theirs as \dispersionSun. The dashed lines show the growth of the exponential fit to the tracer in those potentials, with exponents of \familyGrowthWindow, and the dotted line $\hZ \propto \sigz$, the growth in a harmonic potential, all drawn through the mean of our fits.}
+\caption{Our star counts and the heights that \citet{Imig2025} published for the solar neighborhood agree in level but differ in how they grow with the dispersion, theirs more slowly than ours and than the tracer in the potentials of our family that match the measured local density. Our exponential fits below $|z| = 1.2\kpc$ to the counts of each cell of age and $[\mathrm{M/H}]$ of \citet{Imig2025} (filled circles) and their published heights at the Sun (hollow circles) are plotted against the $\sigz$ of the giants of the cell. Ours grow as \dispersionCounts\ at fixed metallicity, theirs as \dispersionSun. The dashed lines show the growth of the exponential fit to the tracer in those potentials, with exponents of \familyGrowthWindow, and the dotted line $\hZ \propto \sigz$, the growth in a harmonic potential, all drawn through the mean of our fits.}
 \label{fig:imig}
 \end{figure}
 
@@ -818,20 +822,20 @@ linear flare, whereas ours comes from the stars within 1.5\kpc\ of the Sun.
 
 \subsection{Age-thickness relations}
 
-The heights of mono-age populations grow with age as $\mathrm{age}^{\eta\beta_z}$, not as the
-$\mathrm{age}^{2\beta_z}$ of the sheet. Over 0-10\,Gyr in the Auriga halos, $\sigz$ grows with
+The heights of mono-age populations grow with age as $\mathrm{age}^{\eta\beta_z}$, rather than as
+the $\mathrm{age}^{2\beta_z}$ of the sheet. Over 0-10\,Gyr in the Auriga halos, $\sigz$ grows with
 exponents $\beta_z$ of \betaZRangeZero\ and $\hZ$ with exponents $\beta_h$ of \betaHRangeZero. The
 products $\eta\beta_z$ are \etaBetaZRangeZero, whereas $2\beta_z$ would be \twoBetaZRangeZero. In
 the Milky Way our counts give $\beta_z$ of \mwBetaZ\ and $\beta_h$ of \mwBetaH, against $\eta\beta_z$
 of \mwEtaBetaZ\ and $2\beta_z$ of \mwTwoBetaZ. Because $\eta$ and $\beta_h$ come from the same
 heights, their agreement is a consistency of the fits rather than a test. The test is that $\eta$
-follows the local slope of the tracer of each potential (Section~\ref{sec:eta}). The sheet
-overstates the growth of the heights by a factor of $2/\eta$, about 1.6-1.8 here.
-\citet[Sect.~5.3]{Martig2026} expected from the sheet that the half-mass heights of the stars of
-lenticular galaxies would grow with age with an exponent between 0.8 and 1, and found otherwise. A
-tracer lowers that expectation by the factor $2/\eta$, although no value of $\eta$ produces the flat
-half-mass heights of their younger populations, so the tracer does not by itself account for their
-result.
+follows the local slope of the tracer of each potential (Section~\ref{sec:eta}). The exponent of
+the sheet exceeds that of the tracer by a factor of $2/\eta$, about 1.6-1.8 here.
+\citet[Sect.~5.3]{Martig2026} note that the sheet would make the half-mass heights of the stars of
+lenticular galaxies grow with age with an exponent between 0.8 and 1, unlike the heights they
+measure. A tracer lowers that exponent by the factor $2/\eta$, although no value of $\eta$ produces
+the flat half-mass heights of their younger populations, so the tracer does not by itself account
+for their measurements.
 
 \subsection{The shape of coeval populations}
 
@@ -846,7 +850,7 @@ height, whereas \citet{Bovy2012} find mono-abundance populations nearly isotherm
 star counts do not separate these shapes: the population with $b = 1/2$ fits them in a potential
 denser at the midplane than measured, close to that of \citet{McMillan2017}, whereas the
 isothermal tracer fits them at the measured density. For the heights, the shape is a correction of order 10 percent at
-fixed $\sigz$, small against the factor $2/\eta$ by which the sheet misses, whereas for the
+fixed $\sigz$, small against the factor $2/\eta$ that separates the sheet from the tracer, whereas for the
 dynamics of disk heating the shape is the record that \citet{TingRix2026} read.
 
 \subsection{The radial action and the scale height}
@@ -854,10 +858,11 @@ dynamics of disk heating the shape is the record that \citet{TingRix2026} read.
 For a population of one age, the slope $a = J_{R,\mathrm{med}}/\hZ$ of the relation between radial
 action and scale height grows with age as $\mathrm{age}^{2\beta_R - \eta\beta_z}$ for a tracer in a
 fixed potential, rather than the $\mathrm{age}^{2(\beta_R - \beta_z)}$ of the sheet at fixed
-$\Sigma$, so the derivation of the slope through the sheet does not carry over to single populations.
-Across galaxies, the heights of whole disks follow from the tracers of their populations
-(Section~\ref{sec:whole}). With a reproducible proxy for the radial action of \citet{Palicio2025},
-read from maps of the median $\JR$ as they describe them, the slope against the self-consistent
+$\Sigma$, so the derivation of the slope through the sheet, made for whole disks, does not carry
+over to single populations. Across galaxies, the heights of whole disks follow from the tracers of
+their populations (Section~\ref{sec:whole}). With a proxy for the radial action of
+\citet{Palicio2025}, which we read from maps of the median $\JR$ built as they describe them, the
+slope against the self-consistent
 heights of the seven halos is \slopeScaled, against their \palicioSlope\kms. It depends, however,
 on one halo, \influentialHalo, without which it is \withoutInfluentialScaled, so seven halos do not
 test the relation across galaxies.
@@ -878,8 +883,8 @@ halo of \citet{McMillan2017} but neither its thick disk nor its gas, and is not 
 rotation curve. The surface density of \citet{BovyRix2013} comes from stars modeled in
 equilibrium, so the agreement of the tracer with the counts remains one of consistency with that
 assumption. The inversion constrains $\rho_0$ but not $\Sigma_{1.1}$. The Jeans equation of the
-Milky Way leaves out the tilt term, which held up the old populations of Au19. Finally, the slower
-growth of the heights of \citet{Imig2025} remains unexplained.
+Milky Way leaves out the tilt term, which held up the old populations of Au19. Finally, we have not
+found why our heights and those of \citet{Imig2025} grow differently with age.
 
 \section{Conclusions}
 \label{sec:conclusions}
@@ -889,7 +894,7 @@ growth of the heights of \citet{Imig2025} remains unexplained.
 predicts the scale heights of \tracerWithinTen\ of \populations\ populations of 1\,Gyr within 10
 percent, with a scatter of \tracerRms, just above the floor of \jeansRms\ that the vertical Jeans
 equation with the measured dispersion profile and tilt term sets. The self-gravitating sheet does
-so for \sheetWithinTen, making young populations too thin and old ones too thick.
+so for \sheetWithinTen, predicting young populations thinner and old ones thicker than measured.
 \item The heights grow as $\sigz^\eta$ with $\eta$ of \etaRange, which equals within two standard
 errors the local slope of the tracer of the potential in \etaChordWithinTwo\ halos, so
 age-thickness relations grow as $\mathrm{age}^{\eta\beta_z}$ rather than $\mathrm{age}^{2\beta_z}$.
@@ -904,9 +909,10 @@ tracer with no trend with age, at medians of \familyTracerMedians\ in potentials
 measured local densities, and imply midplane densities of \inversionRhoZero\,$\Msun\,
 \mathrm{pc}^{-3}$. Doubling the errors of the ages leaves these results in place. Splitting the
 age tracers at their median magnitude moves no LAMOST height by more than two standard errors.
-\item The published heights of \citet{Imig2025} agree with our counts in level and in their
-dependence on metallicity once both are fitted the same way, but grow with $\sigz$ more slowly
-than the tracer in any admissible potential, for reasons that our data cannot reach.
+\item Fitted the same way, our counts and the model of \citet{Imig2025} agree in level and in
+the dependence of the heights on metallicity, but differ in how the heights grow with age, a
+difference that neither the potential nor the targeting of APOGEE accounts for and that the
+range of the fits accounts for only in part.
 \end{enumerate}
 
 \begin{acknowledgments}
@@ -981,8 +987,8 @@ window. The self-consistent window recovers every injected profile within
 $\hZ = 0.5\,Z_\mathrm{lim}$ their median ratio of the fixed to the self-consistent height is
 \windowLowHalos, against \windowLowSechTwo\ for $\mathrm{sech}^2$ and \windowLowExponential\ for an
 exponential, as expected of tracers in a potential that is harmonic near the plane. The
-windows of \citet[Table~1]{Palicio2025}, with $Z_\mathrm{lim}$ of \zLimRange\kpc, are fixed in
-this sense.
+windows of \citet[Table~1]{Palicio2025}, with $Z_\mathrm{lim}$ of \zLimRange\kpc\ chosen for each
+galaxy, are fixed in this sense.
 
 The self-consistent window takes the smallest $L$ that satisfies $L = 2h(L)$. With few stars
 inside $L/2$, the profile of a hot population is nearly flat inside a small window, so that the
