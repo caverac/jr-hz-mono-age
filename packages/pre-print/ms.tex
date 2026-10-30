@@ -206,24 +206,24 @@
 \email{caverac@gmail.com}
 
 \begin{abstract}
-We test, population by population, whether the scale height of a mono-age disk population is set
-by its own vertical velocity dispersion in the total gravitational potential, as models of the
-Milky Way disk have long assumed, or by the self-gravitating sheet that studies of disk heating
-apply to single populations. In seven disks of the Auriga simulations, an isothermal tracer in a
-potential fitted to all the particles predicts the scale heights of \tracerWithinTen\ of
-\populations\ populations of 1\,Gyr within 10 percent, near the floor that the vertical Jeans
-equation sets, whereas the sheet does so for \sheetWithinTen. The heights grow as $\sigz^\eta$ with
-$\eta$ of \etaRange, the local slope of the tracer of each potential, so age-thickness relations
-grow as $\mathrm{age}^{\eta\beta_z}$ rather than the $\mathrm{age}^{2\beta_z}$ of the sheet. A
-small residual for old populations, which persists with disk stars alone and in bins of
-0.25\,Gyr, an excess of mass far from the plane, and vertical actions with heavier tails than an
-isothermal population all reflect dispersions that rise with height. Summed over ages, the
-tracers reproduce the heights and the flare of each whole disk. In the solar neighborhood, Gaia DR3
-star counts split by LAMOST and APOGEE ages follow the tracer with no trend with age in potentials
-that match the measured local densities, and imply midplane densities of
-\inversionRhoZero\,$\Msun\,\mathrm{pc}^{-3}$ with the three age scales. The published heights of
-Imig et al. (2025), fitted the same way, agree with our counts in level but grow more slowly with
-the dispersion than the tracer in any admissible potential.
+Models of the Milky Way disk treat a mono-age population as an isothermal tracer of the total
+gravitational potential, $\rho \propto \exp(-\dPhi/\sigz^2)$ for a vertical velocity dispersion
+$\sigz$, whereas studies of disk heating and radial migration treat it as a self-gravitating
+sheet, $z_0 = \sigz^2/(\pi G \Sigma)$, whose thickness grows as $\sigz^2$. We test both,
+population by population, in seven Auriga disks, where heights, dispersions and potentials are
+known. The tracer predicts the scale heights of \tracerWithinTen\ of \populations\ populations
+within 10 percent at every age, nearly as well as the Jeans equation, whereas the sheet
+does so for \sheetWithinTen, making the youngest populations \sheetYoung\ times as thick as
+measured and the oldest \sheetOld\ times. Each population holds a small part of the mass of its
+disk and moves in the potential of all of it, so its height grows as $\sigz^\eta$, with $\eta$ of
+\etaRange\ set by the curvature of that potential, which makes age-thickness relations grow as
+$\mathrm{age}^{\eta\beta_z}$ rather than $\mathrm{age}^{2\beta_z}$. Dispersions rising with
+height make the oldest populations slightly thicker than the tracer. Summed over ages,
+the tracers reproduce the height and flare of each whole disk. Near the Sun, Gaia DR3 star
+counts split by LAMOST and APOGEE ages follow the tracer, with no trend with age, in potentials
+that match the measured local density, and imply midplane densities of
+\inversionRhoZero\,$\Msun\,\mathrm{pc}^{-3}$ against the measured $0.097 \pm 0.013$. The
+published heights of Imig et al. (2025) grow with $\sigz$ more slowly than the tracer allows.
 \end{abstract}
 
 \keywords{Galaxy dynamics (591) --- Galaxy structure (622) --- Milky Way dynamics
@@ -432,7 +432,7 @@ alone.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-ratios.pdf}
-\caption{The logarithm of the predicted over the measured $\hZ$ of every population against its median age: the isothermal tracer (top), the Jeans equation with the measured $\sigz(z)$ and the tilt term (middle), and the sheet (bottom), with their bootstrap errors. Filled circles are the populations with $\sigz \le 60\kms$, hollow circles the hotter ones. The gray band marks agreement within 10 percent, $|\ln h_\mathrm{pred}/\hZ| \le 0.1$.}
+\caption{The isothermal tracer predicts the scale height of almost every Auriga population, at every age, about as well as the vertical Jeans equation, whereas the self-gravitating sheet makes young populations too thin and old ones too thick. Each panel shows, against median age $\tau$, the logarithm of a predicted over the measured scale height $\hZ$ for the \populations\ populations of 1\,Gyr of seven halos: the tracer $\rho \propto \exp(-\dPhi/\sigz^2)$ in the potential fitted to all the particles (top), the vertical Jeans equation with the measured $\sigz(z)$ and the tilt term, the floor of any prediction from the kinematics (middle), and the sheet $z_0 = \sigz^2/(\pi G \Sigma)$ (bottom). Filled circles are the populations with $\sigz \le 60\kms$, hollow circles the hotter ones, which are closer to a spheroid than to a disk. Errors come from \nBootstrap\ bootstrap resamplings of the stars. The gray band marks agreement within 10 percent, $|\ln h_\mathrm{pred}/\hZ| \le 0.1$, which the tracer reaches for \tracerWithinTen\ populations, the Jeans equation for \jeansWithinTen\ and the sheet for \sheetWithinTen.}
 \label{fig:trends}
 \end{figure}
 
@@ -466,7 +466,7 @@ therefore grow with their dispersions as the curvature of each potential prescri
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-eta.pdf}
-\caption{The local slope $\eta = d\ln\hZ/d\ln\sigz$ of the tracer of each halo's fitted potential (gray lines), and the $\eta$ fitted to the populations of 0-10\,Gyr of each halo (circles with errors), drawn across the $\sigz$ of those populations. The dotted and dashed lines mark the $\eta$ of a harmonic and of a linear potential.}
+\caption{The scale heights grow with the dispersion as $\hZ \propto \sigz^\eta$, with the $\eta$ that the curvature of each potential predicts, rather than the $\eta = 2$ of the sheet. Gray lines show the local slope $\eta = d\ln\hZ/d\ln\sigz$ of the tracer in the fitted potential of each halo, which rises from 1 where the potential is harmonic (dotted line) toward 2 where it grows linearly with height (dashed line). Circles show the $\eta$ fitted to the populations of 0-10\,Gyr of each halo, at the geometric mean of their $\sigz$, with horizontal bars spanning those $\sigz$. It agrees with the chord of its halo's curve over the same dispersions within two standard errors in \etaChordWithinTwo\ halos.}
 \label{fig:eta}
 \end{figure}
 
@@ -537,7 +537,7 @@ leaves the rise of $\sigz$ with height as its cause.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-checks.pdf}
-\caption{The trend $d\ln(h_\mathrm{pred}/\hZ)/d\ln\tau$ of the tracer over 2-10\,Gyr in each halo: in the main measurement (filled circles), with the stars on disk orbits alone (hollow circles), in bins of 0.25\,Gyr (filled squares), with the unclipped $\sigz$ (hollow squares) and for half-mass heights (filled triangles), and the trend of the Jeans heights with the tilt term (hollow triangles).}
+\caption{The tracer falls slightly short of the thickness of the oldest populations, a residual that the Jeans equation traces to dispersions that rise with height. Each row is one halo, whose points give the trend $d\ln(h_\mathrm{pred}/\hZ)/d\ln\tau$ over 2-10\,Gyr, which is 0 when a prediction follows how $\hZ$ changes with age and negative when the oldest populations are thicker than predicted. The trend of the tracer (filled circles) is negative in every halo, as it is in \diskTrendNegativeTwo\ halos with the stars on disk orbits alone (hollow circles), in \fineTrendNegativeTwo\ with bins of 0.25\,Gyr (filled squares) and in \unclippedTrendNegativeTwo\ with the unclipped $\sigz$ (hollow squares). With half-mass heights in place of $\hZ$ (filled triangles), the tracer falls short by a similar amount at every age. The Jeans heights with the measured $\sigz(z)$ and the tilt term (hollow triangles) have trends consistent with 0 in every halo.}
 \label{fig:checks}
 \end{figure}
 
@@ -616,7 +616,7 @@ follow from the tracers of their populations, in the window in which the tracer 
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-flare.pdf}
-\caption{Top: the measured $\hZ$ of the whole disk in every ring of 1\kpc\ of the seven halos (solid) and that of the sum of the tracers of its populations (dotted). Bottom: the logarithm of their ratio, with a gray band of agreement within 10 percent.}
+\caption{Summed over ages, the tracers of the populations reproduce the scale height of each whole disk and its flare with radius, within 10 percent in \sumRingsWithinTen\ radial ranges. Top: the measured $\hZ$ of all the stars of each radial range, 2 to 4\kpc\ wide, of the seven halos (solid lines), and the $\hZ$ of the sum of the tracers of its populations of 1\,Gyr in rings of 1\kpc\ (dotted lines). Bottom: the logarithm of their ratio, with errors from 50 bootstrap draws of the stars, and a gray band of agreement within 10 percent.}
 \label{fig:flare}
 \end{figure}
 
@@ -672,7 +672,7 @@ leaves the shortfall in place.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-milky-way.pdf}
-\caption{The logarithm of the tracer over the star counts of each survey against median age, in the potential of \citet{McMillan2017} (hollow circles) and across the admissible potentials of Section~\ref{sec:family} (dark gray band), and of the Jeans equation with the measured $\sigz(z)$ (filled squares). The light gray band marks agreement within 10 percent.}
+\caption{In the solar neighborhood the tracer reproduces the star counts of populations of every age, with no trend with age, in the potentials that match the measured local density. Each panel shows, against median age, the logarithm of the predicted over the measured scale height of Gaia DR3 giants within 1.5\kpc\ of the Sun, split into populations of 2\,Gyr by the ages of LAMOST red-clump stars (top) and of APOGEE on the astroNN (middle) and the DistMass (bottom) scales. The dark gray band spans the tracer across the \familyAdmissible\ potentials of our family that lie within one error of the measured $\rho_0$ and $\Sigma_{1.1}$. Hollow circles show the tracer in the potential of \citet{McMillan2017}, whose midplane density is about 20 percent above the measured one, so that the tracer falls short, with medians of \tracerMedians. Filled squares show the Jeans equation with the measured $\sigz(z)$, which leaves that shortfall in place. The light gray band marks agreement within 10 percent.}
 \label{fig:milkyway}
 \end{figure}
 
@@ -756,7 +756,7 @@ dependence.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-inversion.pdf}
-\caption{The midplane density $\rho_0$ at which every bin of a survey matches its counts, with one-sigma errors, for the isothermal tracer (filled) and for the population with $b = 1/2$ (hollow). The gray band and the dashed line mark the $0.097 \pm 0.013\,\Msun\,\mathrm{pc}^{-3}$ of \citet{McKee2015}. The dotted line marks the $\rho_0$ of \citet{McMillan2017}.}
+\caption{Read in reverse, the star counts measure the local midplane density. If every population is an isothermal tracer, the density that fits the counts of each survey agrees with the measurement of \citet{McKee2015}. Points show the $\rho_0$ at which all the bins of a survey match their counts, with one-sigma errors, for the isothermal tracer (filled) and for populations whose vertical actions are distributed as $\exp[-(J_z/J_0)^{3/2}]$, the $b = 1/2$ of \citet{TingRix2026} (hollow), which need a potential denser than measured, near that of \citet{McMillan2017} (dotted line), although their errors keep this preference weak. The gray band and the dashed line mark the $0.097 \pm 0.013\,\Msun\,\mathrm{pc}^{-3}$ of \citet{McKee2015}.}
 \label{fig:inversion}
 \end{figure}
 
@@ -809,7 +809,7 @@ linear flare, whereas ours comes from the stars within 1.5\kpc\ of the Sun.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-imig.pdf}
-\caption{Our exponential fits to the counts of each cell of \citet{Imig2025} (filled) and their published heights at the Sun (hollow), against the $\sigz$ of the giants of the cell. The dashed lines give the growth of the exponential fit to the tracer across the admissible potentials, and the dotted line $\hZ \propto \sigz$, through the mean of our fits.}
+\caption{The heights that \citet{Imig2025} published for the solar neighborhood agree with our star counts in level, but grow with the dispersion more slowly than our counts and than the tracer in any potential that matches the measured local density. Our exponential fits below $|z| = 1.2\kpc$ to the counts of each cell of age and $[\mathrm{M/H}]$ of \citet{Imig2025} (filled circles) and their published heights at the Sun (hollow circles) are plotted against the $\sigz$ of the giants of the cell. Ours grow as \dispersionCounts\ at fixed metallicity, theirs as \dispersionSun. The dashed lines show the growth of the exponential fit to the tracer in those potentials, with exponents of \familyGrowthWindow, and the dotted line $\hZ \propto \sigz$, the growth in a harmonic potential, all drawn through the mean of our fits.}
 \label{fig:imig}
 \end{figure}
 
@@ -994,7 +994,7 @@ which is the minimum we use.
 \begin{figure}
 \centering
 \includegraphics[width=0.5\textwidth]{paper-window.pdf}
-\caption{Top: the logarithm of the height fitted in a fixed window $Z_\mathrm{lim} = 1\kpc$ over the self-consistent height, against $\hZ/Z_\mathrm{lim}$, for injected exponentials (solid), $\mathrm{sech}^2$ layers (dashed) and mixtures of two exponentials (dotted), with dark gray bands between the 16th and 84th percentiles of the draws, and for the Auriga populations (dots). Bottom: the logarithm of the self-consistent height of the injected draws over the height of the exact profile. The light gray bands mark agreement within 10 percent.}
+\caption{A window of fixed size biases the scale height of any profile that is not exponential, by an amount that depends on how thick the profile is against the window, whereas the self-consistent window $L = 2\hZ$ recovers every injected profile within \selfConsistentBias. Top: the logarithm of the height fitted in a fixed window $Z_\mathrm{lim} = 1\kpc$ over the self-consistent height, against $\hZ/Z_\mathrm{lim}$, for exponentials (solid), $\mathrm{sech}^2$ layers (dashed) and mixtures of two exponentials (dotted), each the median of \injectionDraws\ draws of \injectionStars\ heights with a dark gray band between the 16th and 84th percentiles, and for the Auriga populations (dots), which follow the $\mathrm{sech}^2$ curve where they are thin against the window. Bottom: the logarithm of the self-consistent height of the injected draws over the height of the exact profile. The light gray bands mark agreement within 10 percent.}
 \label{fig:window}
 \end{figure}
 
