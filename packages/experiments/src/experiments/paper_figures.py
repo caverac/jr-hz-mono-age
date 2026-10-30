@@ -192,7 +192,8 @@ CHECKS: tuple[tuple[str, str, bool, Callable[[HaloAnalysis], tuple[float, float]
     ("bins of 0.25 Gyr", "s", True, lambda h: _check_trend(h.checks.fine, False)),
     (r"unclipped $\sigma_z$", "s", False, lambda h: _check_trend(h.checks.all_stars, True)),
     ("half-mass", "^", True, lambda h: _trend(_range(h, 2.0, 10.0).trends["half_mass_tracer"])),
-    ("Jeans, tilt", "^", False, lambda h: _trend(_range(h, 2.0, 10.0).trends["jeans"])),
+    (r"Jeans, $\sigma_z(z)$", "D", True, lambda h: _trend(_range(h, 2.0, 10.0).trends["jeans_sigma"])),
+    ("Jeans, tilt", "D", False, lambda h: _trend(_range(h, 2.0, 10.0).trends["jeans"])),
 )
 
 
@@ -262,7 +263,10 @@ def milky_way_figure(records: PaperRecords) -> Figure:
         age = np.array([b.age_median for b in bins])
         family = np.log(np.array([[b.ratios.family[i] for i in admissible] for b in bins]))
         _band(axes)
-        axes.fill_between(age, family.min(axis=1), family.max(axis=1), color=GUIDE_GRAY, alpha=0.5, linewidth=0.0)
+        # A potential whose tracer is thicker than the counts can measure has no ratio; the band spans the others.
+        axes.fill_between(
+            age, np.nanmin(family, axis=1), np.nanmax(family, axis=1), color=GUIDE_GRAY, alpha=0.5, linewidth=0.0
+        )
         tracer, tracer_err = _ln(np.array([[b.ratios.tracer.value, b.ratios.tracer.err] for b in bins]))
         jeans, jeans_err = _ln(np.array([[b.ratios.jeans.value, b.ratios.jeans.err] for b in bins]))
         _errorbar(axes, age, tracer, tracer_err, "o", False, "tracer, McMillan (2017)")

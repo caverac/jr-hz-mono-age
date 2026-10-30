@@ -162,8 +162,11 @@ integrate the equation without the tilt term, which this sample cannot measure
 (`experiments.mw_analysis.jeans_slices`). Through the same counts, the Jeans heights are
 <MwMetric name="jeansRatios" /> of the measured ones, with medians of
 <MwMetric name="jeansMedians" /> and <MwMetric name="jeansBelowOne" /> below 1, and trends
-over 0-10 Gyr of <MwMetric name="jeansTrends0" />. The change of $\sigma_z$ with height
-thus leaves the shortfall in place.
+over 0-10 Gyr of <MwMetric name="jeansTrends0" />. They are
+<MwMetric name="jeansOverTracer" /> times the heights of the tracer in
+<MwMetric name="jeansBelowTracer" /> bins, because the dispersions rise with height in every bin and the prefactor
+$\sigma_z^2(0)/\sigma_z^2(z)$ of the solution lowers the density wherever they have risen. The
+change of $\sigma_z$ with height thus deepens the shortfall rather than removing it.
 
 The potential accounts for it. At $R_0$, McMillan (2017) has a midplane density of
 <MwMetric name="mcmillanRho0" /> $M_\odot\,\mathrm{pc}^{-3}$ and
@@ -218,8 +221,8 @@ places this bin better.
 
 The family also turns the test around. Every bin carries the ratio of the tracer to its
 $h_Z$ in each of the 36 potentials. Across the family, the logarithm of that ratio is a
-linear function of $\ln\rho_0$ and $\ln\Sigma_{1.1}$ to within
-<MwMetric name="inversionModelRms" /> in every bin. If the populations are isothermal tracers,
+linear function of $\ln\rho_0$ and $\ln\Sigma_{1.1}$, with a root-mean-square residual over the
+36 potentials of at most <MwMetric name="inversionModelRms" /> in every bin that enters the fit. If the populations are isothermal tracers,
 one potential brings every bin of a survey to its measured $h_Z$, which a weighted fit of
 the bins finds (`experiments.mw_inversion`). This is the inverse use of the tracer that Bovy &
 Rix (2013) made with mono-abundance populations, with the family standing in for their
@@ -248,14 +251,17 @@ medians over the counts of <MwMetric name="coevalMedians" /> in McMillan (2017) 
 isothermal tracer. Inverted as above, it needs midplane densities of
 <MwMetric name="inversionCoevalRho0" /> $M_\odot\,\mathrm{pc}^{-3}$. A population with
 $b = 1/2$ is thicker than the isothermal one of the same midplane dispersion, because its
-velocities are flat-topped, so it fits the counts only in a potential denser than the
-measurements near the Sun, close to that of McMillan (2017). At the measured densities, the
+velocities are flat-topped, so it fits the counts best in potentials denser than the
+measurements near the Sun, close to that of McMillan (2017), by
+<MwMetric name="inversionCoevalSigmas" /> combined standard errors. At the measured densities, the
 counts favor the isothermal shape, although the error of $\rho_0$ keeps the preference weak.
 
 ## Age errors and selection
 
-The ages carry typical errors of 30 percent for the LAMOST red clump (Huang et al. 2020) and
-up to 40 percent by our cut for APOGEE, so bins of 2 Gyr mix their neighbors. The targeting
+The LAMOST ages, which we keep up to a relative error of 50 percent, carry typical errors of 30
+percent (Huang et al. 2020). The APOGEE ages are cut at a relative error of 40 percent for the
+kinematic stars only, so the matches that split the counts keep every age. Bins of 2 Gyr
+therefore mix their neighbors. The targeting
 of either survey could also depend on age at a fixed position. Two checks remeasure every
 survey with <CheckMetric name="checkBootstrap" /> bootstrap draws per bin
 (`experiments.mw_checks`).
@@ -270,7 +276,7 @@ dispersion of $\ln$ age, which doubles the variance of the errors, in
 become <CheckMetric name="ageTracerMedians" />, against <MwMetric name="tracerMedians" /> with
 the ages as given. Its trends over 0-10 Gyr become <CheckMetric name="ageTracerTrends0" />,
 within <CheckMetric name="ageTracerTrendMax0" /> standard errors of 0, with $\eta$ of
-<CheckMetric name="ageEta0" />. Doubling the errors of the ages thus leaves the test where it
+<CheckMetric name="ageEta0" />. Doubling the variance of the age errors thus leaves the test where it
 was, presumably because the mixing of ages enters the counts and the kinematics of a bin
 alike.
 
@@ -603,8 +609,8 @@ its bootstrap draws, so its error, taken from the draws whose window stays insid
 counts, is underestimated. The kinematic samples cover the annulus $7.5 < R < 9$ kpc,
 whereas the counts cover the cylinder of radius 1.5 kpc around the Sun. Ages carry typical
 errors of 30 percent for the LAMOST red clump (Huang et al. 2020), with our cut at 50
-percent, and up to 40 percent by our cut for APOGEE on either scale, so bins of 2 Gyr mix
-their neighbors. The potential of McMillan (2017) enters without its errors except through
+percent, whereas the APOGEE cut at 40 percent applies to the kinematic stars only, so bins of
+2 Gyr mix their neighbors. The potential of McMillan (2017) enters without its errors except through
 the family around it, which varies its thin disk and its halo but neither its thick disk nor
 its gas, and is not refitted to the rotation curve. The Jeans heights leave out the tilt
 term, which held up the old populations of Au19, and the clipped $\sigma_z$ of the tracer
