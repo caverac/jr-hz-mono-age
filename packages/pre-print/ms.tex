@@ -357,9 +357,10 @@ z_0 = \frac{\sigz^2}{\pi G \Sigma}.
 \label{eq:sheet}
 \end{equation}
 Above $z_0$ the sheet falls as an exponential of scale $z_0/2$, which is why the relation is
-also written $\sigz^2 = 2\pi G \Sigma h$ for the scale $h$ of that tail. We use $z_0$, which
-our estimator of the scale height returns for a sheet within 0.3 percent
-(Section~\ref{sec:estimator}), so that the convention does not enter the comparison. Applied
+also written $\sigz^2 = 2\pi G \Sigma h$ for the scale $h$ of that tail. Because the two
+scales differ by a factor of 2, we take neither by convention: our estimator
+(Section~\ref{sec:estimator}) returns $z_0$ within 0.3 percent when applied to a sheet, so a
+population that is a sheet would have $\hZ = z_0$, which is the height the sheet predicts. Applied
 to a population of one age, $\Sigma$ is the surface density of all the mass near the plane,
 which we take within $|z| < 1.1\kpc$, so that the sheet predicts $\hZ \propto \sigz^2$ for
 every population of a disk.
@@ -370,12 +371,15 @@ every population of a disk.
 The tracer solves the vertical Jeans equation of a steady axisymmetric population of density
 $\nu$,
 \begin{equation}
-\frac{\partial(\nu\sigz^2)}{\partial z} + \frac{1}{R}\frac{\partial(R\nu\sigma_{Rz})}{\partial R}
+\frac{\partial(\nu\sigz^2)}{\partial z} + \frac{1}{R}\frac{\partial(R\nu\sigma_{Rz}^2)}{\partial R}
 = -\nu\frac{\partial\Phi}{\partial z},
 \label{eq:jeans}
 \end{equation}
 under two assumptions: that $\sigz$ does not change with height, and that the second term, the
-tilt term, vanishes. Writing the tilt term as $\nu t(z)$, Eq.~(\ref{eq:jeans}) integrates to
+tilt term, vanishes, where $\sigma_{Rz}^2 \equiv \langle v_R v_z\rangle$ is the covariance of the
+radial and vertical velocities. Writing the tilt term as $\nu t(z)$, with
+$t(z) = (R\nu)^{-1}\,\partial(R\nu\sigma_{Rz}^2)/\partial R$ an acceleration that adds to the
+vertical force, Eq.~(\ref{eq:jeans}) integrates to
 \begin{equation}
 \nu(z) = \frac{\sigz^2(0)}{\sigz^2(z)}\exp\left[-\int_0^z
 \frac{\partial\Phi/\partial z' + t(z')}{\sigz^2(z')}\,dz'\right],
@@ -409,8 +413,9 @@ $\mathrm{age}^{\eta\beta_z}$ over a range of $\sigz$ in which $\eta$ is
 constant, whereas the sheet at fixed $\Sigma$ gives $\mathrm{age}^{2\beta_z}$. At heights
 comparable to the radius, where the vertical force falls with height, $\dPhi$ grows more slowly
 than $|z|$, so $\eta$ would
-exceed 2 there, although over the dispersions of our grid the local slope of the tracer stays
-below 2 (Section~\ref{sec:eta}).
+exceed 2 there. In the fitted potentials of the Auriga disks, the local slope of the tracer is at
+most \curveEtaMax\ at the dispersions from 5 to 150\kms\ at which we measure it
+(Section~\ref{sec:eta}).
 
 \subsection{What a test of the tracer can show}
 
@@ -583,8 +588,8 @@ therefore makes these heights smaller than those of the tracer in \jeansSigmaBel
 populations, by a median factor of \jeansSigmaOverTracerMid\ at 2-6\,Gyr and
 \jeansSigmaOverTracerOld\ at 8-10\,Gyr, which flattens the decline. The exception is Au19,
 whose populations older than 5\,Gyr reach \auNineteenJeansOld\ of their measured heights in
-these Jeans heights. Their tilt term, $(1/R)\,\partial(R\nu\sigma_{Rz})/\partial R$, which we fit
-with straight lines of $\ln\nu$ and $\sigma_{Rz}$ against $R$ over $6 < R < 10.5\kpc$, opposes the vertical force between 1 and 5\kpc, and brings them to
+these Jeans heights. Their tilt term, $(1/R)\,\partial(R\nu\sigma_{Rz}^2)/\partial R$, which we fit
+with straight lines of $\ln\nu$ and $\sigma_{Rz}^2$ against $R$ over $6 < R < 10.5\kpc$, opposes the vertical force between 1 and 5\kpc, and brings them to
 \auNineteenJeansTiltOld. Their mean vertical motions give thickening rates,
 $\langle \mathrm{sign}(z)\,v_z\rangle/\langle|z|\rangle$, of \auNineteenThickeningOld\ per Gyr,
 with errors of \auNineteenThickeningErr\ per Gyr, within the \otherThickeningOld\ per Gyr of the
