@@ -1,3 +1,16 @@
+# [1.7.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.6.0...v1.7.0) (2026-10-31)
+
+### Bug Fixes
+
+- bound the effect of the Auriga softening on the tracer in the paper's limitations ([b07defa](https://github.com/caverac/jr-hz-mono-age/commit/b07defae8b5e10941dcfa477b87fc3825a538852))
+- correct the paper's figure references, numbers and claims after an audit ([305f60d](https://github.com/caverac/jr-hz-mono-age/commit/305f60dc3c6cb9879e23373d8b946d608b945641))
+- define the tilt term and clarify the sheet height and tracer slope in the paper ([ba4138c](https://github.com/caverac/jr-hz-mono-age/commit/ba4138c3ad8c91aacaa917b2b8ff9a5e65414201))
+- **experiments:** linting issue ([6ace234](https://github.com/caverac/jr-hz-mono-age/commit/6ace234caea07d60b6f6154804ffde1d99e8434d))
+
+### Features
+
+- add a Concepts section to the docs and fix the paper's agreement measure ([6f26d32](https://github.com/caverac/jr-hz-mono-age/commit/6f26d32403a4d70688e87c96c800b6b88ca2c63e))
+
 # [1.6.0](https://github.com/caverac/jr-hz-mono-age/compare/v1.5.0...v1.6.0) (2026-10-30)
 
 ### Bug Fixes
