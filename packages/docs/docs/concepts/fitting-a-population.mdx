@@ -1,0 +1,69 @@
+---
+title: Fitting a population
+---
+
+import FitChart from '@site/src/components/concepts/FitChart'
+import Metric from '@site/src/components/status/Metric'
+
+# Fitting a population
+
+Every number of the Auriga part of the paper starts from the star particles of one population:
+its dispersion near the plane, its scale height, and the heights that the three predictions give
+it. This page goes through those steps for one population at a time (`experiments.populations`),
+with the particles, the fit and the predictions drawn together for any population of any of the
+seven halos.
+
+## The steps
+
+1. The annulus. The star particles with $7.5 < R < 9$ kpc and $|z| < 12$ kpc, in the frame of the
+   disk, form the sample of a halo. Their median radius within 2.5 kpc of the plane is
+   $R_\mathrm{mid}$, where the potential is evaluated.
+2. The population. The particles are split into ten bins of 1 Gyr of age, from 0 to 10 Gyr, by the
+   time since their formation. Ages in the simulation are exact, so a bin holds the stars born in
+   one Gyr, whatever has happened to them since.
+3. The dispersion. $\sigma_z$ is the dispersion of $v_z$ of the particles of the bin with
+   $|z| < 0.3$ kpc, after clipping those more than 4 standard deviations from the median, with
+   the standard deviation estimated from the median absolute deviation (`clipped_dispersion`).
+   Keeping the tails of $v_z$ that the clipping removes would raise the heights of the tracer by
+   <Metric name="unclippedShift" />.
+4. The height. $h_Z$ is the windowed scale height of the heights $|z|$ of the particles, each
+   weighted by its initial mass, in the self-consistent window $L = 2h_Z$
+   ([The window of the fit](./the-window)). The weight is the initial mass because the number of
+   giants of an age, which the counts of the Milky Way use, is proportional to the initial mass of
+   the population that made them.
+5. The predictions. The tracer is $\exp(-\Delta\Phi/\sigma_z^2)$ in the fitted potential at
+   $R_\mathrm{mid}$ ([The fitted potential](./the-potential)). The vertical Jeans equation uses the
+   unclipped dispersion measured in slices of $|z|$ up to 12 kpc, without and with the tilt term.
+   The sheet is $\mathrm{sech}^2(z/z_0)$ with $z_0 = \sigma_z^2/(\pi G\Sigma)$ and $\Sigma$ the mass
+   per area within $|z| < 1.1$ kpc. The profiles of the tracer and of the Jeans equation go through
+   the same window as the particles, so a predicted and a measured height are fitted the same way.
+   The sheet needs no fit: the window returns $z_0$ for a $\mathrm{sech}^2$ profile within 0.3
+   percent ([The window of the fit](./the-window)), so its predicted height is $z_0$ itself.
+6. The errors. Every quantity is measured again on 300 bootstrap resamplings of the particles of
+   the bin, so that a ratio of a predicted to a measured height carries the correlation of the two.
+
+## Reading the fits
+
+A profile drawn with a logarithmic density turns an exponential into a straight line, so the
+departures of a population from an exponential show as curvature. The fit itself is the
+exponential of scale $h_Z$ inside the window $L = 2h_Z$, normalized to the mass of the particles in
+the window. The shading marks $L$ and $L/2$, the two windows whose fits are averaged.
+
+The row of three examples shows the youngest population of the halo, one of 4-5 Gyr and the oldest,
+9-10 Gyr. In Au24 they have $\sigma_z$ of 15.0, 35.1 and 89.9 km/s and $h_Z$ of 0.52, 1.19 and 3.26
+kpc. Where a profile lies below its fitted exponential close to the plane, it is flatter than an
+exponential there, as a population in the harmonic core of its potential is. That core has a fixed
+height, about 0.4 kpc in the toy disk of [Where the test bites](./where-the-test-bites), so it
+takes a larger part of the window of a cold population than of a hot one. The larger panel shows one population with the three predictions over its particles, each of unit mass
+below 12 kpc, and the search for its window: $h(L)$ at the 40 trial windows, the line $L = 2h$,
+and the window where they first meet.
+
+## Explore
+
+The buttons choose the halo and, below the larger panel, the population.
+
+<FitChart />
+
+Over the seventy populations of the seven halos, the tracer predicts <Metric name="tracerWithin10" />
+within 10 percent and the sheet <Metric name="sheetWithin10" />
+([Tracer or sheet](../status/tracer-vs-sheet)).

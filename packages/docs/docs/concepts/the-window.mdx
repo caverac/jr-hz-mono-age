@@ -1,0 +1,100 @@
+---
+title: The window of the fit
+---
+
+import Metric from '@site/src/components/status/Metric'
+import WindowChart from '@site/src/components/concepts/WindowChart'
+
+# The window of the fit
+
+A scale height is the scale of an exponential, but the profiles of the populations are not
+exponentials: they flatten near the plane and fall more steeply above. The height that a fit
+returns then depends on how far above the plane it looks. This page explains the fit that the
+analysis uses (`experiments.heights`), why it looks inside a window $L$ that grows with the
+population, and how the window is chosen.
+
+## An exponential cut at a window
+
+Fit the heights $|z|$ of a population, or a profile $\rho(z)$, inside a window $0 \le |z| < L$
+with an exponential of scale $h$ cut at $L$:
+
+$$
+p(z) = \frac{e^{-z/h}}{h\,(1 - e^{-L/h})}, \qquad 0 \le z < L .
+$$
+
+Its mean height is
+
+$$
+\langle z \rangle = h - \frac{L}{e^{L/h} - 1},
+$$
+
+which runs from 0, for a scale much shorter than the window, to $L/2$, for a scale much longer,
+when the exponential is flat across the window. The maximum-likelihood estimate of the rate
+$1/h$ from a set of heights matches this mean to the mean of the data inside the window (Deemer &
+Votaw 1955, Sect. 3), so the fit is the root of one equation in $h$ (`truncated_exp_scale`). The
+root exists only while the mean of the data lies below $L/2$: a profile that is flat inside the
+window has no scale there, and the fit gives none.
+
+The analysis fits inside $L$ and inside $L/2$, and averages the two scales, as Palicio et al.
+(2025) do (`particle_hz` for star particles, `profile_hz` for a predicted profile). For an
+exponential both fits return its scale. For any other profile they differ, because the inner
+window sees more of the flat core and the outer one more of the tail.
+
+## Which window
+
+A profile that is not exponential has no single scale, so its fitted $h$ depends on $L$:
+
+- In a window much narrower than the profile, the fit sees the flat core and returns a large
+  scale, or none when the mean reaches $L/2$.
+- In a window much wider than the profile, the fit matches the mean height of the whole profile.
+  For a $\mathrm{sech}^2(z/z_0)$ layer that is $z_0 \ln 2$, whereas its exponential tail has a
+  scale of $z_0/2$.
+
+A window of fixed size, such as the $Z_\mathrm{lim}$ of 0.5-2.5 kpc that Palicio et al. (2025,
+Table 1) choose for each galaxy, therefore measures thin and thick populations over different
+parts of their profiles. The analysis lets the window grow with the population instead,
+$L = k\,h(L)$ with $k = 2$ (`K_MAIN`), so that two populations of the same shape are always fitted
+over the same part of their profiles. The equation $L = 2h(L)$ is solved on the 40 trial windows
+of `WINDOW_GRID`, from 0.05 to 12 kpc, taking the first window at which $L - 2h(L)$ turns
+positive and refining it with 30 geometric bisections (`self_consistent_window`). For a
+$\mathrm{sech}^2$ layer the root returns $z_0$ within 0.3 percent, so the sheet and its scale
+height are the same prediction.
+
+The smallest root is the one taken. For a hot population with few stars inside a small window,
+the profile is nearly flat there, and the noise of the fitted $1/h$ can satisfy $L = 2h(L)$ by
+chance far below the true scale. A window therefore needs at least 100 star particles inside
+$L/2$ (`N_MIN_HALF_WINDOW`). In 3000 draws of 300 heights from an exponential of $h = 3$ kpc, a
+minimum of 20 gave a root below 1 kpc in 25 draws, a minimum of 50 in 1 and a minimum of 100 in
+none.
+
+## Try it
+
+The chart fits four profiles, each of unit mass: an exponential of $h = 0.4$ kpc, a
+$\mathrm{sech}^2$ layer of $z_0 = 0.8$ kpc, a mixture of two exponentials of 0.25 and 1 kpc
+holding 60 and 40 percent of the mass, and the tracer of 35 km/s in the toy disk of
+[Tracer and sheet](./tracer-and-sheet). The upper panel shows the profile with the windows $L$
+and $L/2$ shaded and the exponential fitted inside each, normalized to the mass of the profile in
+its window. The ticks on the axis mark the mean height inside each window and half of each
+window: a fit exists while the mean lies below the half. The lower panel shows $h(L)$, the mean of
+the two fits, against $L$, with the line $L = 2h$: the self-consistent window is where the curve
+first meets the line. The slider moves $L$, which starts at the self-consistent window.
+
+<WindowChart />
+
+What to look for:
+
+1. The exponential has $h(L) = 0.4$ kpc at every window, so any window measures it. This is the
+   only profile for which that holds.
+2. The $\mathrm{sech}^2$ layer has a large $h(L)$ in small windows, which see its flat core: 2.0
+   kpc in a window of 0.5 kpc. In large windows it approaches 0.555 kpc, $z_0 \ln 2$, the mean
+   height of the whole profile. The self-consistent window, $L = 1.6$ kpc, returns 0.80 kpc, its
+   $z_0$, whereas a fixed window of 1 kpc returns 1.10 kpc.
+3. The mixture has no plateau: $h(L)$ rises from 0.29 kpc in a window of 0.2 kpc to 0.55 kpc in
+   one of 12 kpc, as wider windows see more of the thicker component. The self-consistent window
+   returns 0.31 kpc in $L = 0.61$ kpc.
+4. Switching the density axis to logarithmic turns each fitted exponential into a straight line,
+   and shows where the profile bends away from it.
+
+[Fixed-window bias](../status/window-bias) measures how much a fixed window biases the heights of
+injected profiles and of the Auriga populations: the self-consistent window recovers every
+injected profile within <Metric name="selfConsistentBias" />.

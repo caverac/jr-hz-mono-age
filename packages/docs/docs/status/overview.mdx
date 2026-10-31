@@ -142,9 +142,10 @@ $h_Z = 1$ kpc the tracer comes within 10 percent in <Metric name="coldTracer" />
 populations, with a scatter of <Metric name="coldTracerRms" />. Above 1.5 kpc it does in
 <Metric name="hotTracer" />, and its scatter grows to <Metric name="hottestTracerRms" />
 above 2.5 kpc. The populations hotter than 60 km/s, which reach $h_Z$ of up to
-<Metric name="hzMax" /> kpc with $\sigma_z$ of up to <Metric name="sigmaZMax" /> km/s, are
-closer to a spheroid than to a disk. The tracer predicts <Metric name="spheroidTracer" /> of
-them within 10 percent, and <Metric name="diskTracer" /> of the disk populations, with a
+<Metric name="hzMax" /> kpc with $\sigma_z$ of up to <Metric name="sigmaZMax" /> km/s, include
+some that keep most of their mass on disk orbits. The tracer predicts
+<Metric name="spheroidTracer" /> of them within 10 percent, and <Metric name="diskTracer" /> of
+the cooler populations, with a
 scatter of <Metric name="diskTracerRms" />.
 
 The measured heights grow as $\sigma_z^\eta$ with $\eta$ of <Metric name="etaRange" /> over
@@ -206,7 +207,7 @@ With the tilt term, the Jeans equation holds for any steady axisymmetric populat
 predicts <Metric name="jeansWithin10" /> of the <Metric name="populations" /> populations
 within 10 percent, with ratios of <Metric name="jeansRange" /> and a scatter of
 <Metric name="jeansRms" />. That scatter measures departures from a steady state and the
-limits of a measurement at one radius, and so sets the floor of any test of this kind,
+limits of a measurement at one radius, and so is the reference for any test of this kind,
 with the tracer's scatter of <Metric name="tracerRms" /> just above it.
 
 The height below which half of the mass of a population lies needs no window. The tracer's
@@ -223,7 +224,8 @@ sheet comes within 10 percent in <Metric name="halfMassSheetWithin10" /> populat
 The vertical actions show the same excess. Ting & Rix (2026) describe a coeval population by
 $p(J_z) \propto \exp[-(J_z/J_0)^{2-b}]$, with $b = 1/2$ for heating by a thin layer of giant
 molecular clouds and $b = 1$ for scatterers that fill the volume. Fitted to the actions of
-each Auriga population, $b$ is <Metric name="bFitRange" /> and exceeds the $b$ of the
+each Auriga population whose orbits stay inside the grid of heights, $b$ is
+<Metric name="bFitWithIsoRange" /> and exceeds the $b$ of the
 isothermal tracer of the same $\sigma_z$ in the same potential in
 <Metric name="bAboveIso" /> populations, by a median of <Metric name="bExcessMedian" />. The
 actions therefore have heavier tails than an isothermal population, as the half-mass heights
@@ -322,7 +324,7 @@ Auriga disks (Figure 2; [Milky Way](./milky-way#the-tracer-predicts-the-star-cou
 
 The tracer falls below the counts in <MwMetric name="tracerBelowOne" /> bins, with medians
 of <MwMetric name="tracerMedians" /> against <Metric name="tracerMedian" /> in Auriga. The
-Jeans equation with the $\sigma_z(z)$ measured up to 1.5 kpc leaves that shortfall in place,
+Jeans equation with the $\sigma_z(z)$ measured up to 1.5 kpc deepens that shortfall,
 with medians of <MwMetric name="jeansMedians" />, whereas the density of the potential
 removes it. McMillan (2017) has a midplane density of <MwMetric name="mcmillanRho0" />
 $M_\odot\,\mathrm{pc}^{-3}$ and <MwMetric name="mcmillanSigma11" />
@@ -436,7 +438,7 @@ from the isothermal shape toward a sharper cutoff in its vertical actions. The A
 populations depart in the other direction, with heavier tails in their actions and more mass
 far from the plane than an isothermal profile at every age, as a dispersion that rises with
 height gives. The star counts of the solar neighborhood do not separate the two shapes: the
-thin layer fits them only in a potential denser near the Sun than measured, whereas the
+thin layer fits them best in a potential denser near the Sun than measured, whereas the
 isothermal tracer fits them at the measured density. The error of $\rho_0$ keeps that
 preference weak.
 
@@ -461,7 +463,7 @@ in $a$, but have not compared it with $\sigma_R^2/\kappa$.
    populations within 10 percent (<Metric name="diskTracer" /> of the disk populations),
    because each population moves in the whole potential of its disk rather than in its
    own. The Jeans equation with the measured $\sigma_z(z)$ and the tilt term, which holds
-   for any steady population, sets the floor of the test at a scatter of
+   for any steady population, is the reference of the test, at a scatter of
    <Metric name="jeansRms" />.
 2. The heights grow as $\sigma_z^\eta$ with $\eta$ of <Metric name="etaRange" />, the mean
    local slope of the tracer of each halo's potential within two standard errors in

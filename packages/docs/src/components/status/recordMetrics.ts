@@ -9,8 +9,10 @@ import {
   count,
   fixed,
   percent,
+  percentUpTo,
   plusMinus,
-  signed
+  signed,
+  upTo
 } from '@site/src/components/status/format'
 import {
   type JrRelationData,
@@ -32,6 +34,7 @@ import {
   type FamilyMember,
   type Inversion,
   type MilkyWayData,
+  type MwBin,
   type MwRange,
   type MwSurvey,
   type TargetedCells,
@@ -39,6 +42,7 @@ import {
 } from '@site/src/components/status/milkyWay'
 import type { MwChecks } from '@site/src/components/status/mwChecks'
 import type { Estimate, Trend } from '@site/src/components/status/record'
+import * as d3 from 'd3'
 
 /** The halo whose removal moves the slope with the self-consistent heights the most. */
 function mostInfluential(d: JrRelationData): LeftOut {
@@ -53,6 +57,20 @@ function lineText(line: Line): string {
 /** The growth of a height with sigma_z, h_Z proportional to sigma_z^slope, with its error. */
 function dispersionText(slope: Trend): string {
   return `$\\sigma_z^{${slope.value.toFixed(2)} \\pm ${slope.err.toFixed(2)}}$`
+}
+
+/** The midplane density of McKee et al. (2015, their Eq. 57), Msun/pc^3, which the family is tested against. */
+const MCKEE_RHO0 = { value: 0.097, err: 0.013 } as const
+
+/** The slope of the least-squares line of ln `y` against ln `x`. */
+function logSlope(x: readonly number[], y: readonly number[]): number {
+  const lx = x.map(Math.log)
+  const ly = y.map(Math.log)
+  const mx = d3.mean(lx) ?? Number.NaN
+  const my = d3.mean(ly) ?? Number.NaN
+  const sxy = d3.sum(lx, (v, i) => (v - mx) * (ly[i] - my))
+  const sxx = d3.sum(lx, (v) => (v - mx) ** 2)
+  return sxy / sxx
 }
 
 /** The surveys, in the order in which the prose names them: LAMOST, APOGEE on the astroNN and the distmass scale. */
@@ -111,6 +129,21 @@ function ratioRange(data: MilkyWayData, name: string, which: 'ratioTracer' | 'ra
 function within10(data: MilkyWayData, name: string): string {
   const ratios = survey(data, name).bins.map((b) => b.ratioTracer.value)
   return `${ratios.filter((r) => agrees(r)).length} of ${ratios.length}`
+}
+
+/** The oldest bin of the survey `name`. */
+function oldestBin(data: MilkyWayData, name: string): MwBin {
+  const bins = survey(data, name).bins
+  return bins.reduce((oldest, b) => (b.ageLo > oldest.ageLo ? b : oldest), bins[0])
+}
+
+/**
+ * The tracer over h_Z of the oldest bin of `name` in each admissible potential, NaN where the
+ * tracer is thicker than the counts can measure.
+ */
+function oldestFamilyRatios(data: MilkyWayData, name: string): readonly number[] {
+  const bin = oldestBin(data, name)
+  return data.family.flatMap((m, i) => (m.admissible ? [bin.ratioFamily[i]] : []))
 }
 
 function countHeight(data: MilkyWayData, name: string, ageLo: number): string {
@@ -220,6 +253,12 @@ export const MW_METRICS = {
   apogeeMatched: (d: MilkyWayData) => count(survey(d, 'apogee').nMatched),
   distmassMatched: (d: MilkyWayData) => count(survey(d, 'apogee_distmass').nMatched),
   lamostTracer: (d: MilkyWayData) => ratioRange(d, 'lamost', 'ratioTracer'),
+  mwSheetRange: (d: MilkyWayData) =>
+    between(
+      extent(MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.ratioSheet.value)))
+    ),
+  mwSheetTrends0: (d: MilkyWayData) =>
+    andList(MW_SURVEYS.map((name) => trendText(range(d, name, 0).sheet))),
   jeansRatios: (d: MilkyWayData) =>
     between(
       extent(MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.ratioJeans.value)))
@@ -252,6 +291,28 @@ export const MW_METRICS = {
         )
       )
     ),
+  familyOldestMissing: (d: MilkyWayData) =>
+    andList(
+      ['apogee', 'apogee_distmass'].map((name) =>
+        String(oldestFamilyRatios(d, name).filter((r) => !Number.isFinite(r)).length)
+      )
+    ),
+  familyOldestAstroNN: (d: MilkyWayData) => between(extent(oldestFamilyRatios(d, 'apogee'))),
+  familyOldestAstroNNSigmas: (d: MilkyWayData) => {
+    const tracer = oldestBin(d, 'apogee').ratioTracer
+    return between(
+      extent(oldestFamilyRatios(d, 'apogee').map((r) => Math.log(r) / (tracer.err / tracer.value))),
+      1
+    )
+  },
+  coevalOldestMissing: (d: MilkyWayData) => {
+    const missing = MW_SURVEYS.map((name) => {
+      const bin = oldestBin(d, name)
+      return d.family.filter((m, i) => m.admissible && !Number.isFinite(bin.ratioFamilyCoeval[i]))
+        .length
+    })
+    return andList(missing.map(String))
+  },
   familyGrowthWindow: (d: MilkyWayData) =>
     between(extent(admissible(d).map((m) => m.growthWindow))),
   familyGrowthWhole: (d: MilkyWayData) => between(extent(admissible(d).map((m) => m.growthWhole))),
@@ -275,9 +336,41 @@ export const MW_METRICS = {
     between(extent(MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.bIsothermal)))),
   inversionRho0: (d: MilkyWayData) => inversionText(d.inversions, (inv) => inv.rho0, 3),
   inversionSigma11: (d: MilkyWayData) => inversionText(d.inversions, (inv) => inv.sigma11, 0),
+  inversionBins: (d: MilkyWayData) => andList(d.inversions.map((inv) => String(inv.nBins))),
+  inversionCoevalBins: (d: MilkyWayData) =>
+    andList(d.inversionsCoeval.map((inv) => String(inv.nBins))),
+  inversionCorrelation: (d: MilkyWayData) =>
+    between(extent(d.inversions.map((inv) => inv.correlation))),
+  familySigma11All: (d: MilkyWayData) => between(extent(d.family.map((m) => m.sigma11)), 0),
+  inversionCoevalSigmas: (d: MilkyWayData) =>
+    andList(
+      d.inversionsCoeval.map((inv) =>
+        fixed((inv.rho0.value - MCKEE_RHO0.value) / Math.hypot(inv.rho0.err, MCKEE_RHO0.err), 1)
+      )
+    ),
+  mwTracerEta: (d: MilkyWayData) =>
+    between(
+      extent(
+        MW_SURVEYS.map((name) => {
+          const bins = survey(d, name).bins
+          return logSlope(
+            bins.map((b) => b.sigmaZ.value),
+            bins.map((b) => b.tracer)
+          )
+        })
+      )
+    ),
+  jeansOverTracer: (d: MilkyWayData) =>
+    between(
+      extent(MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.jeans / b.tracer)))
+    ),
+  jeansBelowTracer: (d: MilkyWayData) => {
+    const ratios = MW_SURVEYS.flatMap((name) => survey(d, name).bins.map((b) => b.jeans / b.tracer))
+    return `${ratios.filter((r) => r < 1).length} of ${ratios.length}`
+  },
   inversionChi2: (d: MilkyWayData) => between(extent(d.inversions.map((inv) => inv.chi2Dof)), 1),
   inversionModelRms: (d: MilkyWayData) =>
-    percent(Math.max(...d.inversions.map((inv) => inv.modelRms)), 1),
+    percentUpTo(Math.max(...d.inversions.map((inv) => inv.modelRms)), 1),
   inversionCoevalRho0: (d: MilkyWayData) => inversionText(d.inversionsCoeval, (inv) => inv.rho0, 3),
   inversionCoevalSigma11: (d: MilkyWayData) =>
     inversionText(d.inversionsCoeval, (inv) => inv.sigma11, 0),
@@ -413,6 +506,13 @@ export const MW_METRICS = {
   estimatorSigmas: (d: MilkyWayData) => between(extent(d.estimators.map((e) => e.sigmaZ)), 0),
   dispersionCounts: (d: MilkyWayData) => dispersionText(d.imigCells.dispersion.countsExponential),
   dispersionImig: (d: MilkyWayData) => dispersionText(d.imigCells.dispersion.imigExponential),
+  countsBelowTracerGrowth: (d: MilkyWayData) => {
+    const counts = d.imigCells.dispersion.countsExponential
+    return between(
+      extent(admissible(d).map((m) => (m.growthWindow - counts.value) / counts.err)),
+      1
+    )
+  },
   dispersionSun: (d: MilkyWayData) => dispersionText(d.imigCells.dispersion.imigSun),
   tracerGrowth: (d: MilkyWayData) => `$\\sigma_z^{${tracerGrowth(d.estimators).slope.toFixed(2)}}$`,
   estimatorWhole: (d: MilkyWayData) =>
@@ -541,7 +641,7 @@ export const CHECK_METRICS = {
   ageTracerTrends0: (d: MwChecks) =>
     between(extent(redrawn(d).map((s) => surveyRange(s, 0).tracer.value)), 3),
   ageTracerTrendMax0: (d: MwChecks) =>
-    fixed(
+    upTo(
       Math.max(
         ...redrawn(d).map((s) => {
           const t = surveyRange(s, 0).tracer
@@ -565,6 +665,6 @@ export const CHECK_METRICS = {
     return `${all.filter((r) => r.sigmas <= 2).length} of ${all.length}`
   },
   magnitudeMaxSigmas: (d: MwChecks) =>
-    fixed(Math.max(...magnitudeRatios(d).map((r) => r.sigmas)), 1),
+    upTo(Math.max(...magnitudeRatios(d).map((r) => r.sigmas)), 1),
   magnitudeSplits: (d: MwChecks) => between(extent(d.magnitude.map((m) => m.gSplit)), 1)
 } satisfies Record<string, (d: MwChecks) => string>

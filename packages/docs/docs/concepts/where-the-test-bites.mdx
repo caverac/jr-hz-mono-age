@@ -1,0 +1,105 @@
+---
+title: Where the test bites
+---
+
+import Metric from '@site/src/components/status/Metric'
+import TestBitesChart from '@site/src/components/concepts/TestBitesChart'
+
+# Where the test bites
+
+The tracer predicts the thickness of a population from its dispersion near the plane, under
+the assumption that the population is isothermal. For a population that stays close to the
+plane, part of that prediction holds whatever the shape of its distribution function, so its
+agreement with the tracer says less than it seems. This page shows which part is guaranteed,
+which part is not, and why the hot populations, which climb high above the plane, are where a
+comparison with the tracer can fail.
+
+## The vertical virial theorem
+
+A steady population obeys the vertical Jeans equation. Without the tilt term
+([The vertical Jeans equation](../status/tracer-vs-sheet#the-vertical-jeans-equation)) it reads
+
+$$
+\frac{d\left(\rho \langle v_z^2 \rangle\right)}{dz} = -\rho\, \frac{d\Delta\Phi}{dz}.
+$$
+
+Multiplying by $z$ and integrating over all heights, the left side becomes, after an
+integration by parts, $-\int \rho \langle v_z^2\rangle\, dz$, because $z\rho\langle v_z^2\rangle$
+vanishes far from the plane. Dividing by the mass of the population,
+
+$$
+\overline{v_z^2} = \overline{z\, \frac{d\Delta\Phi}{dz}},
+$$
+
+where the bars average over all the stars of the population. The kinetic energy of the vertical
+motions balances the virial of the vertical force. Nothing in this step assumes a shape for the
+distribution function.
+
+## Inside the harmonic core
+
+Near the plane of any smooth distribution of mass, the potential is harmonic,
+$\Delta\Phi = \frac{1}{2}\Omega_z^2 z^2$. With a flat rotation curve, the Poisson equation gives
+$\Omega_z^2 = 4\pi G \rho_0$ from the density $\rho_0$ at the plane. Then
+$z\, d\Delta\Phi/dz = \Omega_z^2 z^2$, and the theorem becomes
+
+$$
+\overline{v_z^2} = \Omega_z^2\, \overline{z^2}.
+$$
+
+The rms height of the population is its rms velocity divided by $\Omega_z$, whatever the shape
+of its distribution function. An isothermal tracer in the same potential is a Gaussian with the
+same rms height, $\sigma_z/\Omega_z$. A population that stays inside the harmonic core therefore
+has the rms height of the tracer of its rms velocity, isothermal or not.
+
+Two conditions limit what this guarantees. The tracer takes $\sigma_z$ from the stars near the
+plane, which is the rms velocity of the whole population only if the dispersion does not change
+with height. In Auriga it rises with height in <Metric name="sigmaRisePopulations" />
+populations. And the paper measures a scale height in a window, not an rms height. The window
+responds to the shape of the profile as well as to its spread, so two profiles with the same rms
+height can have different $h_Z$ (the chart below measures how different).
+
+## Beyond the core
+
+Above the core, $z\, d\Delta\Phi/dz$ is no longer $\Omega_z^2 z^2$, and its average depends on
+how the stars spread over heights, not only on $\overline{z^2}$. Two populations with the same
+$\overline{v_z^2}$ then have different rms heights: one with heavier tails reaches higher in a
+potential that steepens more slowly than the harmonic one, and one with a sharper cutoff stays
+lower. The shape of the distribution function sets the profile, whereas the tracer assumes one
+particular shape. A match between the tracer and a hot population is a test of that shape in the potential
+of the galaxy.
+
+## Try it
+
+The chart compares three distribution functions of the form $\exp[-(E_z/E_0)^q]$: $q = 1$ is
+the isothermal tracer, $q = 0.7$ has heavier tails and $q = 1.5$ a sharper cutoff. Each $E_0$ is
+chosen so that the population-averaged $\overline{v_z^2}$ is $\sigma_z^2$, the condition of the
+virial theorem. The populations sit either in the toy disk of
+[Tracer and sheet](./tracer-and-sheet) or in the harmonic potential of its midplane density,
+0.075 $M_\odot\,\mathrm{pc}^{-3}$.
+
+The upper panel shows $\Delta\Phi/\sigma_z^2$ of both potentials. The toy disk stays within 10
+percent of its harmonic core up to 0.40 kpc. Where $\Delta\Phi < 2\sigma_z^2$ an isothermal
+population keeps all but $e^{-2}$ of its density. The middle panel shows the three profiles, each
+of unit mass. The lower panel compares their heights with the isothermal one over a range of
+$\sigma_z$, as rms heights or as the windowed $h_Z$ of the paper.
+
+<TestBitesChart />
+
+What the chart shows:
+
+1. In the harmonic potential the rms heights of the three populations are equal at every
+   $\sigma_z$, to the third decimal: the dotted lines lie on 1. This is the virial theorem.
+2. In the toy disk the rms heights agree at $\sigma_z = 6$ km/s and drift apart as the
+   populations leave the core, by 2-3 percent at 25 km/s, small because the rms height averages
+   over the whole profile.
+3. The windowed $h_Z$ differs between the shapes even in the harmonic potential: the heavier
+   tails give 0.85 times the isothermal $h_Z$ and the sharper cutoff 1.14 times, at every
+   $\sigma_z$, because a harmonic potential scales every population by the same factor. In the
+   toy disk the difference grows with $\sigma_z$, to 0.80 and 1.19 at 60 km/s.
+
+The windowed scale height is thus sensitive to the shape of a population at every dispersion,
+and the potential adds to that sensitivity only once the population leaves the core. The
+analysis reports the cold and the hot populations separately: below $h_Z = 1$ kpc the tracer
+predicts <Metric name="coldTracer" /> within 10 percent, with a scatter of
+<Metric name="coldTracerRms" />, and above 1.5 kpc <Metric name="hotTracer" />
+([Tracer or sheet](../status/tracer-vs-sheet)).

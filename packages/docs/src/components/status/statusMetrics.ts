@@ -17,10 +17,13 @@ import type { MotionBin } from '@site/src/components/status/equilibrium'
 import {
   between,
   count,
+  downTo,
   fixed,
   percent,
+  percentUpTo,
   plusMinus,
-  signed
+  signed,
+  upTo
 } from '@site/src/components/status/format'
 import {
   ageRange,
@@ -63,6 +66,38 @@ function trendsOf(d: StatusData, predictor: Predictor, lo: number): readonly Tre
     const range = ageRange(h, lo, 10)
     return range === undefined ? [] : [range.trends[predictor]]
   })
+}
+
+/**
+ * sigma_z at twice the measured h_Z of `bin` over sigma_z in its slice nearest the plane, from
+ * the unclipped variances of the Jeans profile, interpolated linearly in |z| as the Jeans
+ * equation interpolates them.
+ */
+function sigmaRiseAt2h(bin: AgeBin): number {
+  const { z, sigma2 } = bin.jeans
+  const at = d3.scaleLinear(z, sigma2).clamp(true)
+  return Math.sqrt(at(2 * bin.measured.value) / sigma2[0])
+}
+
+/** The ratios of `predictor` of the populations with ages in [lo, hi) Gyr. */
+function agedRatios(
+  d: StatusData,
+  predictor: Predictor,
+  lo: number,
+  hi: number
+): readonly number[] {
+  return populations(d)
+    .filter((b) => b.ageLo >= lo && b.ageHi <= hi)
+    .map((b) => ratio(b, predictor))
+}
+
+/** The mean of the trends of `predictor` over `lo`-10 Gyr across the halos, weighted by their inverse variances. */
+function meanTrend(d: StatusData, predictor: Predictor, lo: number): string {
+  const trends = trendsOf(d, predictor, lo)
+  const weights = trends.map((t) => 1 / t.err ** 2)
+  const total = d3.sum(weights)
+  const mean = d3.sum(trends, (t, i) => t.value * weights[i]) / total
+  return plusMinus(mean, 1 / Math.sqrt(total))
 }
 
 /** The slices with lo <= |z| < hi of the Au19 populations older than 5 Gyr: sigma_z (km/s) and the tilt term. */
@@ -122,6 +157,8 @@ const COLD_HZ = 1
 /** Populations thicker than these (kpc) reach where it is not. */
 const HOT_HZ = 1.5
 const HOTTEST_HZ = 2.5
+/** The gravitational softening (kpc) of the Level 4 Auriga star particles since z = 1 (Grand et al. 2017, Sect. 2). */
+const AURIGA_SOFTENING_KPC = 0.369
 
 /** The ratios of `predictor` over the populations that `keep` selects. */
 function ratiosWhere(
@@ -140,9 +177,9 @@ function within10Of(values: readonly number[]): string {
   return `${values.filter((r) => agrees(r)).length} of ${values.length}`
 }
 
-/** The root mean square of `values` - 1. */
+/** The scatter of the ratios `values`: the root mean square of their logarithms. */
 function rms(values: readonly number[]): number {
-  return Math.sqrt(values.reduce((sum, r) => sum + (r - 1) ** 2, 0) / values.length)
+  return Math.sqrt(values.reduce((sum, r) => sum + Math.log(r) ** 2, 0) / values.length)
 }
 
 /** The point of the tracer curve of `halo` nearest `sigmaZ` (km/s). */
@@ -159,6 +196,13 @@ function curveAt(
 function firstWithoutScale(halo: HaloRecord): number {
   const curve = halo.tracerCurve
   return curve.sigmaZ.find((_, i) => !Number.isFinite(curve.hz[i])) ?? Number.NaN
+}
+
+/** The largest sigma_z (km/s) of the curve below the first at which the window finds no scale. */
+function lastWithScale(halo: HaloRecord): number {
+  const curve = halo.tracerCurve
+  const first = curve.hz.findIndex((hz) => !Number.isFinite(hz))
+  return first > 0 ? curve.sigmaZ[first - 1] : Number.NaN
 }
 
 /** ln h_Z of the tracer curve of `halo` at `sigmaZ` (km/s), interpolated linearly in ln sigma_z. */
@@ -224,6 +268,7 @@ const isCold = (bin: AgeBin) => bin.measured.value < COLD_HZ
 const isHot = (bin: AgeBin) => bin.measured.value > HOT_HZ
 const isHottest = (bin: AgeBin) => bin.measured.value > HOTTEST_HZ
 const isDisk = (bin: AgeBin) => bin.sigmaZ.value <= SPHEROID_SIGMA_Z
+const isNearSoftening = (bin: AgeBin) => bin.measured.value < 2 * AURIGA_SOFTENING_KPC
 
 /** The numbers that the prose of the status pages and the paper quote, by name. */
 export const STATUS_METRICS = {
@@ -236,7 +281,7 @@ export const STATUS_METRICS = {
   tracerMedian: (d: StatusData) => fixed(median(ratios(d, 'tracer'))),
   sheetRange: (d: StatusData) => between(extent(ratios(d, 'sheet'))),
   trendMax0: (d: StatusData) =>
-    fixed(Math.max(...trendsFrom(d, 0).map((c) => Math.abs(significance(c.tracerTrend)))), 1),
+    upTo(Math.max(...trendsFrom(d, 0).map((c) => Math.abs(significance(c.tracerTrend)))), 1),
   trendRange0: (d: StatusData) =>
     between(extent(trendsFrom(d, 0).map((c) => c.tracerTrend.value)), 3),
   trendOutside2: (d: StatusData) => {
@@ -278,8 +323,68 @@ export const STATUS_METRICS = {
     ),
   jeansSignTest2: (d: StatusData) =>
     fixed(signTest(trendsOf(d, 'jeans', 2).map((t) => t.value)), 3),
+  sigmaRiseTwiceHeight: (d: StatusData) => {
+    const rises = populations(d).map(sigmaRiseAt2h)
+    return `${fixed(median(rises))}, with a range of ${between(extent(rises))}`
+  },
+  sigmaRisePopulations: (d: StatusData) => {
+    const rises = populations(d).map(sigmaRiseAt2h)
+    return `${rises.filter((r) => r > 1).length} of ${rises.length}`
+  },
+  tracerMedianMid: (d: StatusData) => fixed(median(agedRatios(d, 'tracer', 2, 6))),
+  tracerMedianOld: (d: StatusData) => fixed(median(agedRatios(d, 'tracer', 8, 10))),
+  jeansSigmaBelowTracer: (d: StatusData) => {
+    const all = populations(d)
+    return `${all.filter((b) => ratio(b, 'jeansSigma') < ratio(b, 'tracer')).length} of ${all.length}`
+  },
+  jeansSigmaOverTracerMid: (d: StatusData) =>
+    fixed(
+      median(
+        populations(d)
+          .filter((b) => b.ageLo >= 2 && b.ageHi <= 6)
+          .map((b) => ratio(b, 'jeansSigma') / ratio(b, 'tracer'))
+      )
+    ),
+  jeansSigmaOverTracerOld: (d: StatusData) =>
+    fixed(
+      median(
+        populations(d)
+          .filter((b) => b.ageLo >= 8 && b.ageHi <= 10)
+          .map((b) => ratio(b, 'jeansSigma') / ratio(b, 'tracer'))
+      )
+    ),
+  jeansTrendMax2: (d: StatusData) =>
+    upTo(Math.max(...trendsOf(d, 'jeans', 2).map((t) => Math.abs(significance(t)))), 1),
+  tracerTrendMean2: (d: StatusData) => meanTrend(d, 'tracer', 2),
+  jeansSigmaTrendMean2: (d: StatusData) => meanTrend(d, 'jeansSigma', 2),
+  jeansTrendMean2: (d: StatusData) => meanTrend(d, 'jeans', 2),
   residualRange: (d: StatusData) => between(extent(d.halos.map((h) => residualAt(h, 1))), 0),
+  // A bound in (km/s)^2, rounded up to the next ten.
+  residualMax: (d: StatusData) =>
+    fixed(
+      10 *
+        Math.ceil(
+          Math.max(
+            ...d.halos.flatMap((h) =>
+              h.residual.residual.map((r) => Math.abs(r - h.residual.residual[0]))
+            )
+          ) / 10
+        ),
+      0
+    ),
+  residualTop: (d: StatusData) =>
+    fixed(Math.min(...d.halos.map((h) => h.residual.z[h.residual.z.length - 1])), 1),
   snapshotRange: (d: StatusData) => between(extent(d.halos.flatMap((h) => snapshotRatios(h)))),
+  nearSofteningCount: (d: StatusData) => String(populations(d).filter(isNearSoftening).length),
+  nearSofteningSnapshot: (d: StatusData) =>
+    `${between(
+      extent(
+        populations(d)
+          .filter(isNearSoftening)
+          .map((bin) => 100 * Math.log(bin.tracerSnapshot / bin.tracer))
+      ),
+      1
+    )} percent`,
   tracerChi2Range: (d: StatusData) =>
     between(extent(exponentComparisons(d).map((c) => c.tracerTrend.chi2Dof)), 1),
   sheetTrendRange: (d: StatusData) =>
@@ -291,7 +396,7 @@ export const STATUS_METRICS = {
       )
     ),
   sheetTrendMin: (d: StatusData) =>
-    fixed(Math.min(...exponentComparisons(d).map((c) => Math.abs(significance(c.sheetTrend)))), 0),
+    downTo(Math.min(...trendsFrom(d, 0).map((c) => Math.abs(significance(c.sheetTrend)))), 0),
   exponentShift: (d: StatusData) => between(extent(exponentShifts(d))),
   etaRange: (d: StatusData) => between(extent(etas(d))),
   halfMassTracerWithin10: (d: StatusData) =>
@@ -306,8 +411,15 @@ export const STATUS_METRICS = {
     fixed(median(populations(d).map((b) => b.halfMassRatios.tracer.value))),
   halfMassTracerRms: (d: StatusData) =>
     percent(rms(populations(d).map((b) => b.halfMassRatios.tracer.value))),
+  halfMassTrendWithin2: (d: StatusData) => {
+    const all = d.halos.flatMap((h) => {
+      const range = ageRange(h, 0, 10)
+      return range === undefined ? [] : [range.halfMassTrends.tracer]
+    })
+    return `${all.filter((t) => Math.abs(significance(t)) <= 2).length} of ${all.length}`
+  },
   halfMassTrendMax0: (d: StatusData) =>
-    fixed(
+    upTo(
       Math.max(
         ...d.halos.map((h) => {
           const t = ageRange(h, 0, 10)?.halfMassTrends.tracer
@@ -326,7 +438,7 @@ export const STATUS_METRICS = {
   diskWithin10: (d: StatusData) =>
     within10Of(finite(d.halos.flatMap((h) => h.checks.disk.bins.map((b) => b.tracer.value)))),
   diskTrendMax0: (d: StatusData) =>
-    fixed(
+    upTo(
       maxSignificance(d, (h) => h.checks.disk, 0),
       1
     ),
@@ -347,7 +459,9 @@ export const STATUS_METRICS = {
     `${between(
       extent(
         d.halos.flatMap((h) =>
-          h.checks.allStars.bins.map((b) => 100 * (b.tracerUnclipped.value / b.tracer.value - 1))
+          h.checks.allStars.bins.map(
+            (b) => 100 * Math.log(b.tracerUnclipped.value / b.tracer.value)
+          )
         )
       ),
       0
@@ -362,15 +476,15 @@ export const STATUS_METRICS = {
   curveNoScaleCount: (d: StatusData) =>
     `${d.halos.filter((h) => Number.isFinite(firstWithoutScale(h))).length} of ${d.halos.length}`,
   noScaleMargin: (d: StatusData) =>
-    fixed(
+    downTo(
       Math.min(
         ...d.halos.flatMap((h) => {
-          const limit = firstWithoutScale(h)
+          const limit = lastWithScale(h)
           const hottest = Math.max(...h.bins.map((b) => b.sigmaZ.value))
-          return Number.isFinite(limit) ? [limit / hottest] : []
+          return Number.isFinite(firstWithoutScale(h)) ? [limit / hottest] : []
         })
       ),
-      1
+      2
     ),
   etaChordDiff: (d: StatusData) => between(extent(d.halos.map((h) => eta010(h).value - chord(h)))),
   etaChordWithin2: (d: StatusData) => {
@@ -432,6 +546,14 @@ export const STATUS_METRICS = {
   coevalTrendRange0: (d: StatusData) =>
     between(extent(d.halos.map((h) => ageRange(h, 0, 10)?.coevalTrends.hz.value ?? Number.NaN)), 3),
   bFitRange: (d: StatusData) => between(extent(populations(d).map((b) => b.coeval.b.value))),
+  bFitWithIsoRange: (d: StatusData) =>
+    between(
+      extent(
+        populations(d)
+          .filter((b) => Number.isFinite(b.coeval.bIsothermal))
+          .map((b) => b.coeval.b.value)
+      )
+    ),
   bFitErrRange: (d: StatusData) => between(extent(populations(d).map((b) => b.coeval.b.err))),
   bIsoRange: (d: StatusData) => between(extent(populations(d).map((b) => b.coeval.bIsothermal))),
   bExcessRange: (d: StatusData) =>
@@ -460,6 +582,17 @@ export const STATUS_METRICS = {
     ),
   betaZRange0: (d: StatusData) =>
     between(extent(d.halos.map((h) => ageRange(h, 0, 10)?.exponents.sigma_z.value ?? Number.NaN))),
+  betaHMinusEtaBetaZ: (d: StatusData) =>
+    between(
+      extent(
+        d.halos.map((h) => {
+          const r = ageRange(h, 0, 10)
+          return r === undefined
+            ? Number.NaN
+            : r.exponents.hz.value - r.eta.value * r.exponents.sigma_z.value
+        })
+      )
+    ),
   betaHRange0: (d: StatusData) =>
     between(extent(d.halos.map((h) => ageRange(h, 0, 10)?.exponents.hz.value ?? Number.NaN))),
   etaBetaZRange0: (d: StatusData) =>
@@ -493,22 +626,22 @@ export const STATUS_METRICS = {
   hzMax: (d: StatusData) => fixed(Math.max(...populations(d).map((b) => b.measured.value)), 1),
   wholeTracer: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.tracer))),
   wholePalicio: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.palicio))),
-  mockSpin: (d: StatusData) => fixed(d.mock.spinErrorDeg, 3),
-  mockVc: (d: StatusData) => percent(Math.abs(d.mock.vCirc / d.mock.vCircTrue - 1)),
-  mockPhi: (d: StatusData) => percent(d.mock.deltaPhiError),
-  mockHz: (d: StatusData) => percent(mockErrors(d.mock).hz),
-  mockJr: (d: StatusData) => percent(mockErrors(d.mock).jr),
+  mockSpin: (d: StatusData) => upTo(d.mock.spinErrorDeg, 3),
+  mockVc: (d: StatusData) => percentUpTo(Math.abs(Math.log(d.mock.vCirc / d.mock.vCircTrue))),
+  mockPhi: (d: StatusData) => percentUpTo(d.mock.deltaPhiError),
+  mockHz: (d: StatusData) => percentUpTo(mockErrors(d.mock).hz),
+  mockJr: (d: StatusData) => percentUpTo(mockErrors(d.mock).jr),
   injectionDraws: (d: StatusData) => String(d.injection.draws),
   injectionStars: (d: StatusData) => count(d.injection.nStars),
-  selfConsistentBias: (d: StatusData) => percent(selfConsistentBias(d.injection)),
-  exponentialFixedBias: (d: StatusData) => percent(exponentialFixedBias(d.injection, 3)),
+  selfConsistentBias: (d: StatusData) => percentUpTo(selfConsistentBias(d.injection)),
+  exponentialFixedBias: (d: StatusData) => percentUpTo(exponentialFixedBias(d.injection, 3)),
   exponentialSpreadWide: (d: StatusData) => {
     const widest = family(d.injection, 'exponential').at(-1)
     return widest === undefined ? 'none' : between([widest.fixed.lo, widest.fixed.hi])
   },
   sech2Thin: (d: StatusData) => fixed(nearest(d.injection, 'sech2', 0.2).fixed.median),
   sech2Window: (d: StatusData) => fixed(nearest(d.injection, 'sech2', 1).fixed.median),
-  fixedFailedMax: (d: StatusData) => percent(worstFailure(d.injection).fixedFailed, 0),
+  fixedFailedMax: (d: StatusData) => percentUpTo(worstFailure(d.injection).fixedFailed, 0),
   windowLowHalos: (d: StatusData) => fixed(windowRow(d, 0).halos),
   windowLowSech2: (d: StatusData) => fixed(windowRow(d, 0).curves.sech2),
   windowLowExponential: (d: StatusData) => fixed(windowRow(d, 0).curves.exponential),
@@ -557,6 +690,10 @@ export const STATUS_METRICS = {
   au19JeansTrend0: (d: StatusData) => au19Trend(d, 'jeans'),
   sumSingleScaled: (d: StatusData) =>
     between(extent(d.halos.map((h) => h.tracerSum.whole.ratioSingle.scaled.value))),
+  sumSingleAboveOne: (d: StatusData) => {
+    const values = d.halos.map((h) => h.tracerSum.whole.ratioSingle.scaled.value)
+    return `${values.filter((v) => v > 1).length} of ${values.length}`
+  },
   sumMixtureScaled: (d: StatusData) =>
     between(extent(d.halos.map((h) => h.tracerSum.whole.ratioMixture.scaled.value))),
   sumRingsScaled: (d: StatusData) => between(extent(ringMixtureRatios(d))),
@@ -572,6 +709,17 @@ export const STATUS_METRICS = {
     between(extent(motionsOf(d, 'Au19', 5, 10).map((b) => b.thickening.value)), 2),
   au19AsymmetryOld: (d: StatusData) =>
     between(extent(motionsOf(d, 'Au19', 5, 10).map((b) => b.asymmetry.value)), 3),
+  au19ThickeningErr: (d: StatusData) =>
+    between(extent(motionsOf(d, 'Au19', 5, 10).map((b) => b.thickening.err)), 2),
+  otherThickeningOld: (d: StatusData) =>
+    between(
+      extent(
+        d.halos
+          .filter((h) => h.label !== 'Au19')
+          .flatMap((h) => motionsOf(d, h.label, 5, 10).map((b) => b.thickening.value))
+      ),
+      2
+    ),
   oldThickeningMax: (d: StatusData) =>
     fixed(Math.max(...allMotions(d, 5, 10).map((b) => Math.abs(b.thickening.value))), 1),
   youngThickeningMax: (d: StatusData) =>
@@ -588,7 +736,8 @@ export const STATUS_METRICS = {
     const closer = d.halos.filter((h) => {
       const whole = h.tracerSum.whole
       return (
-        Math.abs(whole.ratioMixture.scaled.value - 1) < Math.abs(whole.ratioSingle.scaled.value - 1)
+        Math.abs(Math.log(whole.ratioMixture.scaled.value)) <
+        Math.abs(Math.log(whole.ratioSingle.scaled.value))
       )
     })
     return `${closer.length} of the ${d.halos.length}`
@@ -601,7 +750,7 @@ export const STATUS_METRICS = {
   au19WholePalicio: (d: StatusData) =>
     fixed(haloRecord(d, 'Au19').tracerSum.whole.measured.palicio.value, 1),
   sumUnmodeledMax: (d: StatusData) =>
-    percent(Math.max(...d.halos.map((h) => h.tracerSum.whole.unmodeledMixture)), 1),
+    percentUpTo(Math.max(...d.halos.map((h) => h.tracerSum.whole.unmodeledMixture)), 1),
   au19Old: (d: StatusData) =>
     between(
       extent(

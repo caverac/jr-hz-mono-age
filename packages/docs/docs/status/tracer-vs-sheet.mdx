@@ -131,15 +131,15 @@ in the self-consistent window, and take central differences of $\ln h_Z$ in $\ln
 core of the potential, to <Metric name="curveEtaAt40" /> at 40 km/s, and to at most
 <Metric name="curveEtaMax" /> at the hottest dispersions. Over the $\sigma_z$ of the
 populations of each halo, its mean, the slope of the chord of $\ln h_Z$ against
-$\ln\sigma_z$, differs from the measured $\eta$ by <Metric name="etaChordDiff" />, within two
+$\ln\sigma_z$, falls below the measured $\eta$ by <Metric name="etaChordDiff" />, within two
 standard errors in <Metric name="etaChordWithin2" /> halos. The exception is Au19, whose
 $\eta$ of <Metric name="au19Eta" /> exceeds the chord of <Metric name="au19Chord" />: its old
 populations are thicker than the tracer allows, as the
 [vertical Jeans equation](#the-vertical-jeans-equation) explains. The slope stays below 2
-over the whole grid. In <Metric name="curveNoScaleCount" /> halos the window finds no scale above
-<Metric name="curveNoScale" /> km/s, where the tracer is so flat inside $2h_Z$ that its mean
-height reaches $L/2$. The hottest population of each of those halos lies a factor of at least
-<Metric name="noScaleMargin" /> below that limit.
+over the whole grid. In <Metric name="curveNoScaleCount" /> halos the window finds no scale from
+<Metric name="curveNoScale" /> km/s on, where $2h_Z$ of the tracer would exceed the 12 kpc of
+the grid of heights. The hottest population of each of those halos lies a factor of at least
+<Metric name="noScaleMargin" /> below the last dispersion at which the window finds a scale.
 
 ## Age dependence
 
@@ -296,7 +296,7 @@ an amount below the error of each halo.
 Because the Jeans equation with the tilt term holds for any steady axisymmetric population,
 its scatter about the measured heights, <Metric name="jeansRms" /> with ratios of
 <Metric name="jeansRange" />, measures what a test at one radius cannot remove: departures
-from a steady state and the noise of the measured profiles. It is the floor of any
+from a steady state and the noise of the measured profiles. It is the reference for any
 prediction of these heights, and the tracer's scatter of <Metric name="tracerRms" /> lies
 just above it.
 
@@ -376,7 +376,7 @@ each fitted $b$ against $b_\mathrm{iso}$, the $b$ of the isothermal tracer of th
 $\sigma_z$ in the same potential. Both need the orbits of the population to stay inside the
 12 kpc of the grid of heights, which those of <Metric name="coevalCount" /> populations do.
 
-The fitted $b$ is <Metric name="bFitRange" />, with errors of at most
+In these populations the fitted $b$ is <Metric name="bFitWithIsoRange" />, with errors of at most
 <Metric name="bFitErrRange" />, and exceeds $b_\mathrm{iso}$ in <Metric name="bAboveIso" />
 populations, by a median of <Metric name="bExcessMedian" />. The cold populations have $b$ of
 <Metric name="bColdRange" />, against $b_\mathrm{iso}$ of <Metric name="bIsoColdRange" />.

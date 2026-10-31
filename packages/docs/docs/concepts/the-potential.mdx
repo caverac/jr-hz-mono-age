@@ -1,0 +1,96 @@
+---
+title: The fitted potential
+---
+
+import Metric from '@site/src/components/status/Metric'
+import PotentialChart from '@site/src/components/concepts/PotentialChart'
+
+# The fitted potential
+
+The tracer needs the potential of all the mass of a galaxy at the radius of its populations. The
+analysis fits that potential to every particle of each Auriga snapshot with AGAMA (Vasiliev
+2019), as the sum of two expansions of different geometry (`experiments.potential.fit_potential`).
+This page explains what each expansion is, why the fit needs two, what each contributes to the
+vertical force that confines the populations, and how the fit compares with the potential that
+the snapshot itself stores.
+
+## Two expansions
+
+A potential is expanded on a set of basis functions whose coefficients come from the particles.
+The choice of basis decides which shapes the expansion can follow with a modest number of terms.
+
+- Multipole: the potential is a sum of spherical harmonics $Y_l^m(\theta, \phi)$, each with a
+  radial function tabulated on a grid of radii. It follows a nearly round mass distribution, such
+  as a dark halo, with a few harmonics. The fit keeps $l \le 8$ on 50 radii spaced
+  logarithmically from 0.1 to 300 kpc (`MULTIPOLE_GRID`).
+- CylSpline: the potential is a Fourier series in azimuth whose terms are two-dimensional
+  splines in $(R, z)$ on a grid. It follows a flattened mass distribution, such as a thin disk,
+  directly in $R$ and $z$. The fit keeps only the axisymmetric term, $m = 0$, on 50 radii from 0.1
+  to 50 kpc and 50 heights from 0.02 to 10 kpc, nearly uniform near the origin and geometric
+  farther out (`CYL_GRID`).
+
+The gas and the star particles within $R < 50$ kpc and $|z| < 10$ kpc enter the CylSpline, and
+every other particle, the dark matter above all, enters the Multipole. A Multipole alone could
+not hold the disk: a layer 0.3 kpc thick at $R = 8$ kpc spans an angle of about 0.04 rad seen from
+the center, which needs harmonics up to $l \sim \pi/0.04 \approx 80$, whereas $l \le 8$ would smear
+it over a few kpc in height. Both expansions are axisymmetric, so spiral arms and bars are
+averaged over azimuth. One particle sits exactly at the origin of each snapshot, the position of
+its most bound particle, and both expansions leave it out.
+
+## What each expansion holds
+
+The first panel below draws lines of equal density of each expansion in the meridional plane, with
+$R$ and $z$ on the same scale, so that a round distribution draws circles. The lines of the
+CylSpline are flattened along the plane: it holds the disk, whose density falls by an order of
+magnitude within a few kpc of the plane at the solar radius, and above it the stars of the stellar
+halo that lie inside its box. The lines of the Multipole are nearly circles: it holds the dark halo,
+whose density falls with the distance from the center. The buttons draw the nodes of either grid
+over the lines: the CylSpline's are dense near the plane and the center, where the disk is, and the
+Multipole's are spherical shells. The second panel reads both densities along $z$ at the median
+radius of the annulus.
+
+## The vertical force at the populations
+
+What confines a population is the vertical force $K_z = \partial\Phi/\partial z$ at its radius,
+taken at the median radius $R_\mathrm{mid}$ of the annulus $7.5 < R < 9$ kpc. The two expansions
+contribute differently:
+
+- The force of the CylSpline rises steeply through the disk and then levels off, near the
+  $2\pi G \Sigma$ of a sheet of the disk's surface density seen from outside. In Au24 it is 835
+  (km/s)$^2$/kpc at 1 kpc and 1417 at 3 kpc, and it slowly declines at larger heights, where the
+  disk no longer looks like an infinite sheet.
+- The force of the Multipole grows nearly in proportion to height, as the force of a halo whose
+  density changes little over a few kpc. In Au24 it is 495 (km/s)$^2$/kpc at 1 kpc, 1293 at 3 kpc
+  and 1984 at 8 kpc.
+
+The total force therefore never stops growing within the heights of the populations, and the
+potential never becomes linear in $z$. The local power $p = d\ln\Delta\Phi/d\ln z$ shows this
+directly: a potential $\Delta\Phi \propto |z|^p$ gives a tracer whose height grows as
+$\sigma_z^{2/p}$ ([Tracer and sheet](./tracer-and-sheet)), so $p = 2$ means $\eta = 1$ and $p = 1$
+means $\eta = 2$. In Au24 $p$ falls from 1.99 at 0.2 kpc to 1.84 at 1 kpc, 1.64 at 3 kpc and 1.27 at
+8 kpc. The heights of the populations grow accordingly, with $\eta$ of
+<Metric name="etaRange" /> across the halos.
+
+The circular velocity tells the same story in the plane: in Au24 the CylSpline and the Multipole
+contribute about equally at $R_\mathrm{mid}$, 146 and 153 km/s of a total of 211 km/s, added in
+quadrature.
+
+## The fit against the snapshot
+
+The snapshot stores, for every star particle, the potential it feels, with the softening of the
+simulation and with all the structure that an axisymmetric fit averages away. The last panel
+compares the two in slices of $|z|$ 0.1 kpc thick: the median of the fitted $\Delta\Phi$ and the
+median of the snapshot's, both over the star particles of the annulus in each slice
+(`potential_check`). Averaged over eight sectors of azimuth, the snapshot's potential differs from
+the fit by <Metric name="residualRange" /> (km/s)$^2$ between the plane and 1 kpc, and by at most
+<Metric name="residualMax" /> (km/s)$^2$ up to <Metric name="residualTop" /> kpc. The tracer in the
+potential of the snapshot is <Metric name="snapshotRange" /> times the tracer in the fit
+([Tracer or sheet](../status/tracer-vs-sheet)).
+
+## Explore
+
+The buttons choose the halo and the grid drawn over the lines of equal density. Below the lines are
+the density of each expansion against height at $R_\mathrm{mid}$, the vertical force there, the
+local power of $\Delta\Phi$, the rotation curve, and the check against the snapshot.
+
+<PotentialChart />

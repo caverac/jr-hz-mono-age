@@ -7,8 +7,9 @@ measures the halos. ``render-data`` bins their star particles for the images, an
 ``plot`` and ``render`` draw the figures from the cached data. ``jr-map`` measures a
 proxy for the J_R,w of Palicio et al. (2025) from the map of the median J_R, and
 ``jr-relation`` fits it against the whole-disk h_Z across the halos. ``equilibrium``
-measures the mean vertical motions of every population, and ``tracer-sum`` predicts the
-whole-disk h_Z as a sum of isothermal tracers::
+measures the mean vertical motions of every population, ``tracer-sum`` predicts the
+whole-disk h_Z as a sum of isothermal tracers, and ``concepts`` records what the Concepts pages of
+the documentation draw::
 
     experiments auriga download 2 3 16 19 23 24 27
     caffeinate -i experiments auriga status 2 3 16 19 23 24 27 --wait
@@ -22,6 +23,7 @@ whole-disk h_Z as a sum of isothermal tracers::
     experiments auriga jr-relation 2 3 16 19 23 24 27
     experiments auriga equilibrium 2 3 16 19 23 24 27
     experiments auriga tracer-sum 2 3 16 19 23 24 27
+    experiments auriga concepts 2 3 16 19 23 24 27
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ import click
 
 from experiments.commands.auriga_analyze import auriga_analyze
 from experiments.commands.auriga_check import auriga_check
+from experiments.commands.auriga_concepts import auriga_concepts
 from experiments.commands.auriga_download import auriga_download
 from experiments.commands.auriga_equilibrium import auriga_equilibrium
 from experiments.commands.auriga_jr_map import auriga_jr_map
@@ -59,3 +62,4 @@ auriga.add_command(auriga_jr_map)
 auriga.add_command(auriga_jr_relation)
 auriga.add_command(auriga_equilibrium)
 auriga.add_command(auriga_tracer_sum)
+auriga.add_command(auriga_concepts)

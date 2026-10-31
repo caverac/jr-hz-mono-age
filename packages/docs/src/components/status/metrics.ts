@@ -238,11 +238,11 @@ export function haloSummaries(data: StatusData): readonly HaloSummary[] {
   })
 }
 
-/** The largest |analysis / truth - 1| of h_Z and of J_R,med over the age bins of the mock. */
+/** The largest |ln(analysis / truth)| of h_Z and of J_R,med over the age bins of the mock. */
 export function mockErrors(mock: MockCheck): { readonly hz: number; readonly jr: number } {
   return {
-    hz: Math.max(...mock.bins.map((b) => Math.abs(b.hz / b.hzTrue - 1))),
-    jr: Math.max(...mock.bins.map((b) => Math.abs(b.jrMedian / b.jrMedianTrue - 1)))
+    hz: Math.max(...mock.bins.map((b) => Math.abs(Math.log(b.hz / b.hzTrue)))),
+    jr: Math.max(...mock.bins.map((b) => Math.abs(Math.log(b.jrMedian / b.jrMedianTrue))))
   }
 }
 
@@ -323,9 +323,9 @@ export function windowComparison(data: StatusData, families: readonly string[]) 
   })
 }
 
-/** The largest |ratio - 1| of the self-consistent window over every injected profile. */
+/** The largest |ln ratio| of the self-consistent window over every injected profile. */
 export function selfConsistentBias(injection: Injection): number {
-  return Math.max(...injection.points.map((p) => Math.abs(p.scaled.median - 1)))
+  return Math.max(...injection.points.map((p) => Math.abs(Math.log(p.scaled.median))))
 }
 
 /** The injected point of `name` whose reference / Z_lim is nearest to `x`, in log. */
@@ -339,11 +339,11 @@ export function worstFailure(injection: Injection): InjectionPoint {
   return [...injection.points].sort((a, b) => b.fixedFailed - a.fixedFailed)[0]
 }
 
-/** The largest |ratio - 1| of the fixed window for exponentials with reference / Z_lim up to `upTo`. */
+/** The largest |ln ratio| of the fixed window for exponentials with reference / Z_lim up to `upTo`. */
 export function exponentialFixedBias(injection: Injection, upTo: number): number {
   return Math.max(
     ...family(injection, 'exponential')
       .filter((p) => p.reference / injection.zLim <= upTo)
-      .map((p) => Math.abs(p.fixed.median - 1))
+      .map((p) => Math.abs(Math.log(p.fixed.median)))
   )
 }

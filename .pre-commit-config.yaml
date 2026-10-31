@@ -33,6 +33,16 @@ repos:
         types: [python]
         files: ^packages/experiments/src/
 
+      # duplicate-code compares files with each other, so the per-file hook above misses a
+      # copy whose original is not staged: this one runs it on all of src (~15 s).
+      - id: pylint-duplicate-code
+        name: pylint (duplicate-code)
+        entry: uv run pylint --disable=all --enable=duplicate-code packages/experiments/src
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^packages/experiments/src/
+
       - id: pydocstyle
         name: pydocstyle
         entry: uv run pydocstyle

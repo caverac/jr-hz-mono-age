@@ -6,7 +6,19 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
-      label: 'Status',
+      label: 'Concepts',
+      collapsed: false,
+      items: [
+        'concepts/tracer-and-sheet',
+        'concepts/where-the-test-bites',
+        'concepts/the-window',
+        'concepts/the-potential',
+        'concepts/fitting-a-population'
+      ]
+    },
+    {
+      type: 'category',
+      label: 'Results',
       collapsed: false,
       items: [
         'status/overview',
@@ -18,7 +30,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Explorations',
+      label: 'The disks',
       collapsed: false,
       items: ['explorations/rendered-disks', 'explorations/disk-in-3d']
     },
