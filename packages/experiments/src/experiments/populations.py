@@ -371,12 +371,17 @@ def outer_sample(galaxy: Galaxy, r_lo: float, r_hi: float) -> AnnulusSample:
     stars = galaxy.stars
     cyl_r = stars.cylindrical_radius
     in_range = (cyl_r >= TILT_R_MIN_KPC) & (cyl_r < TILT_R_MAX_KPC) & (np.abs(stars.pos[:, 2]) < Z_SAMPLE_MAX_KPC)
-    keep = in_range & ((cyl_r < r_lo) | (cyl_r >= r_hi))
+    return stars_without_actions(galaxy, in_range & ((cyl_r < r_lo) | (cyl_r >= r_hi)))
+
+
+def stars_without_actions(galaxy: Galaxy, keep: BoolArray) -> AnnulusSample:
+    """Return the star particles of the mask *keep*, with NaN for J_R and J_z."""
+    stars = galaxy.stars
     pos, vel = stars.pos[keep], stars.vel[keep]
     v_r, v_z = cylindrical_velocities(pos, vel)
     age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[keep], galaxy.header.scale_factor)
     none = np.full(pos.shape[0], np.nan)
-    return AnnulusSample(age, pos[:, 2], v_r, v_z, none, none, stars.initial_mass[keep], cyl_r[keep])
+    return AnnulusSample(age, pos[:, 2], v_r, v_z, none, none, stars.initial_mass[keep], stars.cylindrical_radius[keep])
 
 
 def median_radius(galaxy: Galaxy, annulus: BoolArray) -> float:

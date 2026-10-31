@@ -45,10 +45,11 @@ from experiments.populations import (
     BinStars,
     median_radius,
     outer_sample,
+    stars_without_actions,
     surface_density,
 )
 from experiments.potential import CYL_GRID, MULTIPOLE_GRID, vertical_potential
-from experiments.snapshot import Galaxy, cylindrical_velocities
+from experiments.snapshot import Galaxy
 from experiments.stats import clipped_dispersion
 
 FloatArray = NDArray[np.float64]
@@ -234,14 +235,7 @@ def in_annulus(galaxy: Galaxy) -> NDArray[np.bool_]:
 
 def annulus_stars(galaxy: Galaxy) -> AnnulusSample:
     """Return the star particles of the annulus of the analysis, without their actions."""
-    stars = galaxy.stars
-    cyl_r = stars.cylindrical_radius
-    keep = in_annulus(galaxy)
-    pos, vel = stars.pos[keep], stars.vel[keep]
-    v_r, v_z = cylindrical_velocities(pos, vel)
-    age = galaxy.header.cosmology.lookback_gyr(stars.formation_a[keep], galaxy.header.scale_factor)
-    none = np.full(pos.shape[0], np.nan)
-    return AnnulusSample(age, pos[:, 2], v_r, v_z, none, none, stars.initial_mass[keep], cyl_r[keep])
+    return stars_without_actions(galaxy, in_annulus(galaxy))
 
 
 def profile_extent(window: float) -> float:
