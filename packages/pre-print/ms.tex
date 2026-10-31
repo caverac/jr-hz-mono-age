@@ -180,6 +180,8 @@
 \newcommand{\mwTracerEta}{$1.14$ to $1.16$}
 \newcommand{\mwTwoBetaZ}{$0.83$ to $0.96$}
 \newcommand{\nBootstrap}{300}
+\newcommand{\nearSofteningCount}{19}
+\newcommand{\nearSofteningSnapshot}{$-3.3$ to $4.2$ percent}
 \newcommand{\noScaleMargin}{$1.29$}
 \newcommand{\otherThickeningOld}{$-1.18$ to $1.02$}
 \newcommand{\palicioSlope}{$72.6$}
@@ -1051,9 +1053,16 @@ test the relation across galaxies.
 
 \subsection{Limitations}
 
-The Auriga snapshots are at the standard resolution of the public release, whose stellar softening
-of 369\,pc \citep{Grand2017} is comparable to the heights of \youngHeights\kpc\ of the populations
-younger than 1\Gyr. \citet{Pakmor2025} find that the
+The Auriga snapshots are at the standard resolution of the public release, whose gravitational
+softening of star and dark matter particles, 369\,pc since $z = 1$ \citep{Grand2017}, is close to
+the heights of \youngHeights\kpc\ of the populations younger than 1\Gyr. The test needs the
+potential that the stars feel, not a Newtonian one. The potential of the snapshot, which the
+simulation computes with the softening, changes the tracer of the \nearSofteningCount\ populations
+thinner than twice the softening by \nearSofteningSnapshot. Whether the heights are those that the
+simulated galaxies would have without softening is a question of convergence, which
+\citet[Sect.~6]{Grand2017} address for three halos: the rms heights of Au6 change negligibly with
+a softening ten times smaller, whereas those of Au16, one of our halos, show tentative signs of
+thinning at higher resolution. \citet{Pakmor2025} find that the
 rise of the velocity dispersion at large radii seen at that resolution might be entirely numerical.
 Numerical heating raises the dispersion and the height of a population together, so it shifts both
 sides of the test, but it could change $\eta$ and the shape of the actions, which the Level 3 runs

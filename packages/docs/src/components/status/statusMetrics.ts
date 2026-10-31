@@ -157,6 +157,8 @@ const COLD_HZ = 1
 /** Populations thicker than these (kpc) reach where it is not. */
 const HOT_HZ = 1.5
 const HOTTEST_HZ = 2.5
+/** The gravitational softening (kpc) of the Level 4 Auriga star particles since z = 1 (Grand et al. 2017, Sect. 2). */
+const AURIGA_SOFTENING_KPC = 0.369
 
 /** The ratios of `predictor` over the populations that `keep` selects. */
 function ratiosWhere(
@@ -266,6 +268,7 @@ const isCold = (bin: AgeBin) => bin.measured.value < COLD_HZ
 const isHot = (bin: AgeBin) => bin.measured.value > HOT_HZ
 const isHottest = (bin: AgeBin) => bin.measured.value > HOTTEST_HZ
 const isDisk = (bin: AgeBin) => bin.sigmaZ.value <= SPHEROID_SIGMA_Z
+const isNearSoftening = (bin: AgeBin) => bin.measured.value < 2 * AURIGA_SOFTENING_KPC
 
 /** The numbers that the prose of the status pages and the paper quote, by name. */
 export const STATUS_METRICS = {
@@ -372,6 +375,16 @@ export const STATUS_METRICS = {
   residualTop: (d: StatusData) =>
     fixed(Math.min(...d.halos.map((h) => h.residual.z[h.residual.z.length - 1])), 1),
   snapshotRange: (d: StatusData) => between(extent(d.halos.flatMap((h) => snapshotRatios(h)))),
+  nearSofteningCount: (d: StatusData) => String(populations(d).filter(isNearSoftening).length),
+  nearSofteningSnapshot: (d: StatusData) =>
+    `${between(
+      extent(
+        populations(d)
+          .filter(isNearSoftening)
+          .map((bin) => 100 * Math.log(bin.tracerSnapshot / bin.tracer))
+      ),
+      1
+    )} percent`,
   tracerChi2Range: (d: StatusData) =>
     between(extent(exponentComparisons(d).map((c) => c.tracerTrend.chi2Dof)), 1),
   sheetTrendRange: (d: StatusData) =>
