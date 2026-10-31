@@ -72,7 +72,7 @@
 \newcommand{\curveNoScaleCount}{5 of 7}
 \newcommand{\diskMassRange}{$0.07$ to $1.00$}
 \newcommand{\diskTracer}{48 of 51}
-\newcommand{\diskTracerRms}{$5.5$ percent}
+\newcommand{\diskTracerRms}{$5.3$ percent}
 \newcommand{\diskTrendMaxZero}{$1.0$}
 \newcommand{\diskTrendNegativeTwo}{7 of 7}
 \newcommand{\diskWithinTen}{62 of 70}
@@ -110,18 +110,18 @@
 \newcommand{\fineTrendMaxTwo}{$4.8$}
 \newcommand{\fineTrendNegativeTwo}{6 of 7}
 \newcommand{\fixedFailedMax}{$58$ percent}
-\newcommand{\halfMassJeansRms}{$3.6$ percent}
+\newcommand{\halfMassJeansRms}{$3.7$ percent}
 \newcommand{\halfMassJeansSigmaWithinTen}{63 of 70}
 \newcommand{\halfMassJeansWithinTen}{69 of 70}
 \newcommand{\halfMassSheetMedian}{$1.32$}
 \newcommand{\halfMassSheetWithinTen}{8 of 70}
 \newcommand{\halfMassTracerAboveOne}{1 of 70}
 \newcommand{\halfMassTracerMedian}{$0.94$}
-\newcommand{\halfMassTracerRms}{$7.8$ percent}
+\newcommand{\halfMassTracerRms}{$8.4$ percent}
 \newcommand{\halfMassTracerWithinTen}{57 of 70}
 \newcommand{\halfMassTrendMaxZero}{$2.9$}
 \newcommand{\halfMassTrendWithinTwo}{6 of 7}
-\newcommand{\hottestTracerRms}{$9.5$ percent}
+\newcommand{\hottestTracerRms}{$9.9$ percent}
 \newcommand{\hotTracer}{23 of 26}
 \newcommand{\hzMax}{$4.6$}
 \newcommand{\influentialHalo}{Au2}
@@ -142,7 +142,7 @@
 \newcommand{\jeansPositiveTwo}{7 of the 7}
 \newcommand{\jeansRange}{$0.82$ to $1.16$}
 \newcommand{\jeansRatios}{$0.81$ to $1.12$}
-\newcommand{\jeansRms}{$5.4$ percent}
+\newcommand{\jeansRms}{$5.5$ percent}
 \newcommand{\jeansSigmaBelowTracer}{57 of 70}
 \newcommand{\jeansSigmaNegativeTwo}{4 of the 7}
 \newcommand{\jeansSigmaOverTracerMid}{$0.94$}
@@ -225,7 +225,7 @@
 \newcommand{\trendRangeZero}{$-0.045$ to $0.014$}
 \newcommand{\trendSignTestTwo}{$0.016$}
 \newcommand{\twoBetaZRangeZero}{$0.96$ to $1.88$}
-\newcommand{\unclippedShift}{$0$ to $24$ percent}
+\newcommand{\unclippedShift}{$0$ to $22$ percent}
 \newcommand{\unclippedTrendNegativeTwo}{7 of 7}
 \newcommand{\unclippedWithinTen}{57 of 70}
 \newcommand{\windowLowExponential}{$1.00$}
@@ -364,6 +364,33 @@ to a population of one age, $\Sigma$ is the surface density of all the mass near
 which we take within $|z| < 1.1\kpc$, so that the sheet predicts $\hZ \propto \sigz^2$ for
 every population of a disk.
 
+\subsection{The vertical Jeans equation}
+\label{sec:jeanseq}
+
+The tracer solves the vertical Jeans equation of a steady axisymmetric population of density
+$\nu$,
+\begin{equation}
+\frac{\partial(\nu\sigz^2)}{\partial z} + \frac{1}{R}\frac{\partial(R\nu\sigma_{Rz})}{\partial R}
+= -\nu\frac{\partial\Phi}{\partial z},
+\label{eq:jeans}
+\end{equation}
+under two assumptions: that $\sigz$ does not change with height, and that the second term, the
+tilt term, vanishes. Writing the tilt term as $\nu t(z)$, Eq.~(\ref{eq:jeans}) integrates to
+\begin{equation}
+\nu(z) = \frac{\sigz^2(0)}{\sigz^2(z)}\exp\left[-\int_0^z
+\frac{\partial\Phi/\partial z' + t(z')}{\sigz^2(z')}\,dz'\right],
+\label{eq:jeansdensity}
+\end{equation}
+which is Eq.~(\ref{eq:tracer}) when $\sigz$ is constant and $t = 0$. With $\sigz(z)$ and $t(z)$
+measured at every height, Eq.~(\ref{eq:jeansdensity}) assumes nothing about the distribution
+function beyond a steady state and axisymmetry, so that its scatter about the measured heights is
+the reference for any prediction from the kinematics, although it also carries the noise of the
+dispersion and the tilt term measured in every slice. In $N$-body disks, a dispersion that changes
+with height improves estimates of the local density from one tracer \citep{Garbari2011}, as does
+the tilt term \citep{Sivertsson2022}. The tracer (Eq.~\ref{eq:tracer}), the sheet
+(Eq.~\ref{eq:sheet}) and the Jeans equation (Eq.~\ref{eq:jeansdensity}) are the three
+predictions that we set against the measured heights.
+
 \subsection{The local slope of the heights}
 
 For a tracer in a potential $\dPhi \propto |z|^p$, Eq.~(\ref{eq:tracer}) gives a height that
@@ -390,22 +417,14 @@ below 2 (Section~\ref{sec:eta}).
 Part of any agreement between the tracer and the measured heights is guaranteed. In a
 harmonic potential $\dPhi = \Omega_z^2 z^2/2$, with vertical frequency $\Omega_z$, the vertical
 virial theorem of a steady population gives $\langle v_z^2\rangle = \Omega_z^2 \langle z^2\rangle$
-whatever its distribution function, so
-the spread of a cold population in $|z|$ follows from that of its vertical velocities, as
-Eq.~(\ref{eq:tracer}) gives it. A cold population whose dispersion near the plane represents
-its stars is therefore bound to agree with the tracer, to the extent that a fitted scale
-height measures the spread in $|z|$. The test bites for the hot populations, which reach
-heights where the potential is no longer harmonic and where the shape of the distribution
-function sets the profile. We therefore report the cold and the hot populations separately.
-
-The tracer also assumes that $\sigz$ does not change with height and that the population
-feels no radial gradient of its motions, the tilt term of the vertical Jeans equation. We
-integrate that equation with the dispersion and the tilt term measured at every height,
-which holds for any steady axisymmetric population, so that its scatter about the measured
-heights is the reference for any prediction from the kinematics, although it also carries the
-noise of the dispersion and the tilt term measured in every slice. In $N$-body disks, a
-dispersion that changes with height improves estimates of the local density from one tracer
-\citep{Garbari2011}, as does the tilt term \citep{Sivertsson2022}.
+whatever its distribution function, so the rms height of a cold population whose dispersion near
+the plane represents its stars follows from its vertical velocities as Eq.~(\ref{eq:tracer})
+gives it. Its windowed scale height also depends on the shape of its profile: populations whose
+distribution functions of the vertical energy are $\exp[-(E_z/E_0)^q]$ with $q$ of 0.7 and 1.5
+have 0.85 and 1.14 times the height of the isothermal one with the same $\langle v_z^2\rangle$,
+at every dispersion. The hot populations, which reach heights where the potential is no longer
+harmonic, depend on both the shape and the potential. We therefore report the cold and the hot
+populations separately.
 
 \subsection{The scale height and its window}
 \label{sec:estimator}
@@ -456,8 +475,9 @@ particles of the annulus within $|z| < 1.1\kpc$. Errors are half the range betwe
 and the 84th percentiles of 300 bootstrap resamplings of the stars of each bin, each of which
 recomputes every quantity, so that the ratio of a predicted to the measured height carries the
 correlation of the two. A prediction agrees with a measured height within $x$ percent when
-$|\ln h_\mathrm{pred}/\hZ| \le x/100$, the band that the figures draw. We call the root mean
-square of $h_\mathrm{pred}/\hZ - 1$ over a set of populations its scatter. On a mock snapshot of a
+$|\ln h_\mathrm{pred}/\hZ| \le x/100$, the band that the figures draw. Every percentage that compares two heights in this work is such
+a logarithm. The scatter of a set of predictions is the root mean square of
+$\ln h_\mathrm{pred}/\hZ$. On a mock snapshot of a
 known galaxy, the analysis recovers $\dPhi$
 within \mockPhi\ and the height of every bin within \mockHz\ (Appendix~\ref{app:mock}). In
 the real snapshots, the potential averaged over azimuth gives tracer heights \snapshotRange\
@@ -466,8 +486,9 @@ times those of the fit.
 \subsection{The tracer, population by population}
 \label{sec:populations}
 
-Figure~\ref{fig:trends} sets the three predictions of Section~\ref{sec:tracer}, the tracer, the
-vertical Jeans equation and the sheet, against the measured heights, one panel each. Every point
+Figure~\ref{fig:trends} sets the three predictions of Section~\ref{sec:tracer}, the tracer
+(Eq.~\ref{eq:tracer}), the vertical Jeans equation (Eq.~\ref{eq:jeansdensity}) and the sheet
+(Eq.~\ref{eq:sheet}), against the measured heights, one panel each. Every point
 is the logarithm of a predicted over the measured height of one population, against its age, so
 that a prediction that matches a population puts it on the line at 0, inside the gray band of
 agreement within 10 percent. In the top panel, the tracer predicts the height of
@@ -555,10 +576,9 @@ without clipping, the Jeans equation gives heights within 10 percent in
 \jeansSigmaWithinTen\ populations. Its trends over 2-10\,Gyr are negative in
 \jeansSigmaNegativeTwo\ halos (filled diamonds in Figure~\ref{fig:checks}), with a mean over the
 halos, weighted by their inverse variances, of \jeansSigmaTrendMeanTwo\ against
-\tracerTrendMeanTwo\ for the tracer, so the pattern of signs of the tracer is gone. Without the
-tilt term the Jeans equation gives
-$\nu(z) = [\sigz^2(0)/\sigz^2(z)]\exp[-\int_0^z (\partial\Phi/\partial z')\,\sigz^{-2}\,dz']$,
-whose prefactor lowers the density wherever the dispersion has risen. The rising dispersion
+\tracerTrendMeanTwo\ for the tracer, so the pattern of signs of the tracer is gone. In
+Eq.~(\ref{eq:jeansdensity}), the prefactor $\sigz^2(0)/\sigz^2(z)$ lowers the density wherever the
+dispersion has risen. The rising dispersion
 therefore makes these heights smaller than those of the tracer in \jeansSigmaBelowTracer\
 populations, by a median factor of \jeansSigmaOverTracerMid\ at 2-6\,Gyr and
 \jeansSigmaOverTracerOld\ at 8-10\,Gyr, which flattens the decline. The exception is Au19,
@@ -778,8 +798,8 @@ $1.0$-$1.5\kpc$, without the tilt term, which this sample cannot measure, gives 
 \jeansRatios\ of the counts, with medians of \jeansMedians\ (filled squares), \jeansOverTracer\ times
 the heights of the tracer in \jeansBelowTracer\ bins. The dispersions of our kinematic stars rise
 with height in every bin, from 10-25\kms\ in the slice nearest the plane to 19-28\kms\ in the
-farthest. As in Auriga (Section~\ref{sec:jeans}), the prefactor $\sigz^2(0)/\sigz^2(z)$ of the
-Jeans solution lowers the density wherever the dispersion has risen, by more than the slower fall
+farthest. As in Auriga (Section~\ref{sec:jeans}), the prefactor $\sigz^2(0)/\sigz^2(z)$ of
+Eq.~(\ref{eq:jeansdensity}) lowers the density wherever the dispersion has risen, by more than the slower fall
 of its exponential raises it over the heights of these populations. The change of $\sigz$ with
 height thus deepens the shortfall rather than removing it. The sheet, with the
 \sigmaSurf\,$\Msun\,\mathrm{pc}^{-2}$ of \citet{McMillan2017} within 1.1\kpc, predicts
@@ -901,7 +921,7 @@ magnitude.
 \begin{figure}
 \centering
 \includegraphics[width=\columnwidth]{paper-inversion.pdf}
-\caption{Read in reverse, the star counts measure the local midplane density. If every population is an isothermal tracer, the density that fits the counts of each survey agrees with the measurement of \citet{McKee2015}. Points show the $\rho_0$ at which the bins of a survey match their counts, with one-sigma errors, from the \inversionBins\ bins of the three surveys that have a predicted height in every potential of our family (\inversionCoevalBins\ for $b = 1/2$), for the isothermal tracer (filled) and for populations whose vertical actions are distributed as $\exp[-(J_z/J_0)^{3/2}]$, the $b = 1/2$ of \citet{TingRix2026} (hollow), which fit best in a potential denser than measured, near that of \citet{McMillan2017} (dotted line), although their errors keep this preference weak. The gray band and the dashed line mark the $0.097 \pm 0.013\,\Msun\,\mathrm{pc}^{-3}$ of \citet{McKee2015}.}
+\caption{The star counts measure the local midplane density once the potential is fitted to them rather than taken from a model. If every population is an isothermal tracer, the density that fits the counts of each survey agrees with the measurement of \citet{McKee2015}. Points show the $\rho_0$ at which the bins of a survey match their counts, with one-sigma errors, from the \inversionBins\ bins of the three surveys that have a predicted height in every potential of our family (\inversionCoevalBins\ for $b = 1/2$), for the isothermal tracer (filled) and for populations whose vertical actions are distributed as $\exp[-(J_z/J_0)^{3/2}]$, the $b = 1/2$ of \citet{TingRix2026} (hollow), which fit best in a potential denser than measured, near that of \citet{McMillan2017} (dotted line), although their errors keep this preference weak. The gray band and the dashed line mark the $0.097 \pm 0.013\,\Msun\,\mathrm{pc}^{-3}$ of \citet{McKee2015}.}
 \label{fig:inversion}
 \end{figure}
 
@@ -1159,19 +1179,19 @@ exponential, as expected of tracers in a potential that is harmonic near the pla
 windows of \citet[Table~1]{Palicio2025}, with $Z_\mathrm{lim}$ of \zLimRange\kpc\ chosen for each
 galaxy, are fixed in this sense.
 
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=0.5\textwidth]{paper-window.pdf}
+\caption{A window of fixed size biases the scale height of any profile that is not exponential, by an amount that depends on how thick the profile is against the window, whereas the self-consistent window $L = 2\hZ$ recovers every injected profile within \selfConsistentBias. Top: the logarithm of the height fitted in a fixed window $Z_\mathrm{lim} = 1\kpc$ over the self-consistent height, against $\hZ/Z_\mathrm{lim}$, for exponentials (solid), $\mathrm{sech}^2$ layers (dashed) and mixtures of two exponentials (dotted), each the median of \injectionDraws\ draws of \injectionStars\ heights with a dark gray band between the 16th and 84th percentiles, and for the Auriga populations (dots), each fitted in the fixed window of its halo, with $Z_\mathrm{lim}$ of \zLimRange\kpc, which follow the $\mathrm{sech}^2$ curve where they are thin against the window. Bottom: the logarithm of the self-consistent height of the injected draws over that of the exact, noise-free profile. The light gray bands mark agreement within 10 percent.}
+\label{fig:window}
+\end{figure}
+
 The self-consistent window takes the smallest $L$ that satisfies $L = 2h(L)$. With few stars
 inside $L/2$, the profile of a hot population is nearly flat inside a small window, so that the
 noise of the fitted $1/h$ can satisfy the condition by chance, far below the true scale. In
 3000 draws of 300 stars from an exponential of $h = 3\kpc$, a minimum of 20 stars inside $L/2$
 gave a root below 1\kpc\ in 25 draws, a minimum of 50 in 1 and a minimum of 100 in none,
 which is the minimum we use.
-
-\begin{figure}
-\centering
-\includegraphics[width=0.5\textwidth]{paper-window.pdf}
-\caption{A window of fixed size biases the scale height of any profile that is not exponential, by an amount that depends on how thick the profile is against the window, whereas the self-consistent window $L = 2\hZ$ recovers every injected profile within \selfConsistentBias. Top: the logarithm of the height fitted in a fixed window $Z_\mathrm{lim} = 1\kpc$ over the self-consistent height, against $\hZ/Z_\mathrm{lim}$, for exponentials (solid), $\mathrm{sech}^2$ layers (dashed) and mixtures of two exponentials (dotted), each the median of \injectionDraws\ draws of \injectionStars\ heights with a dark gray band between the 16th and 84th percentiles, and for the Auriga populations (dots), each fitted in the fixed window of its halo, with $Z_\mathrm{lim}$ of \zLimRange\kpc, which follow the $\mathrm{sech}^2$ curve where they are thin against the window. Bottom: the logarithm of the self-consistent height of the injected draws over that of the exact, noise-free profile. The light gray bands mark agreement within 10 percent.}
-\label{fig:window}
-\end{figure}
 
 \section{The mock galaxy and the potential}
 \label{app:mock}

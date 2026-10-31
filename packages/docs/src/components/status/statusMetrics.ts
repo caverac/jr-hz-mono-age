@@ -175,9 +175,9 @@ function within10Of(values: readonly number[]): string {
   return `${values.filter((r) => agrees(r)).length} of ${values.length}`
 }
 
-/** The root mean square of `values` - 1. */
+/** The scatter of the ratios `values`: the root mean square of their logarithms. */
 function rms(values: readonly number[]): number {
-  return Math.sqrt(values.reduce((sum, r) => sum + (r - 1) ** 2, 0) / values.length)
+  return Math.sqrt(values.reduce((sum, r) => sum + Math.log(r) ** 2, 0) / values.length)
 }
 
 /** The point of the tracer curve of `halo` nearest `sigmaZ` (km/s). */
@@ -446,7 +446,9 @@ export const STATUS_METRICS = {
     `${between(
       extent(
         d.halos.flatMap((h) =>
-          h.checks.allStars.bins.map((b) => 100 * (b.tracerUnclipped.value / b.tracer.value - 1))
+          h.checks.allStars.bins.map(
+            (b) => 100 * Math.log(b.tracerUnclipped.value / b.tracer.value)
+          )
         )
       ),
       0
@@ -612,7 +614,7 @@ export const STATUS_METRICS = {
   wholeTracer: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.tracer))),
   wholePalicio: (d: StatusData) => between(extent(wholeDiskRatios(d).map((r) => r.palicio))),
   mockSpin: (d: StatusData) => upTo(d.mock.spinErrorDeg, 3),
-  mockVc: (d: StatusData) => percentUpTo(Math.abs(d.mock.vCirc / d.mock.vCircTrue - 1)),
+  mockVc: (d: StatusData) => percentUpTo(Math.abs(Math.log(d.mock.vCirc / d.mock.vCircTrue))),
   mockPhi: (d: StatusData) => percentUpTo(d.mock.deltaPhiError),
   mockHz: (d: StatusData) => percentUpTo(mockErrors(d.mock).hz),
   mockJr: (d: StatusData) => percentUpTo(mockErrors(d.mock).jr),
@@ -721,7 +723,8 @@ export const STATUS_METRICS = {
     const closer = d.halos.filter((h) => {
       const whole = h.tracerSum.whole
       return (
-        Math.abs(whole.ratioMixture.scaled.value - 1) < Math.abs(whole.ratioSingle.scaled.value - 1)
+        Math.abs(Math.log(whole.ratioMixture.scaled.value)) <
+        Math.abs(Math.log(whole.ratioSingle.scaled.value))
       )
     })
     return `${closer.length} of the ${d.halos.length}`

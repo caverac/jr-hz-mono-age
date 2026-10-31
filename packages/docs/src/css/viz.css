@@ -771,3 +771,77 @@ figure.scientific img {
     transition: none;
   }
 }
+
+/* A labeled slider of the Concepts pages, in the font of the charts. */
+.viz-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-fg);
+}
+
+.viz-slider input[type='range'] {
+  width: min(14rem, 50vw);
+  accent-color: var(--viz-series-1);
+}
+
+.viz-slider__value {
+  min-width: 6.5rem;
+}
+
+.viz-slider .katex {
+  font-size: 1em;
+}
+
+/* A shaded profile, such as the mass of the whole disk behind a population. */
+.viz-area {
+  fill: var(--viz-band);
+  stroke: none;
+}
+
+/* A window of the scale-height fit, shaded behind the profile. */
+.viz-window {
+  fill: var(--viz-series-1);
+  fill-opacity: 0.08;
+  stroke: none;
+}
+
+.viz-window--half {
+  fill-opacity: 0.16;
+}
+
+/* A step histogram of star particles. */
+.viz-step {
+  fill: none;
+  stroke: var(--viz-muted);
+  stroke-width: 1.5;
+}
+
+/* The nodes of an expansion's grid, drawn over its density map. */
+.viz-node {
+  fill: none;
+  stroke: var(--viz-fg);
+  stroke-opacity: 0.18;
+  stroke-width: 0.6;
+}
+
+/* Several small charts side by side, each with its own title. */
+.viz-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.viz-panel-title {
+  margin: 0 0 0.25rem;
+  text-align: center;
+  font-family: var(--viz-font-family);
+  font-size: var(--viz-font-size);
+  color: var(--viz-fg);
+}
+
+.viz-panel-title .katex {
+  font-size: 1em;
+}

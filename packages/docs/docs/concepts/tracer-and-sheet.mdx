@@ -1,0 +1,143 @@
+---
+title: Tracer and sheet
+---
+
+import Metric from '@site/src/components/status/Metric'
+import ModelsChart from '@site/src/components/concepts/ModelsChart'
+
+# Tracer and sheet
+
+The paper compares two models that turn the vertical velocity dispersion $\sigma_z$ of a
+population of stars into its thickness: the isothermal tracer and the self-gravitating sheet.
+This page builds both from the same starting point, shows where they agree and where they
+part, and lets you move a population through a toy disk to see the difference grow. What the
+two models give for the Auriga populations is on [Tracer or sheet](../status/tracer-vs-sheet).
+
+## A population in a potential
+
+Take the stars of one age at one radius $R$ of a disk. Each star oscillates through the plane
+in the vertical potential $\Delta\Phi(z) = \Phi(R, z) - \Phi(R, 0)$, with a vertical energy
+
+$$
+E_z = \frac{1}{2} v_z^2 + \Delta\Phi(z)
+$$
+
+that stays constant as long as the potential does not change. A population is then described
+by how many of its stars have each vertical energy, its distribution function $f(E_z)$. The
+density at a height $z$ counts the stars of every velocity that pass through it:
+
+$$
+\rho(z) = \int_{-\infty}^{\infty} f\left(\frac{1}{2} v_z^2 + \Delta\Phi(z)\right) dv_z .
+$$
+
+The simplest distribution is the isothermal one, $f \propto \exp(-E_z/\sigma_z^2)$, the
+distribution of a gas at a single temperature. Its velocities are Gaussian with the same
+dispersion $\sigma_z$ at every height, and the integral splits into that Gaussian times a
+factor that depends on height alone:
+
+$$
+\rho(z) \propto \exp\left[-\frac{\Delta\Phi(z)}{\sigma_z^2}\right].
+$$
+
+The density falls where the stars run out of kinetic energy to climb the potential, so the
+thickness of the population is set by $\sigma_z^2$ against the steepness of $\Delta\Phi$. Both
+models start from this formula. They differ in where $\Delta\Phi$ comes from.
+
+## The tracer
+
+A population of one age holds a small part of the mass of its disk. The potential that its
+stars feel is made by everything else as well: the stars of every other age, the gas and the
+dark matter. The tracer takes $\Delta\Phi$ from all of that mass, and the mass of the
+population plays no special role in it. The prediction needs two inputs, the $\sigma_z$ of the
+population and the potential of the whole galaxy at its radius. The analysis takes the second
+from a potential fitted to every particle of the snapshot ([The fitted potential](./the-potential)).
+
+## The sheet
+
+The sheet is the opposite limit, a population that makes its own potential: a self-gravitating
+layer whose only mass is its own stars. Then $\Delta\Phi$ and $\rho$ are tied by the Poisson
+equation,
+
+$$
+\frac{d^2\Delta\Phi}{dz^2} = 4\pi G \rho(z) = 4\pi G \rho_0\, e^{-\Delta\Phi/\sigma_z^2},
+$$
+
+with $\rho_0$ the density at the plane. Multiplying by $2\, d\Delta\Phi/dz$ and integrating
+once from the plane, where the force vanishes, gives
+
+$$
+\left(\frac{d\Delta\Phi}{dz}\right)^2 = 8\pi G \rho_0 \sigma_z^2 \left(1 - e^{-\Delta\Phi/\sigma_z^2}\right),
+$$
+
+whose solution is $\Delta\Phi = 2\sigma_z^2 \ln\cosh(z/z_0)$. The density is then the sheet of
+Spitzer (1942),
+
+$$
+\rho(z) = \rho_0\, \mathrm{sech}^2\left(\frac{z}{z_0}\right), \qquad
+z_0 = \frac{\sigma_z}{\sqrt{2\pi G \rho_0}} = \frac{\sigma_z^2}{\pi G \Sigma},
+$$
+
+where the last step uses the surface density of the layer, $\Sigma = 2\rho_0 z_0$. Far above the
+plane the force of the layer approaches $2\pi G \Sigma$, the pull of a sheet of mass seen from
+outside, and the density falls as $e^{-2|z|/z_0}$.
+
+At a fixed $\Sigma$, a hotter sheet is thicker in proportion to $\sigma_z^2$: twice the
+dispersion holds the same mass four times as high. The reason is that the force confining the
+layer, $2\pi G\Sigma$ outside it, does not grow as the layer swells. Applied to a population of
+one age, $\Sigma$ is the surface density of all the mass near the plane, which the paper takes
+within $|z| < 1.1$ kpc. The sheet then predicts $h_Z \propto \sigma_z^2$ for every population of
+the disk, which is how studies of disk heating use it as a scaling.
+
+## Where they agree and where they part
+
+The two models coincide for the population that is the whole layer: the tracer in the
+potential of a self-gravitating sheet with its own $\sigma_z$ is that sheet. Every other
+population sees a potential whose shape the sheet does not know about.
+
+- A population colder than the layer stays near the plane, where any smooth potential is
+  harmonic, $\Delta\Phi \simeq 2\pi G \rho_0 z^2$. The tracer there is a Gaussian with an rms
+  height of $\sigma_z/\sqrt{4\pi G \rho_0}$, so its height grows as $\sigma_z$. The sheet still
+  grows as $\sigma_z^2$, so it predicts the cold population thinner than the tracer.
+- A population hotter than the layer climbs above it, where the force of the layer has reached
+  $2\pi G \Sigma$ and the potential rises almost linearly. The tracer then falls as
+  $\exp(-2\pi G\Sigma |z|/\sigma_z^2)$, an exponential of scale $\sigma_z^2/(2\pi G \Sigma) =
+  z_0/2$. It grows as $\sigma_z^2$ too, at half the thickness of the sheet.
+- A dark halo adds a force that keeps growing with height, so the potential above the layer
+  steepens faster than linearly, and a hot tracer grows more slowly than $\sigma_z^2$.
+
+The local slope $\eta = d\ln h_Z/d\ln\sigma_z$ records where a population sits in its potential:
+1 in the harmonic core, 2 where the potential is linear (van der Kruit 1988), and in between for
+a population that spans both.
+
+## Try it
+
+The chart puts a population in a toy disk: a self-gravitating layer of 55
+$M_\odot\,\mathrm{pc}^{-2}$ at a dispersion of 18 km/s, whose $z_0$ is 0.44 kpc, with or without
+a dark halo of uniform density 0.012 $M_\odot\,\mathrm{pc}^{-3}$ near the plane. The upper panel
+shows the profile of the population as a tracer and as a sheet, each of unit mass, over the
+profile of the layer that makes the potential. The vertical lines mark the $h_Z$ of the tracer,
+measured with the window of the paper ([The window of the fit](./the-window)), and the $z_0$ of
+the sheet. The lower panel shows how both grow with $\sigma_z$, with lines of slope 1 and 2 for
+reference. The $\Sigma$ of the sheet is all the mass within 1.1 kpc, 80.7
+$M_\odot\,\mathrm{pc}^{-2}$ with the halo and 54.3 without it.
+
+<ModelsChart />
+
+Three settings show the argument above:
+
+1. Without the halo, at $\sigma_z = 18$ km/s, the population is the layer itself. The tracer
+   has $h_Z = 0.435$ kpc and the sheet $z_0 = 0.442$ kpc. The small difference is the mass above
+   1.1 kpc, which the $\Sigma$ of the sheet leaves out.
+2. Without the halo, at 80 km/s, the tracer is 4.4 kpc thick and the sheet 8.7 kpc, the factor
+   of 2 of the linear limit.
+3. With the halo, the two curves cross near 25 km/s. At 8 km/s the sheet is 2.8 times thinner
+   than the tracer (0.059 against 0.165 kpc), and at 80 km/s it is 2.3 times thicker (5.9
+   against 2.6 kpc). Between 50 and 80 km/s the tracer grows as $\sigma_z^{1.4}$, not
+   $\sigma_z^2$, because the halo keeps the potential steepening.
+
+The Auriga disks behave the same way in their fitted potentials: the sheet predicts the
+youngest population of each halo <Metric name="sheetYoung" /> times as thick as measured and the
+oldest <Metric name="sheetOld" /> times, whereas the tracer predicts
+<Metric name="tracerWithin10" /> of the <Metric name="populations" /> populations within 10
+percent ([Tracer or sheet](../status/tracer-vs-sheet)). Why agreement of the tracer with the
+coldest populations says little on its own is on [Where the test bites](./where-the-test-bites).

@@ -84,7 +84,10 @@ export default function Chart({
 }
 
 interface AxisProps {
-  readonly scale: d3.ScaleLinear<number, number> | d3.ScaleLogarithmic<number, number>
+  readonly scale:
+    | d3.ScaleLinear<number, number>
+    | d3.ScaleLogarithmic<number, number>
+    | d3.ScalePower<number, number>
   readonly orientation: 'bottom' | 'left'
   readonly transform?: string
   readonly ticks?: number

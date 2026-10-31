@@ -164,7 +164,7 @@ def sheet_hz(sigma_z: float, sigma_surf: float) -> float:
 def sheet_profile(sigma_z: float, sigma_surf: float, z_grid: FloatArray = Z_GRID) -> FloatArray:
     """Return the self-gravitating isothermal sheet sech^2(|z| / z_0) on *z_grid*, with z_0 = :func:`sheet_hz`.
 
-    Its h_Z in the self-consistent window L = 2 h_Z is z_0 to 0.2 percent, so at k = 2 the
+    Its h_Z in the self-consistent window L = 2 h_Z is z_0 to 0.3 percent, so at k = 2 the
     profile and the scale are the same prediction. sech^2 x = 4 e^{-2x} / (1 + e^{-2x})^2,
     which does not overflow for thin sheets.
     """
